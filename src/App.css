@@ -74,7 +74,7 @@
 .battle-sky {
   position: absolute;
   inset: 0 0 50% 0;
-  background: linear-gradient(155deg, #1fb8ae 0%, #3fd0c3 30%, #bdeee0 48%, #eef9e0 55%, #a9e2a0 70%, #6fc26a 100%);
+  background: linear-gradient(155deg, #3d6b6a 0%, #547f78 30%, #93a888 48%, #ada87f 55%, #a89a68 70%, #8f8156 100%);
   overflow: hidden;
 }
 
@@ -84,8 +84,8 @@
   inset: 0;
   background: repeating-linear-gradient(
     100deg,
-    rgba(255, 255, 255, 0.16) 0,
-    rgba(255, 255, 255, 0.16) 22px,
+    rgba(255, 255, 255, 0.08) 0,
+    rgba(255, 255, 255, 0.08) 22px,
     rgba(255, 255, 255, 0) 22px,
     rgba(255, 255, 255, 0) 60px
   );
@@ -138,10 +138,10 @@
   bottom: 44%;
   height: 12%;
   background-repeat: no-repeat;
-  background-image: radial-gradient(circle at 8% 100%, #6fbf72 0%, #6fbf72 55%, transparent 58%),
-    radial-gradient(circle at 32% 100%, #63b566 0%, #63b566 60%, transparent 63%),
-    radial-gradient(circle at 60% 100%, #6fbf72 0%, #6fbf72 58%, transparent 61%),
-    radial-gradient(circle at 88% 100%, #63b566 0%, #63b566 55%, transparent 58%);
+  background-image: radial-gradient(circle at 8% 100%, #8a7a4f 0%, #8a7a4f 55%, transparent 58%),
+    radial-gradient(circle at 32% 100%, #7c6d46 0%, #7c6d46 60%, transparent 63%),
+    radial-gradient(circle at 60% 100%, #8a7a4f 0%, #8a7a4f 58%, transparent 61%),
+    radial-gradient(circle at 88% 100%, #7c6d46 0%, #7c6d46 55%, transparent 58%);
 }
 
 .battle-ground {
@@ -150,20 +150,14 @@
   right: 0;
   bottom: 0;
   height: 50%;
-  background: linear-gradient(to bottom, #7ccb6f 0%, #6cbf5f 100%);
-}
-
-.battle-ground::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0.14) 0,
-    rgba(255, 255, 255, 0.14) 22px,
-    rgba(0, 0, 0, 0) 22px,
-    rgba(0, 0, 0, 0) 60px
-  );
+  background-color: #b99a6b;
+  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 56px),
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 56px),
+    radial-gradient(circle at 26% 30%, rgba(255, 255, 255, 0.18) 0 13px, transparent 14px),
+    radial-gradient(circle at 74% 74%, rgba(0, 0, 0, 0.16) 0 13px, transparent 14px),
+    radial-gradient(circle at 74% 28%, rgba(0, 0, 0, 0.1) 0 9px, transparent 10px),
+    radial-gradient(circle at 26% 76%, rgba(255, 255, 255, 0.12) 0 9px, transparent 10px);
+  background-size: 56px 56px;
 }
 
 .battle-ground-glow {
@@ -172,7 +166,7 @@
   right: 0;
   bottom: 0;
   height: 50%;
-  background: radial-gradient(ellipse at 50% 12%, rgba(255, 255, 255, 0.45), transparent 60%);
+  background: radial-gradient(ellipse at 50% 12%, rgba(255, 255, 240, 0.25), transparent 60%);
 }
 
 .opponent-stand,
@@ -243,13 +237,13 @@
 }
 
 .status-box-opponent {
-  top: 6%;
-  left: 4%;
+  top: 4%;
+  right: 8%;
 }
 
 .status-box-player {
-  top: 44%;
-  right: 4%;
+  top: 15%;
+  left: 6%;
 }
 
 .status-box-name-row {
