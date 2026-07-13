@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(npx --yes vercel whoami)",
-      "Bash(npx --yes vercel --prod --yes)"
+      "Bash(npx --yes vercel --prod --yes)",
+      "Bash(git commit -m ' *)",
+      "Bash(git add *)"
     ]
   },
   "hooks": {
