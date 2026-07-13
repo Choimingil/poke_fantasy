@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes vercel whoami)",
+      "Bash(npx --yes vercel --prod --yes)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -7,9 +13,9 @@
           {
             "type": "command",
             "command": "FP=$(cat | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty'); if echo \"$FP\" | grep -Eq '/src/.*\\.(ts|tsx)$'; then cd \"/Users/gale/Library/Mobile Documents/com~apple~CloudDocs/poke_fantasy\" || exit 0; OUT=$(npm run verify 2>&1); CODE=$?; if [ $CODE -ne 0 ]; then echo \"$OUT\" | tail -150; exit 2; fi; fi",
-            "asyncRewake": true,
             "timeout": 180,
-            "statusMessage": "코드 검증 중 (typecheck/test/lint/unused)..."
+            "statusMessage": "코드 검증 중 (typecheck/test/lint/unused)...",
+            "asyncRewake": true
           }
         ]
       }
