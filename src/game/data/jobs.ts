@@ -1,6 +1,6 @@
 import type { JobDef } from '../types';
 
-const JOBS: JobDef[] = [
+export const JOBS: JobDef[] = [
   // ---- 동양 기본직 (1차 전직 전) ----
   { id: 'east_warrior', name: '무사(견습)', faction: 'east', type: 'melee', tier: 0, skillSlots: 4, traits: [] },
   { id: 'east_mage', name: '학사(견습)', faction: 'east', type: 'magic', tier: 0, skillSlots: 4, traits: [] },

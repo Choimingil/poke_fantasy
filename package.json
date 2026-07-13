@@ -11,6 +11,7 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "unused": "knip",
+    "docs:classes": "tsx scripts/generate-classes-doc.ts",
     "verify": "npm run typecheck && npm run test && npm run lint && npm run unused"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "knip": "^6.26.0",
     "oxlint": "^1.71.0",
+    "tsx": "^4.23.1",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"

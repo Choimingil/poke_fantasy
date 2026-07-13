@@ -13,6 +13,26 @@ export interface BattleAction {
   skillId?: string;
 }
 
+/** UI 애니메이션이 참고할 수 있도록 한 캐릭터의 행동 1회를 구조화한 결과 */
+export interface TurnStepResult {
+  actorId: string;
+  actorSide: Side;
+  actorName: string;
+  skillId?: string;
+  skillName?: string;
+  targetSide: Side | null;
+  targetName: string | null;
+  lines: string[];
+  skipped: 'fainted' | 'sleep' | 'stun' | null;
+  missed: boolean;
+  isAttack: boolean;
+  isHeal: boolean;
+  damage: number;
+  extraHitDamage: number;
+  crit: boolean;
+  targetFainted: boolean;
+}
+
 export class Battle {
   readonly log: string[] = [];
   turnNumber = 0;
@@ -21,6 +41,8 @@ export class Battle {
   teamA: Character[];
   teamB: Character[];
   private rng: () => number;
+  private turnQueue: TurnCandidate[] = [];
+  private sideOf = new Map<string, Side>();
 
   constructor(teamA: Character[], teamB: Character[], rng: () => number = Math.random) {
     this.teamA = teamA;
@@ -63,14 +85,14 @@ export class Battle {
     return this.team(side).some((c) => c.isActive && getJob(c.jobId).traits.includes('onFieldDamageReduction'));
   }
 
-  runTurn(actionA: BattleAction, actionB: BattleAction): string[] {
-    if (this.finished) return [];
+  /** 이번 턴에 실행될 행동 큐를 스피드 순으로 준비한다(무기 교체는 즉시 적용). */
+  beginTurn(actionA: BattleAction, actionB: BattleAction): void {
+    if (this.finished) return;
     this.turnNumber += 1;
-    const startIdx = this.log.length;
     this.log.push(`--- ${this.turnNumber}턴 ---`);
 
     const candidates: TurnCandidate[] = [];
-    const sideOf = new Map<string, Side>();
+    this.sideOf = new Map<string, Side>();
 
     for (const { side, action } of [
       { side: 'A' as Side, action: actionA },
@@ -107,42 +129,85 @@ export class Battle {
         continue;
       }
 
-      sideOf.set(character.id, side);
+      this.sideOf.set(character.id, side);
       candidates.push({ characterId: character.id, character, job, skill, weaponSpeed: weapon.baseSpeed });
     }
 
-    const order = determineTurnOrder(candidates, this.rng);
+    this.turnQueue = determineTurnOrder(candidates, this.rng);
+  }
 
-    for (const c of order) {
-      if (c.character.currentHp <= 0) continue;
+  hasPendingStep(): boolean {
+    return this.turnQueue.length > 0;
+  }
 
-      const tick = tickStatusAtTurnStart(c.character);
-      if (tick.dotDamage > 0) this.log.push(`${c.character.name}는 상태이상 데미지 ${tick.dotDamage}를 입었다.`);
-      for (const exp of tick.expired) this.log.push(`${c.character.name}의 ${exp} 상태가 해제되었다.`);
-      if (c.character.currentHp <= 0) {
-        this.log.push(`${c.character.name}는 쓰러졌다.`);
-        continue;
-      }
-      if (tick.skipTurn) {
-        this.log.push(`${c.character.name}는 행동할 수 없다.`);
-        continue;
-      }
+  /** 큐의 맨 앞 캐릭터 행동 1회를 처리하고, 애니메이션에 필요한 구조화된 결과를 반환한다. */
+  resolveNextStep(): TurnStepResult {
+    const c = this.turnQueue.shift();
+    if (!c) throw new Error('resolveNextStep() called with an empty queue');
 
-      const side = sideOf.get(c.character.id)!;
-      const target = this.getActive(this.otherSide(side));
+    const startIdx = this.log.length;
+    const base = {
+      actorId: c.character.id,
+      actorSide: this.sideOf.get(c.character.id)!,
+      actorName: c.character.name,
+      skillId: c.skill.id,
+      skillName: c.skill.name,
+    };
 
-      const hitRoll = this.rng() * 100;
-      if (hitRoll >= c.skill.accuracy) {
-        this.log.push(`${c.character.name}의 ${c.skill.name}이(가) 빗나갔다.`);
-        continue;
-      }
-
-      this.resolveSkillEffect(c.character, side, target, c);
-
-      if (target.currentHp <= 0) this.log.push(`${target.name}가 쓰러졌다.`);
+    if (c.character.currentHp <= 0) {
+      return { ...base, targetSide: null, targetName: null, lines: [], skipped: 'fainted', missed: false, isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false, targetFainted: false };
     }
 
+    const tick = tickStatusAtTurnStart(c.character);
+    if (tick.dotDamage > 0) this.log.push(`${c.character.name}는 상태이상 데미지 ${tick.dotDamage}를 입었다.`);
+    for (const exp of tick.expired) this.log.push(`${c.character.name}의 ${exp} 상태가 해제되었다.`);
+
+    if (c.character.currentHp <= 0) {
+      this.log.push(`${c.character.name}는 쓰러졌다.`);
+      this.checkBattleEnd();
+      return { ...base, targetSide: null, targetName: null, lines: this.log.slice(startIdx), skipped: 'fainted', missed: false, isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false, targetFainted: false };
+    }
+    if (tick.skipTurn) {
+      this.log.push(`${c.character.name}는 행동할 수 없다.`);
+      const skipped = c.character.statusEffects.some((s) => s.effect === 'stun') ? 'stun' : 'sleep';
+      return { ...base, targetSide: null, targetName: null, lines: this.log.slice(startIdx), skipped, missed: false, isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false, targetFainted: false };
+    }
+
+    const side = base.actorSide;
+    const target = this.getActive(this.otherSide(side));
+
+    const hitRoll = this.rng() * 100;
+    if (hitRoll >= c.skill.accuracy) {
+      this.log.push(`${c.character.name}의 ${c.skill.name}이(가) 빗나갔다.`);
+      return { ...base, targetSide: this.otherSide(side), targetName: target.name, lines: this.log.slice(startIdx), skipped: null, missed: true, isAttack: c.skill.category === 'attack', isHeal: false, damage: 0, extraHitDamage: 0, crit: false, targetFainted: false };
+    }
+
+    const effect = this.resolveSkillEffect(c.character, side, target, c);
+
+    if (target.currentHp <= 0 && effect.isAttack) this.log.push(`${target.name}가 쓰러졌다.`);
     this.checkBattleEnd();
+
+    return {
+      ...base,
+      targetSide: effect.isAttack ? this.otherSide(side) : effect.isHeal ? side : null,
+      targetName: effect.isAttack ? target.name : effect.isHeal ? c.character.name : null,
+      lines: this.log.slice(startIdx),
+      skipped: null,
+      missed: false,
+      isAttack: effect.isAttack,
+      isHeal: effect.isHeal,
+      damage: effect.damage,
+      extraHitDamage: effect.extraHitDamage,
+      crit: effect.crit,
+      targetFainted: effect.isAttack && target.currentHp <= 0,
+    };
+  }
+
+  /** 한 턴(양측 행동)을 애니메이션 없이 즉시 끝까지 처리하는 편의 메서드. 테스트/시뮬레이션용. */
+  runTurn(actionA: BattleAction, actionB: BattleAction): string[] {
+    const startIdx = this.log.length;
+    this.beginTurn(actionA, actionB);
+    while (this.hasPendingStep()) this.resolveNextStep();
     return this.log.slice(startIdx);
   }
 
@@ -181,43 +246,45 @@ export class Battle {
           const applied = tryApplyStatus(target, skill.statusEffect.effect, skill.statusEffect.chance, this.rng);
           if (applied) this.log.push(`${target.name}는 ${skill.statusEffect.effect} 상태가 되었다.`);
         }
-        break;
+        return { isAttack: true, isHeal: false, damage: result.damage, extraHitDamage: result.extraHitDamage, crit: result.crit };
       }
       case 'heal': {
         const healAmount = Math.max(1, Math.round(actor.baseStats.hp * (skill.healPercent ?? 0)));
         const before = actor.currentHp;
         actor.currentHp = Math.min(actor.baseStats.hp, actor.currentHp + healAmount);
         this.log.push(`${actor.name}가 ${skill.name}으로 체력을 ${actor.currentHp - before} 회복했다.`);
-        break;
+        return { isAttack: false, isHeal: true, damage: 0, extraHitDamage: 0, crit: false };
       }
       case 'buff': {
         actor.statMultipliers.attack = Math.min(2, actor.statMultipliers.attack * 1.2);
         this.log.push(`${actor.name}의 공격력이 상승했다.`);
-        break;
+        return { isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false };
       }
       case 'debuff': {
         target.statMultipliers.defense = Math.max(0.5, target.statMultipliers.defense * 0.8);
         this.log.push(`${target.name}의 방어력이 하락했다.`);
-        break;
+        return { isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false };
       }
       case 'defense': {
         actor.guarding = true;
         this.log.push(`${actor.name}가 방어태세를 취했다.`);
-        break;
+        return { isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false };
       }
       case 'status':
       default:
-        break;
+        return { isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false };
     }
   }
 
   private checkBattleEnd() {
+    if (this.finished) return;
     const aAlive = this.teamA.some((c) => c.currentHp > 0);
     const bAlive = this.teamB.some((c) => c.currentHp > 0);
     if (!aAlive || !bAlive) {
       this.finished = true;
       this.winner = aAlive ? 'A' : bAlive ? 'B' : null;
       this.log.push(this.winner ? `전투 종료: ${this.winner === 'A' ? 'A팀' : 'B팀'} 승리!` : '전투 종료: 무승부');
+      this.turnQueue = [];
     }
   }
 }

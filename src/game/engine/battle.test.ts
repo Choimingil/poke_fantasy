@@ -62,4 +62,38 @@ describe('Battle', () => {
     expect(hurtAlly.currentHp).toBe(45); // 20 + 100*0.25
     expect(battle.log.some((l) => l.includes('회복'))).toBe(true);
   });
+
+  it('beginTurn/resolveNextStep으로 스피드가 빠른 쪽부터 한 명씩 순차적으로 처리할 수 있다', () => {
+    const fast = make('fast', 'east_general', { stats: { attack: 40, defense: 20, hp: 100, speed: 50 } });
+    const slow = make('slow', 'east_general', { stats: { attack: 40, defense: 20, hp: 100, speed: 5 } });
+    const battle = new Battle([fast], [slow], () => 0.01);
+
+    battle.beginTurn({ skillId: 'slash' }, { skillId: 'slash' });
+    expect(battle.hasPendingStep()).toBe(true);
+
+    const first = battle.resolveNextStep();
+    expect(first.actorId).toBe('fast'); // 스피드가 더 빠른 쪽이 먼저 행동
+    expect(first.isAttack).toBe(true);
+    expect(slow.currentHp).toBeLessThan(100); // 첫 스텝에서 이미 데미지 계산이 끝나 있어야 함
+    expect(fast.currentHp).toBe(100); // 아직 두 번째 스텝 전이라 반격은 받지 않음
+
+    expect(battle.hasPendingStep()).toBe(true);
+    const second = battle.resolveNextStep();
+    expect(second.actorId).toBe('slow');
+    expect(fast.currentHp).toBeLessThan(100); // 두 번째 스텝에서야 반격 데미지가 반영됨
+
+    expect(battle.hasPendingStep()).toBe(false);
+  });
+
+  it('resolveNextStep은 행동 도중 상대가 쓰러지면 이후 스텝을 비운다', () => {
+    const strong = make('strong', 'east_general', { stats: { attack: 500, defense: 10, hp: 100, speed: 50 } });
+    const weak = make('weak', 'east_general', { stats: { attack: 5, defense: 5, hp: 10, speed: 1 } });
+    const battle = new Battle([strong], [weak], () => 0.01);
+
+    battle.beginTurn({ skillId: 'slash' }, { skillId: 'slash' });
+    const first = battle.resolveNextStep();
+    expect(first.targetFainted).toBe(true);
+    expect(battle.finished).toBe(true);
+    expect(battle.hasPendingStep()).toBe(false); // weak의 남은 행동은 취소됨
+  });
 });

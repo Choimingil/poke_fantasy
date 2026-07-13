@@ -18,85 +18,199 @@
   gap: 4px;
 }
 
-.battle-panel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin: 16px 0;
+/* ---------------- 전투 화면 (HeartGold 스타일) ---------------- */
+
+.battle-scene {
+  border: 4px solid #2a2a3a;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  margin-bottom: 16px;
 }
 
-.character-card {
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 12px;
+.battle-field {
+  position: relative;
+  height: 300px;
+  background: linear-gradient(to bottom, #bfe8f5 0%, #bfe8f5 55%, #8fd18a 55%, #6fb868 100%);
+  overflow: hidden;
 }
 
-.character-card-header {
-  margin-bottom: 8px;
+.opponent-platform,
+.player-platform {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, #5a9e4f 0%, #3f7a3a 70%, #33652f 100%);
+  box-shadow: inset 0 -4px 6px rgba(0, 0, 0, 0.25);
 }
 
-.character-meta {
+.opponent-platform {
+  top: 34%;
+  right: 10%;
+  width: 110px;
+  height: 32px;
+}
+
+.player-platform {
+  bottom: 10%;
+  left: 6%;
+  width: 160px;
+  height: 44px;
+}
+
+.opponent-sprite-wrap,
+.player-sprite-wrap {
+  position: absolute;
+  transform-origin: 50% 90%;
+}
+
+.opponent-sprite-wrap {
+  top: 14%;
+  right: 15%;
+  width: 72px;
+}
+
+.player-sprite-wrap {
+  bottom: 16%;
+  left: 10%;
+  width: 120px;
+}
+
+.opponent-sprite,
+.player-sprite {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.status-box {
+  position: absolute;
+  background: #fdfdf5;
+  border: 3px solid #4a4a58;
+  border-radius: 10px;
+  padding: 6px 10px;
+  min-width: 150px;
+  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.status-box-opponent {
+  top: 6%;
+  left: 4%;
+}
+
+.status-box-player {
+  top: 46%;
+  right: 4%;
+}
+
+.status-box-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   font-size: 0.85em;
+  font-weight: bold;
+  color: #333;
+}
+
+.status-box-job {
+  font-weight: normal;
+  color: #777;
+  font-size: 0.85em;
+}
+
+.status-box-hp-text {
+  text-align: right;
+  font-size: 0.75em;
   color: #555;
-  margin-top: 4px;
 }
 
 .hp-bar {
-  position: relative;
-  height: 18px;
-  background: #eee;
+  height: 8px;
+  background: #ddd;
   border-radius: 4px;
   overflow: hidden;
+  margin-top: 4px;
+  border: 1px solid #999;
 }
 
 .hp-bar-fill {
   height: 100%;
-  background: #4caf50;
-  transition: width 0.2s ease;
+  transition: width 0.5s ease;
 }
 
-.hp-bar-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75em;
+.hp-bar-fill.high {
+  background: #4caf50;
+}
+
+.hp-bar-fill.mid {
+  background: #ffc107;
+}
+
+.hp-bar-fill.low {
+  background: #e53935;
 }
 
 .status-badges {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .status-badge {
-  font-size: 0.75em;
-  padding: 2px 6px;
+  font-size: 0.65em;
+  padding: 1px 5px;
   border-radius: 999px;
   background: #ffe0b2;
-}
-
-.status-badge.none {
-  background: #e0e0e0;
 }
 
 .status-badge.guard {
   background: #b3e5fc;
 }
 
+/* ---------------- 메시지 / 액션 박스 ---------------- */
+
+.message-box {
+  background: #f4f6ee;
+  border-top: 4px solid #2a2a3a;
+  min-height: 108px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+}
+
+.message-text {
+  font-size: 1.05em;
+  line-height: 1.5;
+  color: #222;
+  margin: 0;
+}
+
 .action-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 10px;
+  width: 100%;
 }
 
 .skill-buttons {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
+}
+
+.skill-buttons button {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 2px solid #4a4a58;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.95em;
+}
+
+.skill-buttons button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .weapon-switch {
@@ -105,17 +219,95 @@
 }
 
 .result-panel {
-  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   font-weight: bold;
 }
 
-.battle-log {
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  padding: 8px 12px;
-  max-height: 300px;
-  overflow-y: auto;
-  font-size: 0.85em;
-  background: #fafafa;
-  color: #222;
+/* ---------------- 애니메이션 ---------------- */
+
+@keyframes attack-lunge-front {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-18px, 10px) scale(1.05);
+  }
+}
+
+@keyframes attack-lunge-back {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(18px, -10px) scale(1.05);
+  }
+}
+
+@keyframes hit-flash {
+  0%,
+  100% {
+    filter: none;
+    transform: translateX(0);
+  }
+  20% {
+    filter: brightness(3) saturate(0);
+    transform: translateX(-4px);
+  }
+  40% {
+    filter: brightness(0.3) saturate(0);
+    transform: translateX(4px);
+  }
+  60% {
+    filter: brightness(3) saturate(0);
+    transform: translateX(-3px);
+  }
+  80% {
+    filter: none;
+    transform: translateX(2px);
+  }
+}
+
+@keyframes faint-drop {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(48px);
+    opacity: 0;
+  }
+}
+
+@keyframes heal-glow {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: drop-shadow(0 0 6px #7cfc00) brightness(1.25);
+  }
+}
+
+.sprite-attack-front {
+  animation: attack-lunge-front 0.4s ease-in-out;
+}
+
+.sprite-attack-back {
+  animation: attack-lunge-back 0.4s ease-in-out;
+}
+
+.sprite-hit {
+  animation: hit-flash 0.45s ease-in-out;
+}
+
+.sprite-faint {
+  animation: faint-drop 0.6s ease-in forwards;
+}
+
+.sprite-heal {
+  animation: heal-glow 0.6s ease-in-out;
 }
