@@ -158,7 +158,7 @@ function App() {
 
   if (!battle) {
     return (
-      <div className="app-shell">
+      <div className="app-shell setup-screen">
         <h1>포켓판타지 - 전투 코어 프로토타입</h1>
         <div className="setup-panel">
           <label>
@@ -211,6 +211,14 @@ function App() {
     <div className="app-shell">
       <div className="battle-scene">
         <div className="battle-field">
+          <div className="battle-sky">
+            <div className="battle-cloud cloud-a" />
+            <div className="battle-cloud cloud-b" />
+            <div className="battle-cloud cloud-c" />
+          </div>
+          <div className="battle-hills" />
+          <div className="battle-ground" />
+          <div className="battle-ground-glow" />
           <div className="opponent-platform" />
           <div className="player-platform" />
           <div key={`opp-${anim.id}-${anim.target === 'B' ? anim.targetEffect : ''}`} className={`opponent-sprite-wrap ${opponentAnimClasses}`}>

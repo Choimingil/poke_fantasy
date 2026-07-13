@@ -1,60 +1,173 @@
 .app-shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 24px 16px 64px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
   font-family: system-ui, sans-serif;
+  color: #222;
+}
+
+.setup-screen {
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
 }
 
 .setup-panel {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 360px;
+  width: min(360px, 90vw);
 }
 
 .setup-panel label {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  text-align: left;
+  color: #222;
 }
 
-/* ---------------- 전투 화면 (HeartGold 스타일) ---------------- */
+.setup-panel select {
+  color: #222;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.setup-panel button,
+.message-box button {
+  color: #fff;
+  background: #3b4a77;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+.setup-panel button:hover,
+.message-box button:hover {
+  background: #2c3a63;
+}
+
+/* ---------------- 전투 화면 (HeartGold 스타일, 전체화면) ---------------- */
 
 .battle-scene {
-  border: 4px solid #2a2a3a;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  margin-bottom: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
 }
 
 .battle-field {
   position: relative;
-  height: 300px;
-  background: linear-gradient(to bottom, #bfe8f5 0%, #bfe8f5 55%, #8fd18a 55%, #6fb868 100%);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: hidden;
+}
+
+.battle-sky {
+  position: absolute;
+  inset: 0 0 40% 0;
+  background: linear-gradient(to bottom, #7fc4ec 0%, #a9dcf2 45%, #d8eef5 100%);
+  overflow: hidden;
+}
+
+.battle-cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  filter: blur(1px);
+}
+
+.cloud-a {
+  top: 12%;
+  left: 8%;
+  width: clamp(60px, 12vw, 140px);
+  height: clamp(20px, 4vw, 46px);
+}
+
+.cloud-b {
+  top: 22%;
+  left: 48%;
+  width: clamp(70px, 14vw, 170px);
+  height: clamp(22px, 4.5vw, 52px);
+  opacity: 0.75;
+}
+
+.cloud-c {
+  top: 6%;
+  left: 74%;
+  width: clamp(50px, 10vw, 110px);
+  height: clamp(16px, 3vw, 36px);
+  opacity: 0.7;
+}
+
+.battle-hills {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 34%;
+  height: 14%;
+  background-repeat: no-repeat;
+  background-image: radial-gradient(circle at 8% 100%, #8fbf86 0%, #8fbf86 55%, transparent 58%),
+    radial-gradient(circle at 32% 100%, #7fb075 0%, #7fb075 60%, transparent 63%),
+    radial-gradient(circle at 60% 100%, #8fbf86 0%, #8fbf86 58%, transparent 61%),
+    radial-gradient(circle at 88% 100%, #7fb075 0%, #7fb075 55%, transparent 58%);
+}
+
+.battle-ground {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #8fd08a 0,
+      #8fd08a 34px,
+      #85c880 34px,
+      #85c880 68px
+    );
+}
+
+.battle-ground-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.4), transparent 65%);
 }
 
 .opponent-platform,
 .player-platform {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, #5a9e4f 0%, #3f7a3a 70%, #33652f 100%);
-  box-shadow: inset 0 -4px 6px rgba(0, 0, 0, 0.25);
+  background: radial-gradient(ellipse at center, #6badde 0%, #4a86ba 55%, #3d719f 100%);
+  box-shadow:
+    inset 0 -4px 6px rgba(0, 0, 0, 0.2),
+    0 0 0 3px rgba(255, 255, 255, 0.25);
 }
 
 .opponent-platform {
-  top: 34%;
-  right: 10%;
-  width: 110px;
-  height: 32px;
+  top: 30%;
+  right: 12%;
+  width: clamp(90px, 13vw, 190px);
+  height: clamp(26px, 3.6vw, 52px);
 }
 
 .player-platform {
-  bottom: 10%;
-  left: 6%;
-  width: 160px;
-  height: 44px;
+  bottom: 9%;
+  left: 8%;
+  width: clamp(160px, 21vw, 340px);
+  height: clamp(44px, 5.8vw, 92px);
 }
 
 .opponent-sprite-wrap,
@@ -64,15 +177,15 @@
 }
 
 .opponent-sprite-wrap {
-  top: 14%;
-  right: 15%;
-  width: 72px;
+  top: 8%;
+  right: 17%;
+  width: clamp(72px, 10vw, 160px);
 }
 
 .player-sprite-wrap {
-  bottom: 16%;
-  left: 10%;
-  width: 120px;
+  bottom: 15%;
+  left: 12%;
+  width: clamp(120px, 17vw, 270px);
 }
 
 .opponent-sprite,
@@ -80,15 +193,17 @@
   width: 100%;
   height: auto;
   display: block;
+  overflow: visible;
 }
 
 .status-box {
   position: absolute;
   background: #fdfdf5;
+  color: #222;
   border: 3px solid #4a4a58;
   border-radius: 10px;
-  padding: 6px 10px;
-  min-width: 150px;
+  padding: clamp(6px, 0.8vw, 12px) clamp(10px, 1.4vw, 18px);
+  min-width: clamp(160px, 20vw, 260px);
   box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.25);
 }
 
@@ -98,7 +213,7 @@
 }
 
 .status-box-player {
-  top: 46%;
+  top: 44%;
   right: 4%;
 }
 
@@ -107,25 +222,25 @@
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  font-size: 0.85em;
+  font-size: clamp(0.85em, 1.1vw, 1.1em);
   font-weight: bold;
-  color: #333;
+  color: #222;
 }
 
 .status-box-job {
   font-weight: normal;
-  color: #777;
+  color: #666;
   font-size: 0.85em;
 }
 
 .status-box-hp-text {
   text-align: right;
-  font-size: 0.75em;
-  color: #555;
+  font-size: clamp(0.7em, 0.9vw, 0.9em);
+  color: #444;
 }
 
 .hp-bar {
-  height: 8px;
+  height: clamp(7px, 0.9vw, 11px);
   background: #ddd;
   border-radius: 4px;
   overflow: hidden;
@@ -162,6 +277,7 @@
   padding: 1px 5px;
   border-radius: 999px;
   background: #ffe0b2;
+  color: #222;
 }
 
 .status-badge.guard {
@@ -172,15 +288,17 @@
 
 .message-box {
   background: #f4f6ee;
+  color: #222;
   border-top: 4px solid #2a2a3a;
-  min-height: 108px;
-  padding: 14px 16px;
+  flex: 0 0 auto;
+  min-height: clamp(120px, 20vh, 190px);
+  padding: clamp(14px, 2vh, 24px) clamp(16px, 3vw, 32px);
   display: flex;
   align-items: center;
 }
 
 .message-text {
-  font-size: 1.05em;
+  font-size: clamp(1em, 1.6vw, 1.3em);
   line-height: 1.5;
   color: #222;
   margin: 0;
@@ -200,12 +318,13 @@
 }
 
 .skill-buttons button {
-  padding: 8px 10px;
+  padding: clamp(8px, 1.2vh, 14px) 10px;
   border-radius: 6px;
   border: 2px solid #4a4a58;
   background: #fff;
+  color: #222;
   cursor: pointer;
-  font-size: 0.95em;
+  font-size: clamp(0.9em, 1.3vw, 1.1em);
 }
 
 .skill-buttons button:disabled {
@@ -213,9 +332,36 @@
   cursor: default;
 }
 
+.skill-buttons p {
+  color: #222;
+}
+
 .weapon-switch {
   display: flex;
   gap: 8px;
+}
+
+.weapon-switch select {
+  color: #222;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  padding: 4px 8px;
+  flex: 1;
+}
+
+.weapon-switch button {
+  color: #222;
+  background: #eee;
+  border: 1px solid #999;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.weapon-switch button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .result-panel {
@@ -223,6 +369,7 @@
   align-items: center;
   gap: 16px;
   font-weight: bold;
+  color: #222;
 }
 
 /* ---------------- 애니메이션 ---------------- */
