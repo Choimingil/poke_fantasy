@@ -219,14 +219,28 @@ function App() {
           <div className="battle-hills" />
           <div className="battle-ground" />
           <div className="battle-ground-glow" />
-          <div className="opponent-platform" />
-          <div className="player-platform" />
-          <div key={`opp-${anim.id}-${anim.target === 'B' ? anim.targetEffect : ''}`} className={`opponent-sprite-wrap ${opponentAnimClasses}`}>
-            <TrainerSprite facing="front" className="opponent-sprite" />
+          <div className="battle-horizon-glow" />
+
+          <div className="opponent-stand">
+            <div
+              key={`opp-${anim.id}-${anim.target === 'B' ? anim.targetEffect : ''}`}
+              className={`opponent-sprite-wrap ${opponentAnimClasses}`}
+            >
+              <TrainerSprite facing="front" className="opponent-sprite" />
+            </div>
+            <div className="opponent-platform" />
           </div>
-          <div key={`ply-${anim.id}-${anim.target === 'A' ? anim.targetEffect : ''}`} className={`player-sprite-wrap ${playerAnimClasses}`}>
-            <TrainerSprite facing="back" className="player-sprite" />
+
+          <div className="player-stand">
+            <div
+              key={`ply-${anim.id}-${anim.target === 'A' ? anim.targetEffect : ''}`}
+              className={`player-sprite-wrap ${playerAnimClasses}`}
+            >
+              <TrainerSprite facing="back" className="player-sprite" />
+            </div>
+            <div className="player-platform" />
           </div>
+
           <StatusBox character={activeB!} side="B" />
           <StatusBox character={activeA!} side="A" />
         </div>

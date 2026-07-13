@@ -73,9 +73,32 @@
 
 .battle-sky {
   position: absolute;
-  inset: 0 0 40% 0;
-  background: linear-gradient(to bottom, #7fc4ec 0%, #a9dcf2 45%, #d8eef5 100%);
+  inset: 0 0 50% 0;
+  background: linear-gradient(155deg, #1fb8ae 0%, #3fd0c3 30%, #bdeee0 48%, #eef9e0 55%, #a9e2a0 70%, #6fc26a 100%);
   overflow: hidden;
+}
+
+.battle-sky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.16) 0,
+    rgba(255, 255, 255, 0.16) 22px,
+    rgba(255, 255, 255, 0) 22px,
+    rgba(255, 255, 255, 0) 60px
+  );
+}
+
+.battle-horizon-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 46%;
+  height: 14%;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 250, 0.85), transparent);
+  pointer-events: none;
 }
 
 .battle-cloud {
@@ -86,39 +109,39 @@
 }
 
 .cloud-a {
-  top: 12%;
+  top: 10%;
   left: 8%;
   width: clamp(60px, 12vw, 140px);
   height: clamp(20px, 4vw, 46px);
 }
 
 .cloud-b {
-  top: 22%;
+  top: 18%;
   left: 48%;
   width: clamp(70px, 14vw, 170px);
   height: clamp(22px, 4.5vw, 52px);
-  opacity: 0.75;
+  opacity: 0.7;
 }
 
 .cloud-c {
-  top: 6%;
+  top: 5%;
   left: 74%;
   width: clamp(50px, 10vw, 110px);
   height: clamp(16px, 3vw, 36px);
-  opacity: 0.7;
+  opacity: 0.65;
 }
 
 .battle-hills {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 34%;
-  height: 14%;
+  bottom: 44%;
+  height: 12%;
   background-repeat: no-repeat;
-  background-image: radial-gradient(circle at 8% 100%, #8fbf86 0%, #8fbf86 55%, transparent 58%),
-    radial-gradient(circle at 32% 100%, #7fb075 0%, #7fb075 60%, transparent 63%),
-    radial-gradient(circle at 60% 100%, #8fbf86 0%, #8fbf86 58%, transparent 61%),
-    radial-gradient(circle at 88% 100%, #7fb075 0%, #7fb075 55%, transparent 58%);
+  background-image: radial-gradient(circle at 8% 100%, #6fbf72 0%, #6fbf72 55%, transparent 58%),
+    radial-gradient(circle at 32% 100%, #63b566 0%, #63b566 60%, transparent 63%),
+    radial-gradient(circle at 60% 100%, #6fbf72 0%, #6fbf72 58%, transparent 61%),
+    radial-gradient(circle at 88% 100%, #63b566 0%, #63b566 55%, transparent 58%);
 }
 
 .battle-ground {
@@ -126,15 +149,21 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 42%;
-  background:
-    repeating-linear-gradient(
-      45deg,
-      #8fd08a 0,
-      #8fd08a 34px,
-      #85c880 34px,
-      #85c880 68px
-    );
+  height: 50%;
+  background: linear-gradient(to bottom, #7ccb6f 0%, #6cbf5f 100%);
+}
+
+.battle-ground::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.14) 0,
+    rgba(255, 255, 255, 0.14) 22px,
+    rgba(0, 0, 0, 0) 22px,
+    rgba(0, 0, 0, 0) 60px
+  );
 }
 
 .battle-ground-glow {
@@ -142,50 +171,53 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 42%;
-  background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.4), transparent 65%);
+  height: 50%;
+  background: radial-gradient(ellipse at 50% 12%, rgba(255, 255, 255, 0.45), transparent 60%);
+}
+
+.opponent-stand,
+.player-stand {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.opponent-stand {
+  top: 14%;
+  right: 15%;
+  width: clamp(92px, 13vw, 190px);
+}
+
+.player-stand {
+  bottom: 10%;
+  left: 9%;
+  width: clamp(170px, 22vw, 350px);
 }
 
 .opponent-platform,
 .player-platform {
-  position: absolute;
+  width: 100%;
+  aspect-ratio: 3.2 / 1;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, #6badde 0%, #4a86ba 55%, #3d719f 100%);
-  box-shadow:
-    inset 0 -4px 6px rgba(0, 0, 0, 0.2),
-    0 0 0 3px rgba(255, 255, 255, 0.25);
-}
-
-.opponent-platform {
-  top: 30%;
-  right: 12%;
-  width: clamp(90px, 13vw, 190px);
-  height: clamp(26px, 3.6vw, 52px);
-}
-
-.player-platform {
-  bottom: 9%;
-  left: 8%;
-  width: clamp(160px, 21vw, 340px);
-  height: clamp(44px, 5.8vw, 92px);
+  background: radial-gradient(ellipse at center, #ecd9ab 0%, #dcbf85 55%, #c8a465 100%);
+  border: 3px solid #a9814a;
+  box-shadow: inset 0 -4px 6px rgba(0, 0, 0, 0.18);
 }
 
 .opponent-sprite-wrap,
 .player-sprite-wrap {
-  position: absolute;
-  transform-origin: 50% 90%;
+  width: 76%;
+  transform-origin: 50% 95%;
+  z-index: 1;
 }
 
 .opponent-sprite-wrap {
-  top: 8%;
-  right: 17%;
-  width: clamp(72px, 10vw, 160px);
+  margin-bottom: -20%;
 }
 
 .player-sprite-wrap {
-  bottom: 15%;
-  left: 12%;
-  width: clamp(120px, 17vw, 270px);
+  margin-bottom: -18%;
 }
 
 .opponent-sprite,
@@ -194,6 +226,9 @@
   height: auto;
   display: block;
   overflow: visible;
+  filter: drop-shadow(1.4px 0 0 #241a10) drop-shadow(-1.4px 0 0 #241a10) drop-shadow(0 1.4px 0 #241a10)
+    drop-shadow(0 -1.4px 0 #241a10) drop-shadow(1px 1px 0 #241a10) drop-shadow(-1px 1px 0 #241a10)
+    drop-shadow(1px -1px 0 #241a10) drop-shadow(-1px -1px 0 #241a10);
 }
 
 .status-box {
