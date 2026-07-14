@@ -86,16 +86,19 @@ function armorAttackReq(t: ArmorType): number {
 const MOVE_CAP = 3;
 /**
  * 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작).
- * 보정: 만렙100 지구력 몰빵(=302)에서 rawMove 5 → 판금(−1.5) 착용 시 딱 3칸.
+ * 보정: 만렙100 판금 착용 가능 수준(지구력 205~몰빵 302)에서 rawMove 3 → 판금(−1.5) 착용 시 딱 1칸.
  */
-const ENDURANCE_PER_TILE = 70;
+const ENDURANCE_PER_TILE = 100;
 /** 지구력 → 원시 이동력(칸). */
 function moveFromEndurance(endurance: number): number {
   return 1 + Math.floor((endurance - STAT_BASE) / ENDURANCE_PER_TILE);
 }
-/** 직업별 기본 지구력(진행 시스템 전 임시값, 만렙 가정). 기본 방어구 착용 시 유효 이동력 2칸. */
+/**
+ * 직업별 기본 지구력(진행 시스템 전 임시값, 만렙 가정).
+ * 전사(판금)=1칸, 격수(가죽)/법사(천)=2칸이 되도록 설정.
+ */
 function baseEnduranceFor(jobType: 'melee' | 'ranged' | 'magic'): number {
-  return jobType === 'melee' ? 215 : jobType === 'ranged' ? 145 : 75;
+  return jobType === 'melee' ? 215 : jobType === 'ranged' ? 205 : 105;
 }
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
