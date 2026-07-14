@@ -46,7 +46,72 @@ export function generateMap(rng: () => number = Math.random): TerrainMap {
       if (inBounds(t.r, t.c)) map[t.r][t.c] = 'plain';
     }
   }
+  // 아군 진영(row 7)과 적 진영(row 2)이 바위로 단절되지 않도록 통로를 보장한다.
+  ensureConnected(map);
   return map;
+}
+
+/** 바위(통과 불가)만 장애물로 보고 두 진영 대표 칸이 연결되는지 BFS로 확인. */
+function isWalkConnected(map: TerrainMap, from: Coord, to: Coord): boolean {
+  const seen = new Set<string>([`${from.r},${from.c}`]);
+  const queue: Coord[] = [from];
+  while (queue.length > 0) {
+    const cur = queue.shift() as Coord;
+    if (cur.r === to.r && cur.c === to.c) return true;
+    for (const n of neighbors(cur)) {
+      if (!inBounds(n.r, n.c)) continue;
+      if (map[n.r][n.c] === 'rock') continue; // 바위만 통과 불가(물/언덕/산은 걸을 수 있음)
+      const key = `${n.r},${n.c}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      queue.push(n);
+    }
+  }
+  return false;
+}
+
+/** 양 진영이 단절돼 있으면, 바위를 관통하는 최단 경로를 찾아 그 위의 바위만 평지로 뚫는다. */
+function ensureConnected(map: TerrainMap) {
+  const from: Coord = { r: 7, c: 4 };
+  const to: Coord = { r: 2, c: 4 };
+  if (isWalkConnected(map, from, to)) return;
+
+  // 바위도 통과 가능하다고 보되 비용을 크게 줘, 되도록 기존 통로를 활용하는 최단 경로 탐색.
+  const key = (r: number, c: number) => `${r},${c}`;
+  const dist = new Map<string, number>([[key(from.r, from.c), 0]]);
+  const prev = new Map<string, string>();
+  const visited = new Set<string>();
+  while (true) {
+    let curKey: string | null = null;
+    let curDist = Infinity;
+    for (const [k, d] of dist) {
+      if (!visited.has(k) && d < curDist) {
+        curDist = d;
+        curKey = k;
+      }
+    }
+    if (curKey === null) break;
+    visited.add(curKey);
+    const [r, c] = curKey.split(',').map(Number);
+    for (const n of neighbors({ r, c })) {
+      if (!inBounds(n.r, n.c)) continue;
+      const step = map[n.r][n.c] === 'rock' ? 100 : 1; // 바위는 큰 비용, 나머지는 1
+      const nd = curDist + step;
+      const nk = key(n.r, n.c);
+      if (nd < (dist.get(nk) ?? Infinity)) {
+        dist.set(nk, nd);
+        prev.set(nk, curKey);
+      }
+    }
+  }
+  // 경로 복원 후 그 위의 바위만 평지로 변경.
+  let k: string | undefined = key(to.r, to.c);
+  while (k) {
+    const [r, c] = k.split(',').map(Number);
+    if (map[r][c] === 'rock') map[r][c] = 'plain';
+    if (k === key(from.r, from.c)) break;
+    k = prev.get(k);
+  }
 }
 
 function neighbors(a: Coord): Coord[] {
