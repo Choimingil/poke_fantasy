@@ -54,6 +54,31 @@
   background: #2c3a63;
 }
 
+.gender-toggle {
+  display: flex;
+  gap: 8px;
+  margin-top: -8px;
+}
+
+.gender-toggle button {
+  flex: 1;
+  padding: 8px 12px;
+  background: #e7e9f0;
+  color: #444;
+  border: 1px solid #b7bccb;
+  border-radius: 8px;
+}
+
+.gender-toggle button:hover {
+  background: #dcdfea;
+}
+
+.gender-toggle button.active {
+  background: #3b4a77;
+  color: #fff;
+  border-color: #3b4a77;
+}
+
 /* ---------------- 전투 화면 (HeartGold 스타일, 전체화면) ---------------- */
 
 .battle-scene {

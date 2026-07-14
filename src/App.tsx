@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import './App.css';
-import { TrainerSprite } from './components/TrainerSprite';
+import { TrainerSprite, type Gender } from './components/TrainerSprite';
 import { pickAiAction } from './game/engine/ai';
 import { Battle, type BattleAction, type Side } from './game/engine/battle';
 import { getJob } from './game/data/jobs';
@@ -69,6 +69,8 @@ const NO_ANIM: AnimState = { attacker: null, target: null, targetEffect: null, i
 function App() {
   const [teamAJobId, setTeamAJobId] = useState(ROSTER[0].jobId);
   const [teamBJobId, setTeamBJobId] = useState(ROSTER[6].jobId);
+  const [teamAGender, setTeamAGender] = useState<Gender>('male');
+  const [teamBGender, setTeamBGender] = useState<Gender>('male');
   const battleRef = useRef<Battle | null>(null);
   const busyRef = useRef(false);
   const animCounter = useRef(0);
@@ -171,6 +173,18 @@ function App() {
               ))}
             </select>
           </label>
+          <div className="gender-toggle" role="group" aria-label="A팀 성별">
+            {(['male', 'female'] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                className={teamAGender === g ? 'active' : ''}
+                onClick={() => setTeamAGender(g)}
+              >
+                {g === 'male' ? '남자' : '여자'}
+              </button>
+            ))}
+          </div>
           <label>
             B팀 캐릭터 (AI)
             <select value={teamBJobId} onChange={(e) => setTeamBJobId(e.target.value)}>
@@ -181,6 +195,18 @@ function App() {
               ))}
             </select>
           </label>
+          <div className="gender-toggle" role="group" aria-label="B팀 성별">
+            {(['male', 'female'] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                className={teamBGender === g ? 'active' : ''}
+                onClick={() => setTeamBGender(g)}
+              >
+                {g === 'male' ? '남자' : '여자'}
+              </button>
+            ))}
+          </div>
           <button type="button" onClick={startBattle}>
             전투 시작
           </button>
@@ -226,7 +252,12 @@ function App() {
               key={`opp-${anim.id}-${anim.target === 'B' ? anim.targetEffect : ''}`}
               className={`opponent-sprite-wrap ${opponentAnimClasses}`}
             >
-              <TrainerSprite facing="front" className="opponent-sprite" />
+              <TrainerSprite
+                jobId={activeB!.jobId}
+                gender={teamBGender}
+                facing="front"
+                className="opponent-sprite"
+              />
             </div>
             <div className="opponent-platform" />
           </div>
@@ -236,7 +267,12 @@ function App() {
               key={`ply-${anim.id}-${anim.target === 'A' ? anim.targetEffect : ''}`}
               className={`player-sprite-wrap ${playerAnimClasses}`}
             >
-              <TrainerSprite facing="back" className="player-sprite" />
+              <TrainerSprite
+                jobId={activeA!.jobId}
+                gender={teamAGender}
+                facing="back"
+                className="player-sprite"
+              />
             </div>
             <div className="player-platform" />
           </div>
