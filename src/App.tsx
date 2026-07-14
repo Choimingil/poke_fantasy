@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react';
 import './App.css';
 import { TrainerSprite, type Gender } from './components/TrainerSprite';
+import { InventoryPage } from './components/InventoryPage';
 import battleForest from './assets/battle-forest.jpg';
 import { pickAiAction } from './game/engine/ai';
 import { Battle, type BattleAction, type Side } from './game/engine/battle';
 import { getJob } from './game/data/jobs';
-import { getSkill } from './game/data/skills';
+import { getSkill, skillUsableWithWeapon } from './game/data/skills';
 import { getWeapon, WEAPONS } from './game/data/weapons';
 import { cloneRosterCharacter, ROSTER } from './game/data/roster';
+import { loadLoadouts, saveLoadouts, type LoadoutMap } from './game/data/loadouts';
 import type { Character } from './game/types';
 
 const STEP_DURATION_MS = 1100;
@@ -72,6 +74,8 @@ function App() {
   const [teamBJobId, setTeamBJobId] = useState(ROSTER[6].jobId);
   const [teamAGender, setTeamAGender] = useState<Gender>('male');
   const [teamBGender, setTeamBGender] = useState<Gender>('male');
+  const [view, setView] = useState<'home' | 'inventory'>('home');
+  const [loadouts, setLoadouts] = useState<LoadoutMap>(() => loadLoadouts());
   const battleRef = useRef<Battle | null>(null);
   const busyRef = useRef(false);
   const animCounter = useRef(0);
@@ -87,6 +91,10 @@ function App() {
   const startBattle = () => {
     const a = cloneRosterCharacter(teamAJobId);
     const b = cloneRosterCharacter(teamBJobId);
+    const loadoutA = loadouts[teamAJobId];
+    const loadoutB = loadouts[teamBJobId];
+    if (loadoutA && loadoutA.length > 0) a.skills = [...loadoutA];
+    if (loadoutB && loadoutB.length > 0) b.skills = [...loadoutB];
     battleRef.current = new Battle([a], [b]);
     setSwitchTarget('');
     setMessage(null);
@@ -99,14 +107,31 @@ function App() {
     forceRerender();
   };
 
+  const exitToHome = () => {
+    busyRef.current = false;
+    setIsAnimating(false);
+    setAnim(NO_ANIM);
+    setMessage(null);
+    battleRef.current = null;
+    setView('home');
+    forceRerender();
+  };
+
+  const updateLoadout = (jobId: string, skills: string[]) => {
+    setLoadouts((prev) => {
+      const next = { ...prev, [jobId]: skills };
+      saveLoadouts(next);
+      return next;
+    });
+  };
+
   const activeA = battle?.getActive('A');
   const activeB = battle?.getActive('B');
 
   const usableSkills = activeA
     ? activeA.skills
         .map((id) => getSkill(id))
-        .filter((skill) => skill.type === getWeapon(activeA.equippedWeapon.templateId).type)
-        .filter((skill) => skill.category !== 'defense' || getWeapon(activeA.equippedWeapon.templateId).kind === 'shield')
+        .filter((skill) => skillUsableWithWeapon(skill, getWeapon(activeA.equippedWeapon.templateId)))
     : [];
 
   const playTurn = async (actionA: BattleAction) => {
@@ -158,6 +183,10 @@ function App() {
     setSwitchTarget('');
     void playTurn({ switchWeaponTo: target });
   };
+
+  if (!battle && view === 'inventory') {
+    return <InventoryPage loadouts={loadouts} onChange={updateLoadout} onBack={() => setView('home')} />;
+  }
 
   if (!battle) {
     return (
@@ -211,6 +240,9 @@ function App() {
           <button type="button" onClick={startBattle}>
             전투 시작
           </button>
+          <button type="button" className="secondary-button" onClick={() => setView('inventory')}>
+            기술 인벤토리 / 세팅
+          </button>
         </div>
       </div>
     );
@@ -238,6 +270,9 @@ function App() {
     <div className="app-shell">
       <div className="battle-scene">
         <div className="battle-field">
+          <button type="button" className="battle-back" onClick={exitToHome}>
+            ← 나가기
+          </button>
           <div className="battle-stage">
             <img className="battle-bg" src={battleForest} alt="" aria-hidden="true" />
 

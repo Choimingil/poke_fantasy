@@ -28,5 +28,7 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     isActive: false,
     statMultipliers: { attack: 1, defense: 1 },
     guarding: false,
+    guardingFull: false,
+    lastSkillId: null,
   };
 }

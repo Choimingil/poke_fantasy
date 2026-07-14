@@ -1,5 +1,5 @@
 import { getJob } from '../data/jobs';
-import { getSkill } from '../data/skills';
+import { getSkill, skillUsableWithWeapon } from '../data/skills';
 import { getWeapon } from '../data/weapons';
 import type { Character } from '../types';
 import { calculateDamage } from './damage';
@@ -52,6 +52,10 @@ export class Battle {
     this.teamB[0].isActive = true;
     this.triggerEntryEffects('A');
     this.triggerEntryEffects('B');
+  }
+
+  private randInt(min: number, max: number): number {
+    return min + Math.floor(this.rng() * (max - min + 1));
   }
 
   private team(side: Side): Character[] {
@@ -120,12 +124,8 @@ export class Battle {
 
       const skill = getSkill(action.skillId);
       const weapon = getWeapon(character.equippedWeapon.templateId);
-      if (weapon.type !== skill.type) {
+      if (!skillUsableWithWeapon(skill, weapon)) {
         this.log.push(`${character.name}는 ${skill.name}을(를) 사용할 수 없다 (무기 타입 불일치).`);
-        continue;
-      }
-      if (skill.category === 'defense' && weapon.kind !== 'shield') {
-        this.log.push(`${character.name}는 ${skill.name}을(를) 사용할 수 없다 (방패 필요).`);
         continue;
       }
 
@@ -176,8 +176,15 @@ export class Battle {
     const side = base.actorSide;
     const target = this.getActive(this.otherSide(side));
 
+    // 연속 사용 페널티: 직전 턴에 같은 기술을 썼다면 명중률이 낮아진다(예: 방어).
+    const effectiveAccuracy =
+      c.skill.consecutivePenaltyAccuracy != null && c.character.lastSkillId === c.skill.id
+        ? c.skill.consecutivePenaltyAccuracy
+        : c.skill.accuracy;
+    c.character.lastSkillId = c.skill.id;
+
     const hitRoll = this.rng() * 100;
-    if (hitRoll >= c.skill.accuracy) {
+    if (hitRoll >= effectiveAccuracy) {
       this.log.push(`${c.character.name}의 ${c.skill.name}이(가) 빗나갔다.`);
       return { ...base, targetSide: this.otherSide(side), targetName: target.name, lines: this.log.slice(startIdx), skipped: null, missed: true, isAttack: c.skill.category === 'attack', isHeal: false, damage: 0, extraHitDamage: 0, crit: false, targetFainted: false };
     }
@@ -218,7 +225,7 @@ export class Battle {
     switch (skill.category) {
       case 'attack': {
         const defenderJob = getJob(target.jobId);
-        const result = calculateDamage({
+        const damageCtx = {
           attacker: actor,
           attackerJob: actorJob,
           defender: target,
@@ -227,26 +234,54 @@ export class Battle {
           weapon,
           defendingTeamHasFieldGuard: this.teamHasFieldGuard(this.otherSide(side)),
           rng: this.rng,
-        });
-        target.currentHp = Math.max(0, target.currentHp - result.damage);
+        };
+
+        // 다단히트 기술은 1회 위력으로 min~max회 공격한다.
+        const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
+        let baseDamage = 0;
+        let extraHitDamage = 0;
+        let anyCrit = false;
+        let bonusStatus: ReturnType<typeof calculateDamage>['proc']['bonusStatus'];
+        for (let i = 0; i < hitCount; i += 1) {
+          const result = calculateDamage(damageCtx);
+          if (i === 0) baseDamage = result.damage;
+          else extraHitDamage += result.damage;
+          extraHitDamage += result.extraHitDamage;
+          if (result.crit) anyCrit = true;
+          if (!bonusStatus && result.proc.bonusStatus) bonusStatus = result.proc.bonusStatus;
+        }
+
+        // 완전방어(방어) 상태의 대상은 이번 공격 피해를 0으로 만든다.
+        const blocked = target.guardingFull;
+        let totalDamage = baseDamage + extraHitDamage;
+        if (blocked) {
+          totalDamage = 0;
+          baseDamage = 0;
+          extraHitDamage = 0;
+        }
+
+        target.currentHp = Math.max(0, target.currentHp - totalDamage);
         target.hitsTakenThisBattle += 1;
         target.guarding = false;
-        this.log.push(
-          `${actor.name}의 ${skill.name}! ${target.name}에게 ${result.damage}의 데미지${result.crit ? ' (급소)' : ''}.`,
-        );
-        if (result.extraHitDamage > 0) {
-          target.currentHp = Math.max(0, target.currentHp - result.extraHitDamage);
-          this.log.push(`연사 추가타격! ${result.extraHitDamage}의 추가 데미지.`);
+        target.guardingFull = false;
+
+        if (blocked) {
+          this.log.push(`${actor.name}의 ${skill.name}! 하지만 ${target.name}가 방어로 피해를 완전히 막았다!`);
+        } else {
+          const hitLabel = hitCount > 1 ? ` (${hitCount}회 명중)` : '';
+          this.log.push(
+            `${actor.name}의 ${skill.name}! ${target.name}에게 ${totalDamage}의 데미지${anyCrit ? ' (급소)' : ''}${hitLabel}.`,
+          );
         }
-        if (result.proc.bonusStatus) {
-          const applied = tryApplyStatus(target, result.proc.bonusStatus, 1, this.rng);
-          if (applied) this.log.push(`${target.name}는 ${result.proc.bonusStatus} 상태가 되었다.`);
+        if (totalDamage > 0 && bonusStatus) {
+          const applied = tryApplyStatus(target, bonusStatus, 1, this.rng);
+          if (applied) this.log.push(`${target.name}는 ${bonusStatus} 상태가 되었다.`);
         }
-        if (skill.statusEffect) {
+        if (totalDamage > 0 && skill.statusEffect) {
           const applied = tryApplyStatus(target, skill.statusEffect.effect, skill.statusEffect.chance, this.rng);
           if (applied) this.log.push(`${target.name}는 ${skill.statusEffect.effect} 상태가 되었다.`);
         }
-        return { isAttack: true, isHeal: false, damage: result.damage, extraHitDamage: result.extraHitDamage, crit: result.crit };
+        return { isAttack: true, isHeal: false, damage: baseDamage, extraHitDamage, crit: anyCrit };
       }
       case 'heal': {
         const healAmount = Math.max(1, Math.round(actor.baseStats.hp * (skill.healPercent ?? 0)));
@@ -266,8 +301,13 @@ export class Battle {
         return { isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false };
       }
       case 'defense': {
-        actor.guarding = true;
-        this.log.push(`${actor.name}가 방어태세를 취했다.`);
+        if (skill.fullGuard) {
+          actor.guardingFull = true;
+          this.log.push(`${actor.name}가 완전방어 태세를 취했다.`);
+        } else {
+          actor.guarding = true;
+          this.log.push(`${actor.name}가 방어태세를 취했다.`);
+        }
         return { isAttack: false, isHeal: false, damage: 0, extraHitDamage: 0, crit: false };
       }
       case 'status':

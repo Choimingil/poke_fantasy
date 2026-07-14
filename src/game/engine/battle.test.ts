@@ -44,6 +44,25 @@ describe('Battle', () => {
     expect(opponent.currentHp).toBeLessThan(100); // 같은 턴에 스킬까지 적중
   });
 
+  it('완전방어(방어) 사용 시 그 턴 받는 공격의 피해가 0이 된다', () => {
+    const defender = make('def', 'east_general', { skills: ['guard'] });
+    const attacker = make('atk', 'east_general', { skills: ['slash'], stats: { attack: 200, defense: 20, hp: 100, speed: 5 } });
+    const battle = new Battle([defender], [attacker], () => 0.5);
+    battle.runTurn({ skillId: 'guard' }, { skillId: 'slash' });
+    expect(defender.currentHp).toBe(100); // 방어(priority 1)가 먼저 발동해 공격 피해 0
+    expect(battle.log.some((l) => l.includes('완전히 막았다'))).toBe(true);
+  });
+
+  it('같은 방어를 연속으로 쓰면 명중률이 낮아져 방어에 실패할 수 있다', () => {
+    const defender = make('def', 'east_general', { skills: ['guard'] });
+    defender.lastSkillId = 'guard'; // 직전 턴에도 방어를 썼다고 가정
+    const attacker = make('atk', 'east_general', { skills: ['slash'], stats: { attack: 200, defense: 20, hp: 100, speed: 5 } });
+    // 명중 판정 rng=0.9 -> 90 >= 33(연속 페널티) 이므로 방어 실패
+    const battle = new Battle([defender], [attacker], () => 0.9);
+    battle.runTurn({ skillId: 'guard' }, { skillId: 'slash' });
+    expect(defender.currentHp).toBeLessThan(100); // 방어 실패로 피해를 받음
+  });
+
   it('한쪽 팀의 체력이 모두 0이 되면 전투가 종료되고 승자가 기록된다', () => {
     const strong = make('strong', 'east_general', { stats: { attack: 500, defense: 10, hp: 100, speed: 50 } });
     const weak = make('weak', 'east_general', { stats: { attack: 5, defense: 5, hp: 10, speed: 1 } });

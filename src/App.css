@@ -54,6 +54,201 @@
   background: #2c3a63;
 }
 
+.setup-panel .secondary-button {
+  background: #5a6684;
+}
+
+.setup-panel .secondary-button:hover {
+  background: #48546f;
+}
+
+/* ---------------- 기술 인벤토리 페이지 ---------------- */
+
+.inventory-screen {
+  padding: 20px clamp(16px, 4vw, 48px);
+  gap: 16px;
+  overflow-y: auto;
+  color: #222;
+}
+
+.inventory-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.inventory-header h1 {
+  font-size: clamp(1.2em, 2.4vw, 1.8em);
+  margin: 0;
+}
+
+.link-button {
+  background: none;
+  border: 1px solid #b7bccb;
+  color: #3b4a77;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.95em;
+  cursor: pointer;
+}
+
+.link-button:hover {
+  background: #eef0f6;
+}
+
+.inventory-body {
+  display: flex;
+  gap: clamp(16px, 3vw, 40px);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.inventory-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(240px, 90vw);
+}
+
+.inventory-side label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.inventory-side select {
+  color: #222;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.inventory-preview {
+  height: 260px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: linear-gradient(160deg, #e7ecdf, #cdd7c0);
+  border: 1px solid #b7bccb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.inventory-sprite {
+  height: 100%;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.3));
+}
+
+.inventory-slots {
+  margin: 0;
+  font-size: 1.05em;
+}
+
+.inventory-slots strong {
+  color: #3b4a77;
+  font-size: 1.2em;
+}
+
+.inventory-main {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.inventory-hint {
+  margin: 0 0 10px;
+  color: #555;
+}
+
+.skill-table-scroll {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.skill-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.82em, 1.1vw, 0.95em);
+}
+
+.skill-table th,
+.skill-table td {
+  border: 1px solid #d6d9e2;
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.skill-table thead th {
+  background: #eef0f6;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.skill-table tbody tr.equipped {
+  background: #eaf2ff;
+}
+
+.skill-table .skill-name {
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.skill-table input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.85em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.type-badge.type-근거리 {
+  background: #b1442f;
+}
+
+.type-badge.type-원거리 {
+  background: #2f7d4f;
+}
+
+.type-badge.type-마법 {
+  background: #4a4a9c;
+}
+
+.type-badge.type-변화 {
+  background: #7a7f8c;
+}
+
+/* ---------------- 전투 나가기 버튼 ---------------- */
+
+.battle-back {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 5;
+  background: rgba(20, 33, 15, 0.72);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.95em;
+  cursor: pointer;
+}
+
+.battle-back:hover {
+  background: rgba(20, 33, 15, 0.9);
+}
+
 .gender-toggle {
   display: flex;
   gap: 8px;

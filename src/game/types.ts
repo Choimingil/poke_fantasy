@@ -31,6 +31,9 @@ interface SkillStatusEffect {
   chance: number; // 0-1
 }
 
+/** 인벤토리/전투 UI에 표기하는 기술 타입 라벨(공격 타입 or 변화) */
+type SkillTypeLabel = '근거리' | '원거리' | '마법' | '변화';
+
 export interface Skill {
   id: string;
   name: string;
@@ -40,6 +43,12 @@ export interface Skill {
   accuracy: number; // 0-100
   priority: number; // 기본 우선도, 클수록 먼저 행동
   target: SkillTarget;
+  description: string; // 기술설명(예: "위력 : 60", "체력 50% 회복")
+  typeLabel: SkillTypeLabel; // 기술타입 표기
+  accuracyLabel?: string; // 명중률 특수 표기(예: "100% (연속 사용 시 33%)")
+  hits?: { min: number; max: number }; // 다단히트: 1회 위력으로 min~max회 랜덤 공격
+  fullGuard?: boolean; // 방어류: 다음 피격 1회의 피해를 0으로(미보유 시 0.5배)
+  consecutivePenaltyAccuracy?: number; // 직전 턴에 같은 기술을 썼다면 적용되는 명중률
   statusEffect?: SkillStatusEffect;
   healPercent?: number; // category === 'heal' 일 때 최대체력 대비 회복 비율(0-1)
   learnableBy: 'common' | string[]; // 'common' = 모든 직업 공통 스킬, 배열이면 해당 job id 전용
@@ -110,4 +119,6 @@ export interface Character {
   isActive: boolean; // 현재 전장에 나와있는지 여부("등장 중")
   statMultipliers: { attack: number; defense: number };
   guarding: boolean; // 방어태세류 스킬 사용 시 다음 피격 1회 반감
+  guardingFull: boolean; // 완전방어(fullGuard) 스킬 사용 시 다음 피격 1회 피해 0
+  lastSkillId: string | null; // 직전 턴에 사용한 기술 id(연속 사용 페널티 판정용)
 }
