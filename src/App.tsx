@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import './App.css';
 import { TrainerSprite, type Gender } from './components/TrainerSprite';
+import battleForest from './assets/battle-forest.jpg';
 import { pickAiAction } from './game/engine/ai';
 import { Battle, type BattleAction, type Side } from './game/engine/battle';
 import { getJob } from './game/data/jobs';
@@ -237,48 +238,40 @@ function App() {
     <div className="app-shell">
       <div className="battle-scene">
         <div className="battle-field">
-          <div className="battle-sky">
-            <div className="battle-cloud cloud-a" />
-            <div className="battle-cloud cloud-b" />
-            <div className="battle-cloud cloud-c" />
-          </div>
-          <div className="battle-hills" />
-          <div className="battle-ground" />
-          <div className="battle-ground-glow" />
-          <div className="battle-horizon-glow" />
+          <div className="battle-stage">
+            <img className="battle-bg" src={battleForest} alt="" aria-hidden="true" />
 
-          <div className="opponent-stand">
-            <div
-              key={`opp-${anim.id}-${anim.target === 'B' ? anim.targetEffect : ''}`}
-              className={`opponent-sprite-wrap ${opponentAnimClasses}`}
-            >
-              <TrainerSprite
-                jobId={activeB!.jobId}
-                gender={teamBGender}
-                facing="front"
-                className="opponent-sprite"
-              />
+            <div className="opponent-stand">
+              <div
+                key={`opp-${anim.id}-${anim.target === 'B' ? anim.targetEffect : ''}`}
+                className={`opponent-sprite-wrap ${opponentAnimClasses}`}
+              >
+                <TrainerSprite
+                  jobId={activeB!.jobId}
+                  gender={teamBGender}
+                  facing="front"
+                  className="opponent-sprite"
+                />
+              </div>
             </div>
-            <div className="opponent-platform" />
-          </div>
 
-          <div className="player-stand">
-            <div
-              key={`ply-${anim.id}-${anim.target === 'A' ? anim.targetEffect : ''}`}
-              className={`player-sprite-wrap ${playerAnimClasses}`}
-            >
-              <TrainerSprite
-                jobId={activeA!.jobId}
-                gender={teamAGender}
-                facing="back"
-                className="player-sprite"
-              />
+            <div className="player-stand">
+              <div
+                key={`ply-${anim.id}-${anim.target === 'A' ? anim.targetEffect : ''}`}
+                className={`player-sprite-wrap ${playerAnimClasses}`}
+              >
+                <TrainerSprite
+                  jobId={activeA!.jobId}
+                  gender={teamAGender}
+                  facing="back"
+                  className="player-sprite"
+                />
+              </div>
             </div>
-            <div className="player-platform" />
-          </div>
 
-          <StatusBox character={activeB!} side="B" />
-          <StatusBox character={activeA!} side="A" />
+            <StatusBox character={activeB!} side="B" />
+            <StatusBox character={activeA!} side="A" />
+          </div>
         </div>
 
         <div className="message-box">
