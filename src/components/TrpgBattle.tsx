@@ -4,7 +4,15 @@ import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { cloneRosterCharacter } from '../game/data/roster';
 import { crossTiles, GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
-import { TrpgGame, skillMaxUses, type StepResult, type TrpgUnit, type UnitDef } from '../game/trpg/engine';
+import {
+  TrpgGame,
+  skillMaxUses,
+  type StepResult,
+  type TimeOfDay,
+  type TrpgUnit,
+  type UnitDef,
+  type Weather,
+} from '../game/trpg/engine';
 import { TrainerSprite, type Gender } from './TrainerSprite';
 
 export interface PartyMember {
@@ -18,7 +26,16 @@ interface TrpgBattleProps {
   onExit: () => void;
 }
 
-const TERRAIN_LABEL: Record<Terrain, string> = { plain: '', tree: '🌲', water: '🌊', cliff: '⛰️' };
+const TERRAIN_LABEL: Record<Terrain, string> = {
+  plain: '',
+  tree: '🌲',
+  water: '🌊',
+  rock: '🪨',
+  hill: '⛰️',
+  mountain: '🏔️',
+};
+const WEATHER_LABEL: Record<Weather, string> = { clear: '맑음', rain: '비', snow: '눈' };
+const TIME_LABEL: Record<TimeOfDay, string> = { day: '낮', night: '밤' };
 const SWAP_WEAPONS = ['trpg_sword', 'trpg_bow', 'trpg_staff'];
 
 const CELL = 64; // 정사각형 칸(px)
@@ -88,9 +105,15 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     processingRef.current = cur.id;
     busyRef.current = true;
     let active = true;
+    const visibleAt = (unitId?: string) => {
+      if (!unitId) return false;
+      const u = game.unitById(unitId);
+      return !!u && game.visibleSet().has(`${u.pos.r},${u.pos.c}`);
+    };
+    // 공격은 아군이 피격되므로 항상 알 수 있다. 단, 공격자가 시야 밖이면 모션은 숨긴다.
     const showAttack = async (res: StepResult) => {
       setMessage(res.lines.join(' '));
-      playMotion(res.attackerId, res.targetIds);
+      playMotion(visibleAt(res.attackerId) ? res.attackerId : undefined, res.targetIds);
       rerender();
       await delay(720);
       setMotion(null);
@@ -103,15 +126,16 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
       } else {
         const path = game.aiPlanMove();
         if (path && path.length > 1) {
-          setMessage(`${cur.name}가 이동했다.`);
           await animatePath(cur, path);
+          setMessage(visibleAt(cur.id) ? `${cur.name}가 이동했다.` : '적이 시야 밖에서 움직였다.');
+          rerender();
           await delay(150);
         }
         const atk = game.aiTryAttack();
         if (atk.lines.length > 0) {
           await showAttack(atk);
         } else {
-          setMessage(`${cur.name}가 대기했다.`);
+          setMessage(visibleAt(cur.id) ? `${cur.name}가 대기했다.` : '');
           rerender();
           await delay(450);
         }
@@ -236,6 +260,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   const camY = clamp(VIEW / 2 - (camCenter.r + 0.5) * CELL, VIEW - WORLD, 0);
 
   const orderedUnits = game.order.map((id) => game.unitById(id)).filter((u): u is TrpgUnit => !!u && u.alive);
+  const visible = game.visibleSet();
+  const isVisible = (r: number, c: number) => visible.has(`${r},${c}`);
 
   return (
     <div className="app-shell trpg-screen">
@@ -244,17 +270,23 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
           ← 나가기
         </button>
         <div className="trpg-round">라운드 {game.round}</div>
+        <div className="trpg-env">
+          {TIME_LABEL[game.time]} · {WEATHER_LABEL[game.weather]}
+        </div>
         <div className="trpg-initiative">
-          {orderedUnits.map((u) => (
-            <span key={u.id} className={`init-chip ${u.team} ${current && u.id === current.id ? 'active' : ''}`}>
-              {u.name}
-            </span>
-          ))}
+          {orderedUnits.map((u) => {
+            const seen = u.team === 'player' || isVisible(u.pos.r, u.pos.c);
+            return (
+              <span key={u.id} className={`init-chip ${u.team} ${current && u.id === current.id ? 'active' : ''}`}>
+                {seen ? u.name : '???'}
+              </span>
+            );
+          })}
         </div>
       </div>
 
       <div className="trpg-main">
-        <div className="trpg-viewport" style={{ width: VIEW, height: VIEW }}>
+        <div className={`trpg-viewport time-${game.time} weather-${game.weather}`} style={{ width: VIEW, height: VIEW }}>
           <div className="trpg-world" style={{ width: WORLD, height: WORLD, transform: `translate(${camX}px, ${camY}px)` }}>
             {game.map.map((row, r) =>
               row.map((terrain, c) => {
@@ -262,6 +294,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                 const cls = [
                   'trpg-cell',
                   `terrain-${terrain}`,
+                  isVisible(r, c) ? '' : 'fog',
                   reachSet.has(key) ? 'reachable' : '',
                   centerSet.has(key) ? 'aoe-center' : '',
                   previewSet.has(key) ? 'aoe-preview' : '',
@@ -286,6 +319,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
             )}
             {game.units
               .filter((u) => u.alive)
+              // 적 유닛은 시야(암흑) 밖이면 표시하지 않는다. 아군은 항상 표시.
+              .filter((u) => u.team === 'player' || isVisible(u.pos.r, u.pos.c))
               .map((u) => {
                 const isAtk = motion?.attackerId === u.id;
                 const isHit = !!motion?.targetIds.includes(u.id);
@@ -329,6 +364,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   <span>마 {current.magic}</span>
                   <span>방 {current.defense}</span>
                   <span>스피드 {current.speed}</span>
+                  <span>이동 {game.effectiveMove(current)}</span>
+                  <span>시야 {game.effectiveVision(current)}</span>
                   <span>무기 {getWeapon(current.weaponId).name}(사거리 {game.rangeOf(current)})</span>
                 </div>
               </div>

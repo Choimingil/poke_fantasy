@@ -1,4 +1,4 @@
-export type Terrain = 'plain' | 'tree' | 'water' | 'cliff';
+export type Terrain = 'plain' | 'tree' | 'water' | 'rock' | 'hill' | 'mountain';
 
 export const GRID_SIZE = 10;
 
@@ -12,42 +12,51 @@ export type TerrainMap = Terrain[][];
 const P: Terrain = 'plain';
 const T: Terrain = 'tree';
 const W: Terrain = 'water';
-const C: Terrain = 'cliff';
+const R: Terrain = 'rock';
+const H: Terrain = 'hill';
+const M: Terrain = 'mountain';
 
 /**
  * 10x10 기본 전장.
- * - 중앙 (3,4)(3,5)(4,4)(4,5) 절벽: 통과 불가(돌아가야 함) + 높은 지대 사거리 보정.
- * - 물: 이동력 소모 증가(이동 1칸으로는 진입 불가).
- * - 나무: 원거리 공격 시야를 막고 엄폐 제공.
+ * - 바위(R): 장애물, 통과 불가.
+ * - 나무(T): 그 위에 있으면 활 공격 방어(엄폐) + 활 시야 차단.
+ * - 물(W): 그 칸에 있으면 이동력 1 감소(최소 1).
+ * - 언덕(H): 지날 때 이동력 1 소모 증가.
+ * - 산(M): 그 위에서 활 공격력 증가.
  * 적은 위(row 2), 플레이어는 아래(row 7)에서 시작한다.
  */
 export const DEFAULT_MAP: TerrainMap = [
-  [P, P, P, P, P, P, P, P, P, P],
-  [P, P, P, T, P, P, T, P, P, P],
-  [P, P, P, P, P, P, P, P, P, P],
-  [P, W, P, P, C, C, P, P, W, P],
-  [P, W, P, P, C, C, P, P, W, P],
-  [P, P, P, T, P, P, T, P, P, P],
-  [P, P, P, P, P, P, P, P, P, P],
-  [P, P, P, P, P, P, P, P, P, P],
+  [P, P, P, P, M, M, P, P, P, P],
   [P, P, T, P, P, P, P, T, P, P],
   [P, P, P, P, P, P, P, P, P, P],
+  [P, W, P, H, R, R, H, P, W, P],
+  [P, W, P, H, R, R, H, P, W, P],
+  [P, P, P, H, P, P, H, P, P, P],
+  [P, P, T, P, P, P, P, T, P, P],
+  [P, P, P, P, P, P, P, P, P, P],
+  [P, P, H, P, P, P, P, H, P, P],
+  [M, M, P, P, P, P, P, P, M, M],
 ];
 
 export function inBounds(r: number, c: number): boolean {
   return r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
 }
 
-/** 진입 가능 지형인지(절벽은 통과 불가). */
+/** 진입 가능 지형인지(바위는 통과 불가). */
 export function isEnterable(terrain: Terrain): boolean {
-  return terrain !== 'cliff';
+  return terrain !== 'rock';
 }
 
-/** 한 칸 진입 시 이동력 소모(물은 2, 절벽은 무한). */
+/** 한 칸 진입 시 이동력 소모(언덕은 2, 바위는 무한). 물의 "그 칸에 있으면 -1"은 별도 처리. */
 export function moveCost(terrain: Terrain): number {
-  if (terrain === 'cliff') return Infinity;
-  if (terrain === 'water') return 2;
+  if (terrain === 'rock') return Infinity;
+  if (terrain === 'hill') return 2;
   return 1;
+}
+
+/** 원거리 시야를 막는 지형(나무·바위). */
+export function blocksSight(terrain: Terrain): boolean {
+  return terrain === 'tree' || terrain === 'rock';
 }
 
 export function manhattan(a: Coord, b: Coord): number {
@@ -72,6 +81,20 @@ export function crossTiles(center: Coord, radius: number): Coord[] {
   return tiles;
 }
 
+/** 중심에서 맨해튼 거리 radius 이내의 모든 칸(마름모). 시야 판정용. */
+export function diamondTiles(center: Coord, radius: number): Coord[] {
+  const tiles: Coord[] = [];
+  for (let dr = -radius; dr <= radius; dr += 1) {
+    const rem = radius - Math.abs(dr);
+    for (let dc = -rem; dc <= rem; dc += 1) {
+      const r = center.r + dr;
+      const c = center.c + dc;
+      if (inBounds(r, c)) tiles.push({ r, c });
+    }
+  }
+  return tiles;
+}
+
 /** 두 지점 사이(양 끝 제외)를 지나는 칸들. 원거리 시야 판정용. */
 export function lineBetween(a: Coord, b: Coord): Coord[] {
   const tiles: Coord[] = [];
@@ -84,7 +107,6 @@ export function lineBetween(a: Coord, b: Coord): Coord[] {
   const sx = x0 < x1 ? 1 : -1;
   const sy = y0 < y1 ? 1 : -1;
   let err = dx - dy;
-  // Bresenham
   while (!(x0 === x1 && y0 === y1)) {
     const e2 = 2 * err;
     if (e2 > -dy) {
@@ -99,19 +121,4 @@ export function lineBetween(a: Coord, b: Coord): Coord[] {
     tiles.push({ r: y0, c: x0 });
   }
   return tiles;
-}
-
-/** 절벽에 인접한 유닛은 높은 지대로 간주하여 사거리 +1. */
-export function isAdjacentToCliff(map: TerrainMap, pos: Coord): boolean {
-  for (const [dr, dc] of [
-    [1, 0],
-    [-1, 0],
-    [0, 1],
-    [0, -1],
-  ]) {
-    const r = pos.r + dr;
-    const c = pos.c + dc;
-    if (inBounds(r, c) && map[r][c] === 'cliff') return true;
-  }
-  return false;
 }

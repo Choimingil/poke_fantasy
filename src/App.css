@@ -335,6 +335,37 @@
   flex: 0 0 auto;
 }
 
+/* 날씨/시간대 분위기 오버레이(::before=날씨, ::after=시간대) */
+.trpg-viewport::before,
+.trpg-viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.trpg-viewport.weather-rain::before {
+  background: rgba(70, 90, 120, 0.26);
+}
+
+.trpg-viewport.weather-snow::before {
+  background: rgba(232, 240, 255, 0.24);
+}
+
+.trpg-viewport.time-night::after {
+  background: rgba(14, 20, 55, 0.44);
+}
+
+.trpg-env {
+  font-weight: bold;
+  color: #3b4a77;
+  background: #eef0f6;
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: 0.85em;
+}
+
 .trpg-world {
   position: absolute;
   top: 0;
@@ -366,8 +397,25 @@
   background: #5aa6c9;
 }
 
-.terrain-cliff {
-  background: #8a8073;
+.terrain-rock {
+  background: #6f6a63;
+}
+
+.terrain-hill {
+  background: #c2a86a;
+}
+
+.terrain-mountain {
+  background: #9a8f7a;
+}
+
+/* 암흑(시야 밖) 타일 */
+.trpg-cell.fog {
+  filter: brightness(0.28) saturate(0.4);
+}
+
+.trpg-cell.fog .terrain-icon {
+  opacity: 0.15;
 }
 
 .terrain-icon {

@@ -5,10 +5,11 @@ import { rollWeaponProc } from '../engine/weaponEffects';
 import { typeAdvantageMultiplier } from '../engine/typeChart';
 import type { Character, Faction, Skill } from '../types';
 import {
+  blocksSight,
   crossTiles,
   DEFAULT_MAP,
+  diamondTiles,
   GRID_SIZE,
-  isAdjacentToCliff,
   isEnterable,
   inBounds,
   lineBetween,
@@ -19,6 +20,8 @@ import {
 } from './map';
 
 export type Team = 'player' | 'enemy';
+export type Weather = 'clear' | 'rain' | 'snow';
+export type TimeOfDay = 'day' | 'night';
 
 export interface TrpgUnit {
   id: string;
@@ -34,7 +37,9 @@ export interface TrpgUnit {
   magic: number;
   defense: number;
   speed: number;
-  move: number; // 이동거리(칸). 현재 전부 1.
+  move: number; // 기본 이동거리(칸). 전사 2, 그 외 1.
+  vision: number; // 기본 시야(칸). 기본 5.
+  armor: 'light' | 'heavy'; // 방어구 무게(전사=중장, 그 외=경장)
   weaponId: string;
   skills: string[];
   skillUses: Record<string, number>;
@@ -82,11 +87,22 @@ export class TrpgGame {
   movedThisTurn = false;
   actedThisTurn = false;
   moveFrom: Coord | null = null; // 이동 취소(뒤로가기)용 직전 위치
+  weather: Weather;
+  time: TimeOfDay;
   private rng: () => number;
 
-  constructor(playerDefs: UnitDef[], enemyDefs: UnitDef[], map: TerrainMap = DEFAULT_MAP, rng: () => number = Math.random) {
+  constructor(
+    playerDefs: UnitDef[],
+    enemyDefs: UnitDef[],
+    map: TerrainMap = DEFAULT_MAP,
+    rng: () => number = Math.random,
+    time?: TimeOfDay,
+    weather?: Weather,
+  ) {
     this.map = map;
     this.rng = rng;
+    this.time = time ?? (rng() < 0.5 ? 'day' : 'night');
+    this.weather = weather ?? (['clear', 'rain', 'snow'] as const)[Math.floor(rng() * 3)];
     const playerStarts: Coord[] = [
       { r: 7, c: 2 },
       { r: 7, c: 4 },
@@ -124,8 +140,10 @@ export class TrpgGame {
       magic: unitMagic(ch),
       defense: ch.baseStats.defense,
       speed: ch.baseStats.speed,
-      // 전사(근거리)는 이동력이 높다(마름모 반경 3). 그 외 직업은 1.
-      move: job.type === 'melee' ? 3 : 1,
+      // 전사(근거리)는 이동력이 높다(2). 그 외 직업은 1.
+      move: job.type === 'melee' ? 2 : 1,
+      vision: 5,
+      armor: job.type === 'melee' ? 'heavy' : 'light',
       weaponId,
       skills: [...ch.skills],
       skillUses,
@@ -136,6 +154,20 @@ export class TrpgGame {
   }
 
   private buildOrder() {
+    // 눈: 라운드 시작 시 경장 방어구 유닛의 체력을 1/16 감소.
+    if (this.weather === 'snow') {
+      for (const u of this.units) {
+        if (!u.alive || u.armor !== 'light') continue;
+        const dmg = Math.max(1, Math.floor(u.maxHp / 16));
+        u.hp = Math.max(0, u.hp - dmg);
+        this.log.push(`${u.name}가 눈보라로 체력 ${dmg} 감소.`);
+        if (u.hp <= 0) {
+          u.alive = false;
+          this.log.push(`${u.name}가 쓰러져 묘지로 이동했다.`);
+        }
+      }
+      this.checkEnd();
+    }
     this.order = this.units
       .filter((u) => u.alive)
       .sort((a, b) => b.speed - a.speed || (a.team === 'player' ? -1 : 1))
@@ -143,6 +175,32 @@ export class TrpgGame {
     this.turnIndex = 0;
     this.movedThisTurn = false;
     this.actedThisTurn = false;
+  }
+
+  /** 날씨/물 지형을 반영한 실제 이동력(최소 1). */
+  effectiveMove(unit: TrpgUnit): number {
+    let m = unit.move;
+    if (this.map[unit.pos.r][unit.pos.c] === 'water') m -= 1; // 물에 있으면 -1
+    if (this.weather === 'rain' && unit.armor === 'heavy') m -= 1; // 비 + 중장 -1
+    return Math.max(1, m);
+  }
+
+  /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 2칸으로 제한. */
+  effectiveVision(unit: TrpgUnit): number {
+    let v = unit.vision;
+    if (this.weather === 'rain' || this.weather === 'snow') v -= 1;
+    if (this.time === 'night') v = Math.min(v, 2);
+    return Math.max(0, v);
+  }
+
+  /** 플레이어 팀이 볼 수 있는 칸 집합("r,c"). 각 아군 유닛의 시야 마름모 합집합. */
+  visibleSet(): Set<string> {
+    const set = new Set<string>();
+    for (const u of this.units) {
+      if (!u.alive || u.team !== 'player') continue;
+      for (const t of diamondTiles(u.pos, this.effectiveVision(u))) set.add(`${t.r},${t.c}`);
+    }
+    return set;
   }
 
   unitById(id: string): TrpgUnit | undefined {
@@ -165,22 +223,22 @@ export class TrpgGame {
   }
 
   rangeOf(unit: TrpgUnit): number {
-    return weaponRange(this.weaponOf(unit)) + (isAdjacentToCliff(this.map, unit.pos) ? 1 : 0);
+    return weaponRange(this.weaponOf(unit));
   }
 
   /**
    * 이동력 예산 내 각 칸까지의 최단 이동비용/경로를 다익스트라로 계산한다.
-   * - 절벽은 통과 불가, 물은 진입비용 2.
+   * - 바위는 통과 불가, 언덕은 진입비용 2.
    * - 적 유닛이 있는 칸은 장애물(통과 불가) → 넘어갈 수 없고 돌아가야 한다.
    * - 아군 유닛 칸은 통과는 되지만 그 칸에 멈출 수는 없다.
    */
-  private computeDistances(unit: TrpgUnit): { dist: Map<string, number>; prev: Map<string, string> } {
+  private computeDistances(unit: TrpgUnit): { dist: Map<string, number>; prev: Map<string, string>; budget: number } {
     const dist = new Map<string, number>();
     const prev = new Map<string, string>();
     const visited = new Set<string>();
     const startKey = `${unit.pos.r},${unit.pos.c}`;
     dist.set(startKey, 0);
-    const budget = unit.move;
+    const budget = this.effectiveMove(unit);
 
     while (true) {
       let curKey: string | null = null;
@@ -204,7 +262,7 @@ export class TrpgGame {
         const nc = c + dc;
         if (!inBounds(nr, nc)) continue;
         const terrain = this.map[nr][nc];
-        if (!isEnterable(terrain)) continue; // 절벽
+        if (!isEnterable(terrain)) continue; // 바위
         const occ = this.unitAt(nr, nc);
         if (occ && occ.team !== unit.team) continue; // 적 = 장애물, 통과 불가
         const nd = curDist + moveCost(terrain);
@@ -216,15 +274,15 @@ export class TrpgGame {
         }
       }
     }
-    return { dist, prev };
+    return { dist, prev, budget };
   }
 
   /** 이동 가능한 도착 칸(비용 예산 내, 빈 칸만). 마름모 형태로 퍼진다. */
   reachableTiles(unit: TrpgUnit): Coord[] {
-    const { dist } = this.computeDistances(unit);
+    const { dist, budget } = this.computeDistances(unit);
     const result: Coord[] = [];
     for (const [k, d] of dist) {
-      if (d <= 0 || d > unit.move) continue;
+      if (d <= 0 || d > budget) continue;
       const [r, c] = k.split(',').map(Number);
       if (this.unitAt(r, c)) continue; // 아군 칸 등 점유 칸엔 멈출 수 없음
       result.push({ r, c });
@@ -250,11 +308,10 @@ export class TrpgGame {
     return path.reverse();
   }
 
-  /** 원거리 시야가 나무/절벽에 막히는지. */
+  /** 원거리 시야가 나무/바위에 막히는지. */
   private losBlocked(from: Coord, to: Coord): boolean {
     for (const t of lineBetween(from, to)) {
-      const terrain = this.map[t.r][t.c];
-      if (terrain === 'tree' || terrain === 'cliff') return true;
+      if (blocksSight(this.map[t.r][t.c])) return true;
     }
     return false;
   }
@@ -301,11 +358,13 @@ export class TrpgGame {
     const varianceWidth = 0.2;
     const variance = 1 - varianceWidth + this.rng() * varianceWidth * 2;
 
-    // 나무 위의 대상은 원거리 공격에 대해 엄폐(0.5배).
-    const ranged = weapon.type !== 'melee';
-    const cover = ranged && this.map[target.pos.r][target.pos.c] === 'tree' ? 0.5 : 1;
+    const isBow = weapon.kind === 'bow';
+    // 나무 위의 대상은 활 공격에 대해 엄폐(0.5배).
+    const cover = isBow && this.map[target.pos.r][target.pos.c] === 'tree' ? 0.5 : 1;
+    // 산 위에서 쏘는 활은 공격력 증가(1.3배).
+    const highGround = isBow && this.map[attacker.pos.r][attacker.pos.c] === 'mountain' ? 1.3 : 1;
 
-    let dmg = (raw * matchup * stab * variance * cover) / 1;
+    let dmg = raw * matchup * stab * variance * cover * highGround;
     dmg = dmg * target.guardFactor; // 방어 상태면 0 또는 0.5
     if (proc.extraHit) dmg *= 1.3; // 활 연사 부가효과
 
