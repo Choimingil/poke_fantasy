@@ -366,11 +366,14 @@
   font-size: 0.85em;
 }
 
-.trpg-world {
+.trpg-scroll {
   position: absolute;
-  top: 0;
-  left: 0;
-  transition: transform 0.4s ease;
+  inset: 0;
+  overflow: auto;
+}
+
+.trpg-world {
+  position: relative;
 }
 
 .trpg-cell {
@@ -428,6 +431,14 @@
 .trpg-cell.reachable {
   cursor: pointer;
   box-shadow: inset 0 0 0 3px rgba(70, 130, 255, 0.9);
+}
+
+/* 등반 가능 칸(이동 시 그 턴 행동 종료) */
+.trpg-cell.climb {
+  cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgba(240, 150, 40, 0.95);
+  outline: 2px dashed rgba(240, 150, 40, 0.9);
+  outline-offset: -6px;
 }
 
 .trpg-cell.targetable {

@@ -7,8 +7,8 @@ import type { Character, Faction, Skill } from '../types';
 import {
   blocksSight,
   crossTiles,
-  DEFAULT_MAP,
   diamondTiles,
+  generateMap,
   GRID_SIZE,
   isEnterable,
   inBounds,
@@ -104,6 +104,7 @@ export class TrpgGame {
   movedThisTurn = false;
   actedThisTurn = false;
   moveFrom: Coord | null = null; // 이동 취소(뒤로가기)용 직전 위치
+  movedExhausted = false; // 등반(이동력 초과 이동)으로 이번 턴 행동 불가 여부
   weather: Weather;
   time: TimeOfDay;
   private rng: () => number;
@@ -111,13 +112,13 @@ export class TrpgGame {
   constructor(
     playerDefs: UnitDef[],
     enemyDefs: UnitDef[],
-    map: TerrainMap = DEFAULT_MAP,
+    map?: TerrainMap,
     rng: () => number = Math.random,
     time?: TimeOfDay,
     weather?: Weather,
   ) {
-    this.map = map;
     this.rng = rng;
+    this.map = map ?? generateMap(rng);
     this.time = time ?? (rng() < 0.5 ? 'day' : 'night');
     this.weather = weather ?? (['clear', 'rain', 'snow'] as const)[Math.floor(rng() * 3)];
     const playerStarts: Coord[] = [
@@ -313,13 +314,10 @@ export class TrpgGame {
     return result;
   }
 
-  /** 출발 칸부터 목표 칸까지의 경로(양 끝 포함). 도달 불가면 null. */
-  pathTo(unit: TrpgUnit, coord: Coord): Coord[] | null {
-    const { prev } = this.computeDistances(unit);
-    const startKey = `${unit.pos.r},${unit.pos.c}`;
-    const goalKey = `${coord.r},${coord.c}`;
-    if (goalKey === startKey) return [{ ...unit.pos }];
-    if (!prev.has(goalKey)) return null;
+  private buildPath(prev: Map<string, string>, start: Coord, goal: Coord): Coord[] {
+    const startKey = `${start.r},${start.c}`;
+    const goalKey = `${goal.r},${goal.c}`;
+    if (goalKey === startKey) return [{ ...start }];
     const path: Coord[] = [];
     let k: string | undefined = goalKey;
     while (k) {
@@ -329,6 +327,51 @@ export class TrpgGame {
       k = prev.get(k);
     }
     return path.reverse();
+  }
+
+  /** 출발 칸부터 목표 칸까지의 경로(양 끝 포함). 도달 불가면 null. */
+  pathTo(unit: TrpgUnit, coord: Coord): Coord[] | null {
+    const { prev } = this.computeDistances(unit);
+    const startKey = `${unit.pos.r},${unit.pos.c}`;
+    const goalKey = `${coord.r},${coord.c}`;
+    if (goalKey !== startKey && !prev.has(goalKey)) return null;
+    return this.buildPath(prev, unit.pos, coord);
+  }
+
+  /**
+   * 등반 칸: 이동력이 모자라도 마지막 한 칸을 "무리해서" 올라갈 수 있는 언덕/산 칸.
+   * 이동력 예산 안의 어떤 칸에서 이웃으로 한 발 더 딛되, 그 비용이 예산을 넘는 경우.
+   * 이 칸으로 이동하면 그 턴에는 더 이상 행동할 수 없다.
+   */
+  climbTiles(unit: TrpgUnit): Coord[] {
+    const { dist, budget } = this.computeDistances(unit);
+    const seen = new Set<string>();
+    const res: Coord[] = [];
+    for (const [k, d] of dist) {
+      if (d > budget) continue;
+      const [r, c] = k.split(',').map(Number);
+      for (const [dr, dc] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (!inBounds(nr, nc)) continue;
+        const terrain = this.map[nr][nc];
+        if (!isEnterable(terrain)) continue;
+        if (this.unitAt(nr, nc)) continue;
+        const nk = `${nr},${nc}`;
+        if ((dist.get(nk) ?? Infinity) <= budget) continue; // 이미 정상 이동 가능
+        if (d + moveCost(terrain) <= budget) continue; // 넘어서는 비용이 아님
+        if (!seen.has(nk)) {
+          seen.add(nk);
+          res.push({ r: nr, c: nc });
+        }
+      }
+    }
+    return res;
   }
 
   /** 원거리 시야가 나무/바위에 막히는지. */
@@ -551,11 +594,46 @@ export class TrpgGame {
   planMoveTo(coord: Coord): Coord[] | null {
     const unit = this.current();
     if (!unit || this.movedThisTurn) return null;
-    if (!this.reachableTiles(unit).some((t) => t.r === coord.r && t.c === coord.c)) return null;
-    const path = this.pathTo(unit, coord);
-    if (!path) return null;
+    if (this.unitAt(coord.r, coord.c) || !isEnterable(this.map[coord.r][coord.c])) return null;
+    const { dist, prev, budget } = this.computeDistances(unit);
+    const goalKey = `${coord.r},${coord.c}`;
+    const dGoal = dist.get(goalKey);
+
+    // 정상 이동(예산 내)
+    if (dGoal != null && dGoal <= budget) {
+      this.moveFrom = { ...unit.pos };
+      this.movedThisTurn = true;
+      this.movedExhausted = false;
+      return this.buildPath(prev, unit.pos, coord);
+    }
+
+    // 등반 이동(예산 초과 마지막 한 칸): 이동 후 그 턴 행동 불가
+    const cost = moveCost(this.map[coord.r][coord.c]);
+    let bestT: Coord | null = null;
+    let bestD = Infinity;
+    for (const [dr, dc] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const tr = coord.r + dr;
+      const tc = coord.c + dc;
+      if (!inBounds(tr, tc)) continue;
+      const dT = dist.get(`${tr},${tc}`);
+      if (dT == null || dT > budget) continue;
+      if (dT + cost <= budget) continue; // 정상 이동이면 위에서 처리됨
+      if (dT < bestD) {
+        bestD = dT;
+        bestT = { r: tr, c: tc };
+      }
+    }
+    if (!bestT) return null;
+    const path = this.buildPath(prev, unit.pos, bestT);
+    path.push({ ...coord });
     this.moveFrom = { ...unit.pos };
     this.movedThisTurn = true;
+    this.movedExhausted = true;
     return path;
   }
 
@@ -571,6 +649,7 @@ export class TrpgGame {
     unit.pos = { ...this.moveFrom };
     this.moveFrom = null;
     this.movedThisTurn = false;
+    this.movedExhausted = false;
     return true;
   }
 
@@ -579,6 +658,7 @@ export class TrpgGame {
     if (this.finished) return;
     // 다음 살아있는 유닛으로
     this.moveFrom = null;
+    this.movedExhausted = false;
     do {
       this.turnIndex += 1;
       if (this.turnIndex >= this.order.length) {

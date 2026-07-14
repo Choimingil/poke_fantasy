@@ -9,34 +9,54 @@ export interface Coord {
 
 export type TerrainMap = Terrain[][];
 
-const P: Terrain = 'plain';
-const T: Terrain = 'tree';
-const W: Terrain = 'water';
-const R: Terrain = 'rock';
-const H: Terrain = 'hill';
-const M: Terrain = 'mountain';
+/** 플레이어/적이 시작하는 칸(항상 평지로 강제). */
+const START_TILES: Coord[] = [
+  { r: 2, c: 2 },
+  { r: 2, c: 4 },
+  { r: 2, c: 6 },
+  { r: 7, c: 2 },
+  { r: 7, c: 4 },
+  { r: 7, c: 6 },
+];
 
 /**
- * 10x10 기본 전장.
- * - 바위(R): 장애물, 통과 불가.
- * - 나무(T): 그 위에 있으면 활 공격 방어(엄폐) + 활 시야 차단.
- * - 물(W): 그 칸에 있으면 이동력 1 감소(최소 1).
- * - 언덕(H): 지날 때 이동력 1 소모 증가.
- * - 산(M): 그 위에서 활 공격력 증가.
- * 적은 위(row 2), 플레이어는 아래(row 7)에서 시작한다.
+ * 무작위 전장 생성. 지형 특성:
+ * - 바위(rock): 장애물, 통과 불가 + 시야 차단.
+ * - 나무(tree): 그 위에 있으면 활 공격 방어(엄폐) + 활 시야 차단.
+ * - 물(water): 그 칸에 있으면 이동력 1 감소(최소 1).
+ * - 언덕(hill)/산(mountain): 진입 비용 2(등반). 산 위에서는 활 공격력 증가.
+ * 시작 칸과 그 주변은 평지로 보정한다.
  */
-export const DEFAULT_MAP: TerrainMap = [
-  [P, P, P, P, M, M, P, P, P, P],
-  [P, P, T, P, P, P, P, T, P, P],
-  [P, P, P, P, P, P, P, P, P, P],
-  [P, W, P, H, R, R, H, P, W, P],
-  [P, W, P, H, R, R, H, P, W, P],
-  [P, P, P, H, P, P, H, P, P, P],
-  [P, P, T, P, P, P, P, T, P, P],
-  [P, P, P, P, P, P, P, P, P, P],
-  [P, P, H, P, P, P, P, H, P, P],
-  [M, M, P, P, P, P, P, P, M, M],
-];
+export function generateMap(rng: () => number = Math.random): TerrainMap {
+  const pick = (): Terrain => {
+    const x = rng();
+    if (x < 0.5) return 'plain';
+    if (x < 0.63) return 'tree';
+    if (x < 0.73) return 'water';
+    if (x < 0.83) return 'hill';
+    if (x < 0.92) return 'mountain';
+    return 'rock';
+  };
+  const map: TerrainMap = Array.from({ length: GRID_SIZE }, () =>
+    Array.from({ length: GRID_SIZE }, () => pick()),
+  );
+  // 시작 칸 + 상하좌우는 평지로(초기 이동/배치 보장).
+  for (const s of START_TILES) {
+    for (const t of [{ r: s.r, c: s.c }, ...neighbors(s)]) {
+      if (inBounds(t.r, t.c)) map[t.r][t.c] = 'plain';
+    }
+  }
+  return map;
+}
+
+function neighbors(a: Coord): Coord[] {
+  return [
+    { r: a.r + 1, c: a.c },
+    { r: a.r - 1, c: a.c },
+    { r: a.r, c: a.c + 1 },
+    { r: a.r, c: a.c - 1 },
+  ];
+}
 
 export function inBounds(r: number, c: number): boolean {
   return r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
@@ -47,10 +67,10 @@ export function isEnterable(terrain: Terrain): boolean {
   return terrain !== 'rock';
 }
 
-/** 한 칸 진입 시 이동력 소모(언덕은 2, 바위는 무한). 물의 "그 칸에 있으면 -1"은 별도 처리. */
+/** 한 칸 진입 시 이동력 소모(언덕·산은 2=등반, 바위는 무한). 물의 "그 칸에 있으면 -1"은 별도 처리. */
 export function moveCost(terrain: Terrain): number {
   if (terrain === 'rock') return Infinity;
-  if (terrain === 'hill') return 2;
+  if (terrain === 'hill' || terrain === 'mountain') return 2;
   return 1;
 }
 

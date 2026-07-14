@@ -54,7 +54,6 @@ interface Motion {
 }
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 function toDefs(party: PartyMember[]): UnitDef[] {
   return party.map((m) => ({ character: cloneRosterCharacter(m.jobId), gender: m.gender }));
@@ -77,22 +76,35 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   const busyRef = useRef(false);
   const processingRef = useRef<string | null>(null);
   const motionCounter = useRef(0);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const playMotion = (attackerId?: string, targetIds: string[] = []) => {
     motionCounter.current += 1;
     setMotion({ attackerId, targetIds, id: motionCounter.current });
   };
 
-  // 경로(양 끝 포함)를 따라 유닛을 한 칸씩 이동시키며 애니메이션한다.
+  // 특정 칸이 화면 중앙에 오도록 스크롤(수동 스크롤과 공존).
+  const centerOn = useCallback((coord: Coord, smooth = false) => {
+    const sc = scrollRef.current;
+    if (!sc) return;
+    sc.scrollTo({
+      left: (coord.c + 0.5) * CELL - sc.clientWidth / 2,
+      top: (coord.r + 0.5) * CELL - sc.clientHeight / 2,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+  }, []);
+
+  // 경로(양 끝 포함)를 따라 유닛을 한 칸씩 이동시키며 애니메이션한다(카메라 추적).
   const animatePath = useCallback(
     async (unit: TrpgUnit, path: Coord[]) => {
       for (let i = 1; i < path.length; i += 1) {
         game.setUnitPos(unit, path[i]);
+        centerOn(path[i]);
         rerender();
         await delay(170);
       }
     },
-    [game],
+    [game, centerOn],
   );
 
   const current = game.current();
@@ -155,6 +167,12 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     };
   }, [currentId, game, animatePath]);
 
+  // 턴이 바뀌면 현재 유닛을 화면 중앙으로(수동 스크롤은 언제든 가능).
+  useEffect(() => {
+    const cur = game.current();
+    if (cur) centerOn(cur.pos, true);
+  }, [currentId, game, centerOn]);
+
   const finishPlayerTurn = () => {
     game.endTurn();
     setSelectedSkill(null);
@@ -180,6 +198,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
 
   const reachable = isPlayerTurn && phase === 'move' && current ? game.reachableTiles(current) : [];
   const reachSet = new Set(reachable.map((t) => `${t.r},${t.c}`));
+  const climb = isPlayerTurn && phase === 'move' && current ? game.climbTiles(current) : [];
+  const climbSet = new Set(climb.map((t) => `${t.r},${t.c}`));
 
   const singleTargets =
     isPlayerTurn && phase === 'target' && current && selSkill && !isAoe ? game.targetsFor(current, selSkill) : [];
@@ -196,14 +216,20 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   const onCellClick = async (r: number, c: number) => {
     if (!isPlayerTurn || !current) return;
     if (phase === 'move') {
-      if (reachSet.has(`${r},${c}`)) {
+      const key = `${r},${c}`;
+      if (reachSet.has(key) || climbSet.has(key)) {
         const path = game.planMoveTo({ r, c });
         if (path) {
           busyRef.current = true;
           rerender();
           await animatePath(current, path);
           busyRef.current = false;
-          setPhase('action');
+          if (game.movedExhausted) {
+            setMessage('언덕/산을 오르느라 이번 턴 행동을 마쳤다.');
+            finishPlayerTurn();
+          } else {
+            setPhase('action');
+          }
           rerender();
         }
       }
@@ -264,11 +290,6 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     }
   };
 
-  // 카메라: 현재 유닛(없으면 맵 중앙)을 중심에 두고 맵 밖이 보이지 않도록 clamp
-  const camCenter = current ? current.pos : { r: (GRID_SIZE - 1) / 2, c: (GRID_SIZE - 1) / 2 };
-  const camX = clamp(VIEW / 2 - (camCenter.c + 0.5) * CELL, VIEW - WORLD, 0);
-  const camY = clamp(VIEW / 2 - (camCenter.r + 0.5) * CELL, VIEW - WORLD, 0);
-
   const orderedUnits = game.order.map((id) => game.unitById(id)).filter((u): u is TrpgUnit => !!u && u.alive);
   const visible = game.visibleSet();
   const isVisible = (r: number, c: number) => visible.has(`${r},${c}`);
@@ -297,7 +318,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
 
       <div className="trpg-main">
         <div className={`trpg-viewport time-${game.time} weather-${game.weather}`} style={{ width: VIEW, height: VIEW }}>
-          <div className="trpg-world" style={{ width: WORLD, height: WORLD, transform: `translate(${camX}px, ${camY}px)` }}>
+          <div className="trpg-scroll" ref={scrollRef} style={{ width: VIEW, height: VIEW }}>
+          <div className="trpg-world" style={{ width: WORLD, height: WORLD }}>
             {game.map.map((row, r) =>
               row.map((terrain, c) => {
                 const key = `${r},${c}`;
@@ -306,6 +328,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   `terrain-${terrain}`,
                   isVisible(r, c) ? '' : 'fog',
                   reachSet.has(key) ? 'reachable' : '',
+                  climbSet.has(key) ? 'climb' : '',
                   centerSet.has(key) ? 'aoe-center' : '',
                   previewSet.has(key) ? 'aoe-preview' : '',
                 ]
@@ -352,6 +375,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                 );
               })}
           </div>
+          </div>
         </div>
 
         <aside className="trpg-panel">
@@ -385,7 +409,10 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                 <p className="trpg-hint">적이 행동 중...</p>
               ) : phase === 'move' ? (
                 <div className="trpg-actions">
-                  <p className="trpg-hint">이동할 칸(파란색)을 선택하거나 이동을 생략하세요.</p>
+                  <p className="trpg-hint">
+                    이동할 칸(파란색)을 선택하거나 이동을 생략하세요.
+                    {climb.length > 0 && ' 주황 점선 칸(언덕/산)은 등반 시 그 턴 행동이 종료됩니다.'}
+                  </p>
                   <button type="button" onClick={() => setPhase('action')}>
                     이동 생략
                   </button>
