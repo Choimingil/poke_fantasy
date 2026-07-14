@@ -95,11 +95,17 @@ function moveFromEndurance(endurance: number): number {
 }
 /**
  * 직업별 기본 지구력(진행 시스템 전 임시값, 만렙 가정).
- * 전사(판금)=1칸, 격수(가죽)/법사(천)=2칸이 되도록 설정.
+ * 기본 방어구(전사=판금 / 궁수=중갑 / 무당=가죽) 착용 시 모두 유효 이동력 1칸이 되도록 보정.
  */
 function baseEnduranceFor(jobType: 'melee' | 'ranged' | 'magic'): number {
-  return jobType === 'melee' ? 215 : jobType === 'ranged' ? 205 : 105;
+  return jobType === 'melee' ? 215 : jobType === 'ranged' ? 145 : 105;
 }
+
+/**
+ * 마법 직업의 근력(공격력)은 낮게 고정한다. 마법 데미지는 마력으로 계산하므로
+ * 물리 공격력은 방어구 착용 판정에만 쓰이며, 이 값으로 **최대 가죽**까지만 착용 가능(중갑/판금 불가).
+ */
+const MAGIC_STRENGTH = 12;
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
 /** 정신력(디버프/부가효과 무시 확률) 상한. */
@@ -221,13 +227,13 @@ export class TrpgGame {
       pos,
       hp: ch.baseStats.hp,
       maxHp: ch.baseStats.hp,
-      attack: ch.baseStats.attack,
+      attack: job.type === 'magic' ? MAGIC_STRENGTH : ch.baseStats.attack,
       magic: unitMagic(ch),
       endurance: baseEnduranceFor(job.type),
       defense: 0, // 방어력은 방어구로만(능력치로 올리지 않음)
       speed: ch.baseStats.speed,
       vision: 5,
-      armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'leather' : 'cloth',
+      armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'mail' : 'leather',
       weaponId,
       skills: [...ch.skills],
       skillUses,
