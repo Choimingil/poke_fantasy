@@ -56,42 +56,34 @@ function isLightArmor(t: ArmorType): boolean {
 
 // ── 진행/능력치 상수 ────────────────────────────────────────────────
 const STAT_BASE = 5; // 초기 능력치(레벨1)
-const POINTS_PER_LEVEL = 3; // 레벨업당 분배 포인트
-/** 레벨 L에서 한 능력치에 몰빵했을 때의 값(요구치 산정 기준). */
-function fullStatAt(level: number): number {
-  return STAT_BASE + POINTS_PER_LEVEL * (level - 1);
-}
 
 /**
- * 방어구: 방어력 / 지구력 감소율(무게) / 착용 요구 레벨(5단위).
- * 요구 공격력은 요구 레벨 몰빵 스탯값의 ATTACK_REQ_PERCENT 만큼(천은 요구 없음).
+ * 방어구: 방어력 / 요구 근력 배수 / 착용 요구 레벨(5단위).
+ * 요구 근력(공격력) = round(요구 레벨 × 배수). 천은 요구 없음(가죽 ×1 / 중갑 ×1.75 / 판금 ×2.5).
  * 방어력은 요구 레벨에 비례(=요구 레벨)해 재산정.
- * 무거운 방어구는 **이동력이 아니라 지구력을 %로** 깎는다(`endurancePenalty`) → 실효 지구력이 낮아져 이동력이 감소.
+ * 무게로 인한 이동력/지구력 디버프는 없음(이동력은 지구력에서만 산출).
  */
-const ATTACK_REQ_PERCENT = 0.5;
-const ARMOR_STATS: Record<ArmorType, { def: number; endurancePenalty: number; reqLevel: number }> = {
-  cloth: { def: 1, endurancePenalty: 0, reqLevel: 1 },
-  leather: { def: 5, endurancePenalty: 0.15, reqLevel: 5 },
-  mail: { def: 10, endurancePenalty: 0.3, reqLevel: 10 },
-  plate: { def: 15, endurancePenalty: 0.5, reqLevel: 15 },
+const ARMOR_STATS: Record<ArmorType, { def: number; strengthMult: number; reqLevel: number }> = {
+  cloth: { def: 1, strengthMult: 0, reqLevel: 1 },
+  leather: { def: 5, strengthMult: 1, reqLevel: 5 },
+  mail: { def: 10, strengthMult: 1.75, reqLevel: 10 },
+  plate: { def: 15, strengthMult: 2.5, reqLevel: 15 },
 };
 
-/** 방어구 착용에 필요한 공격력(천=0, 그 외=요구레벨 몰빵값의 절반). */
+/** 방어구 착용에 필요한 근력(공격력) = round(요구 레벨 × 배수). 천=0. */
 function armorAttackReq(t: ArmorType): number {
-  if (t === 'cloth') return 0;
-  return Math.round(ATTACK_REQ_PERCENT * fullStatAt(ARMOR_STATS[t].reqLevel));
+  return Math.round(ARMOR_STATS[t].strengthMult * ARMOR_STATS[t].reqLevel);
 }
 
 // ── 이동력 상수 ────────────────────────────────────────────────────
 /** 유효 이동력 상한(칸). 이 값을 넘는 이동력(지구력 초과분)은 페널티 완충용. */
 const MOVE_CAP = 3;
 /**
- * (실효)지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작). 연속값.
- * 보정: 만렙100 · 판금 요구 근력(24)만 채우고 나머지 전부 지구력(=283)에 몰빵 → 판금(−50%) 착용 시
- *       실효 지구력 141.5 → rawMove ≈ 1.91 (2에 조금 못 미침). 판금은 어떤 빌드도 이동력 1칸.
+ * 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작). 연속값.
+ * 방어구 무게로 인한 이동력/지구력 디버프는 없음 → 이동력은 순수 지구력에서만 산출.
  */
 const ENDURANCE_PER_TILE = 150;
-/** 실효 지구력 → 원시 이동력(칸, 연속값). floor는 최종 칸수 계산에서만 적용. */
+/** 지구력 → 원시 이동력(칸, 연속값). floor는 최종 칸수 계산에서만 적용. */
 function moveFromEndurance(endurance: number): number {
   return 1 + (endurance - STAT_BASE) / ENDURANCE_PER_TILE;
 }
@@ -219,6 +211,21 @@ export class TrpgGame {
     const weaponId = `trpg_${job.type === 'melee' ? 'sword' : job.type === 'ranged' ? 'bow' : 'staff'}`;
     const skillUses: Record<string, number> = {};
     for (const id of ch.skills) skillUses[id] = skillMaxUses(getSkill(id));
+
+    // 근력(공격력)/지구력 산출.
+    // - 마법 직업: 근력을 낮게 고정(최대 가죽) — 데미지는 마력으로 계산.
+    // - 근접 직업: 기본 방어구(판금) 요구 근력을 충족하도록 공격력을 끌어올리고,
+    //   올린 만큼 지구력에서 차감(총 포인트 보존).
+    let attack = ch.baseStats.attack;
+    let endurance = baseEnduranceFor(job.type);
+    if (job.type === 'magic') {
+      attack = MAGIC_STRENGTH;
+    } else if (job.type === 'melee') {
+      const bumped = Math.max(attack, armorAttackReq('plate'));
+      endurance -= bumped - attack; // 판금 요구 충족을 위해 올린 근력만큼 지구력 감소
+      attack = bumped;
+    }
+
     return {
       id: `${team}_${ch.jobId}`,
       name: ch.name,
@@ -229,9 +236,9 @@ export class TrpgGame {
       pos,
       hp: ch.baseStats.hp,
       maxHp: ch.baseStats.hp,
-      attack: job.type === 'magic' ? MAGIC_STRENGTH : ch.baseStats.attack,
+      attack,
       magic: unitMagic(ch),
-      endurance: baseEnduranceFor(job.type),
+      endurance,
       defense: 0, // 방어력은 방어구로만(능력치로 올리지 않음)
       speed: ch.baseStats.speed,
       vision: 5,
@@ -269,14 +276,9 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 방어구 무게(지구력 %감소)를 반영한 실효 지구력. */
-  effectiveEndurance(unit: TrpgUnit): number {
-    return unit.endurance * (1 - ARMOR_STATS[unit.armorType].endurancePenalty);
-  }
-
-  /** 실효 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). */
+  /** 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). 방어구 무게 디버프 없음. */
   rawMove(unit: TrpgUnit): number {
-    return moveFromEndurance(this.effectiveEndurance(unit));
+    return moveFromEndurance(unit.endurance);
   }
 
   /** 정신력: 상대 디버프/부가효과를 무시할 확률(마력 기반, 최대 70%). */
