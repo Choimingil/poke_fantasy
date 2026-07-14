@@ -34,7 +34,18 @@ export const WEAPONS: WeaponTemplate[] = [
   // 마법 - 두손
   { id: 'staff_2h_east', name: '법장', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'east', basePower: 60, baseSpeed: 11 },
   { id: 'staff_2h_west', name: '스태프', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'west', basePower: 60, baseSpeed: 11 },
+
+  // ---- TRPG 전용 3종 (근거리=검, 원거리=활, 마법=지팡이) ----
+  { id: 'trpg_sword', name: '검', type: 'melee', kind: 'sword', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 18, range: 1, requirement: { attack: 15 } },
+  { id: 'trpg_bow', name: '활', type: 'ranged', kind: 'bow', handedness: 'twoHanded', culture: 'east', basePower: 42, baseSpeed: 16, range: 2, requirement: { speed: 12 } },
+  { id: 'trpg_staff', name: '지팡이', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'east', basePower: 44, baseSpeed: 14, range: 1, requirement: {} },
 ];
+
+/** TRPG 무기 사거리(칸). 명시값이 없으면 원거리 2, 그 외 1. */
+export function weaponRange(weapon: WeaponTemplate): number {
+  if (weapon.range != null) return weapon.range;
+  return weapon.type === 'ranged' ? 2 : 1;
+}
 
 export function getWeapon(templateId: string): WeaponTemplate {
   const weapon = WEAPONS.find((w) => w.id === templateId);

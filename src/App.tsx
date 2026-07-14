@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import './App.css';
 import { TrainerSprite, type Gender } from './components/TrainerSprite';
 import { InventoryPage } from './components/InventoryPage';
+import { TrpgBattle, type PartyMember } from './components/TrpgBattle';
 import battleForest from './assets/battle-forest.jpg';
 import { pickAiAction } from './game/engine/ai';
 import { Battle, type BattleAction, type Side } from './game/engine/battle';
@@ -74,8 +75,19 @@ function App() {
   const [teamBJobId, setTeamBJobId] = useState(ROSTER[6].jobId);
   const [teamAGender, setTeamAGender] = useState<Gender>('male');
   const [teamBGender, setTeamBGender] = useState<Gender>('male');
-  const [view, setView] = useState<'home' | 'inventory'>('home');
+  const [view, setView] = useState<'home' | 'inventory' | 'trpg-setup'>('home');
   const [loadouts, setLoadouts] = useState<LoadoutMap>(() => loadLoadouts());
+  const [trpgActive, setTrpgActive] = useState(false);
+  const [trpgParty, setTrpgParty] = useState<PartyMember[]>([
+    { jobId: 'east_general', gender: 'male' },
+    { jobId: 'east_shaman', gender: 'female' },
+    { jobId: 'east_archer', gender: 'male' },
+  ]);
+  const trpgEnemyParty: PartyMember[] = [
+    { jobId: 'west_knight', gender: 'male' },
+    { jobId: 'west_witch', gender: 'female' },
+    { jobId: 'west_archer', gender: 'male' },
+  ];
   const battleRef = useRef<Battle | null>(null);
   const busyRef = useRef(false);
   const animCounter = useRef(0);
@@ -184,8 +196,71 @@ function App() {
     void playTurn({ switchWeaponTo: target });
   };
 
+  if (trpgActive) {
+    return (
+      <TrpgBattle
+        playerParty={trpgParty}
+        enemyParty={trpgEnemyParty}
+        onExit={() => {
+          setTrpgActive(false);
+          setView('home');
+        }}
+      />
+    );
+  }
+
   if (!battle && view === 'inventory') {
     return <InventoryPage loadouts={loadouts} onChange={updateLoadout} onBack={() => setView('home')} />;
+  }
+
+  if (!battle && view === 'trpg-setup') {
+    return (
+      <div className="app-shell setup-screen">
+        <h1>TRPG 전투 — 아군 편성 (3명)</h1>
+        <div className="setup-panel">
+          {trpgParty.map((member, i) => (
+            <div key={i} className="trpg-party-row">
+              <label>
+                {i + 1}번 캐릭터
+                <select
+                  value={member.jobId}
+                  onChange={(e) =>
+                    setTrpgParty((prev) => prev.map((m, j) => (j === i ? { ...m, jobId: e.target.value } : m)))
+                  }
+                >
+                  {ROSTER.map((c) => (
+                    <option key={c.jobId} value={c.jobId}>
+                      {c.name} ({getJob(c.jobId).name})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="gender-toggle" role="group" aria-label={`${i + 1}번 성별`}>
+                {(['male', 'female'] as const).map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    className={member.gender === g ? 'active' : ''}
+                    onClick={() => setTrpgParty((prev) => prev.map((m, j) => (j === i ? { ...m, gender: g } : m)))}
+                  >
+                    {g === 'male' ? '남' : '여'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+          <p className="trpg-enemy-note">
+            상대 팀: {trpgEnemyParty.map((m) => getJob(m.jobId).name).join(', ')}
+          </p>
+          <button type="button" onClick={() => setTrpgActive(true)}>
+            TRPG 전투 시작
+          </button>
+          <button type="button" className="secondary-button" onClick={() => setView('home')}>
+            뒤로
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!battle) {
@@ -237,8 +312,11 @@ function App() {
               </button>
             ))}
           </div>
-          <button type="button" onClick={startBattle}>
-            전투 시작
+          <button type="button" onClick={() => setView('trpg-setup')}>
+            TRPG 전투 (그리드)
+          </button>
+          <button type="button" className="secondary-button" onClick={startBattle}>
+            액션 전투 (기존)
           </button>
           <button type="button" className="secondary-button" onClick={() => setView('inventory')}>
             기술 인벤토리 / 세팅
