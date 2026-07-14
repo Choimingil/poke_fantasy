@@ -7,7 +7,8 @@ import { crossTiles, GRID_SIZE, type Coord, type Terrain } from '../game/trpg/ma
 import {
   ARMORS,
   armorName,
-  armorRequiredStrength,
+  armorRequiredAttack,
+  armorRequiredLevel,
   TrpgGame,
   skillMaxUses,
   type ArmorType,
@@ -397,7 +398,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   <span>HP {current.hp}/{current.maxHp}</span>
                   <span>공 {current.attack}</span>
                   <span>마 {current.magic}</span>
-                  <span>근력 {current.strength}</span>
+                  <span>지구력 {current.endurance}</span>
+                  <span>정신력 {Math.round(game.willpower(current) * 100)}%</span>
                   <span>방 {game.effectiveDefense(current)}</span>
                   <span>스피드 {current.speed}</span>
                   <span>이동 {game.moveTiles(current)}</span>
@@ -461,18 +463,18 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   <div className="trpg-swap">
                     <span>방어구 교체:</span>
                     {ARMORS.filter((a) => a.id !== current.armorType).map((a) => {
-                      const req = armorRequiredStrength(a.id);
-                      const locked = current.strength < req;
+                      const req = armorRequiredAttack(a.id);
+                      const locked = current.attack < req;
                       return (
                         <button
                           key={a.id}
                           type="button"
                           disabled={locked}
-                          title={req > 0 ? `요구 근력 ${req}` : '요구 근력 없음'}
+                          title={req > 0 ? `요구 레벨 ${armorRequiredLevel(a.id)} · 요구 공격력 ${req}` : '요구 없음'}
                           onClick={() => onSwapArmor(a.id)}
                         >
                           {a.name}
-                          {req > 0 ? ` (근력 ${req})` : ''}
+                          {req > 0 ? ` (공${req})` : ''}
                         </button>
                       );
                     })}

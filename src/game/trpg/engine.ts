@@ -36,9 +36,14 @@ export function armorName(t: ArmorType): string {
   return ARMORS.find((a) => a.id === t)?.name ?? t;
 }
 
-/** 방어구 착용 요구 근력. */
-export function armorRequiredStrength(t: ArmorType): number {
-  return ARMOR_STATS[t].reqStr;
+/** 방어구 착용 요구 공격력. */
+export function armorRequiredAttack(t: ArmorType): number {
+  return armorAttackReq(t);
+}
+
+/** 방어구 착용 요구 레벨(설계 기준). */
+export function armorRequiredLevel(t: ArmorType): number {
+  return ARMOR_STATS[t].reqLevel;
 }
 
 function isHeavyArmor(t: ArmorType): boolean {
@@ -49,28 +54,52 @@ function isLightArmor(t: ArmorType): boolean {
   return t === 'cloth' || t === 'leather';
 }
 
-/** 방어구별 방어력 보너스 / 이동력 제한(칸, 소수) / 요구 근력. */
-const ARMOR_STATS: Record<ArmorType, { def: number; movePenalty: number; reqStr: number }> = {
-  cloth: { def: 1, movePenalty: 0, reqStr: 0 },
-  leather: { def: 2, movePenalty: 0.5, reqStr: 8 },
-  mail: { def: 3, movePenalty: 1, reqStr: 14 },
-  plate: { def: 4, movePenalty: 1.5, reqStr: 22 },
+// ── 진행/능력치 상수 ────────────────────────────────────────────────
+const STAT_BASE = 5; // 초기 능력치(레벨1)
+const POINTS_PER_LEVEL = 3; // 레벨업당 분배 포인트
+/** 레벨 L에서 한 능력치에 몰빵했을 때의 값(요구치 산정 기준). */
+function fullStatAt(level: number): number {
+  return STAT_BASE + POINTS_PER_LEVEL * (level - 1);
+}
+
+/**
+ * 방어구: 방어력 / 이동력 제한(칸,소수) / 착용 요구 레벨(5단위).
+ * 요구 공격력은 요구 레벨 몰빵 스탯값의 ATTACK_REQ_PERCENT 만큼(천은 요구 없음).
+ * 방어력은 요구 레벨에 비례(=요구 레벨)해 재산정.
+ */
+const ATTACK_REQ_PERCENT = 0.5;
+const ARMOR_STATS: Record<ArmorType, { def: number; movePenalty: number; reqLevel: number }> = {
+  cloth: { def: 1, movePenalty: 0, reqLevel: 1 },
+  leather: { def: 5, movePenalty: 0.5, reqLevel: 5 },
+  mail: { def: 10, movePenalty: 1, reqLevel: 10 },
+  plate: { def: 15, movePenalty: 1.5, reqLevel: 15 },
 };
 
-/** 직업별 기본 근력(진행 시스템 도입 전 임시값). 방어구 착용 가능 범위를 가른다. */
-function baseStrengthFor(jobType: 'melee' | 'ranged' | 'magic'): number {
-  return jobType === 'melee' ? 24 : jobType === 'ranged' ? 16 : 10;
+/** 방어구 착용에 필요한 공격력(천=0, 그 외=요구레벨 몰빵값의 절반). */
+function armorAttackReq(t: ArmorType): number {
+  if (t === 'cloth') return 0;
+  return Math.round(ATTACK_REQ_PERCENT * fullStatAt(ARMOR_STATS[t].reqLevel));
 }
 
-// ── 이동력 밸런스 상수 ──────────────────────────────────────────────
-/** 유효 이동력 상한(칸). 이 값을 넘는 이동력은 페널티 완충용으로만 쓰인다. */
+// ── 이동력 상수 ────────────────────────────────────────────────────
+/** 유효 이동력 상한(칸). 이 값을 넘는 이동력(지구력 초과분)은 페널티 완충용. */
 const MOVE_CAP = 3;
-/** 전직 이동력 강화 비율: 강화 포인트 N점당 원시 이동력 +1칸. */
-const MOVE_POINTS_PER_TILE = 2;
-/** 직업별 기본 이동력(방어구 적용 전). 기본 방어구 착용 시 유효 이동력이 모두 2가 되도록 설정. */
-function baseMoveFor(jobType: 'melee' | 'ranged' | 'magic'): number {
-  return jobType === 'melee' ? 4 : jobType === 'ranged' ? 3 : 2;
+/** 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작). */
+const ENDURANCE_PER_TILE = 15;
+/** 지구력 → 원시 이동력(칸). */
+function moveFromEndurance(endurance: number): number {
+  return 1 + Math.floor((endurance - STAT_BASE) / ENDURANCE_PER_TILE);
 }
+/** 직업별 기본 지구력(진행 시스템 전 임시값). 기본 방어구 착용 시 유효 이동력이 모두 2가 되도록. */
+function baseEnduranceFor(jobType: 'melee' | 'ranged' | 'magic'): number {
+  return jobType === 'melee' ? 50 : jobType === 'ranged' ? 35 : 20;
+}
+
+// ── 정신력 상수 ────────────────────────────────────────────────────
+/** 정신력(디버프/부가효과 무시 확률) 상한. */
+const WILLPOWER_CAP = 0.7;
+/** 이 마력 수치에서 정신력이 상한(70%)에 도달. */
+const WILLPOWER_MAGIC_FOR_CAP = 200;
 
 export interface TrpgUnit {
   id: string;
@@ -82,14 +111,12 @@ export interface TrpgUnit {
   pos: Coord;
   hp: number;
   maxHp: number;
-  attack: number;
-  magic: number;
-  strength: number; // 근력(방어구 착용 요구치 판정)
+  attack: number; // 공격력(물리) + 방어구 착용 요구 판정
+  magic: number; // 마력(마법) + 정신력 산정
+  endurance: number; // 지구력(이동력 산정)
   defense: number; // 방어력 보정치(기본 0, 방어력은 방어구로만; 디버프로 감소 가능)
   speed: number;
-  move: number; // 기본 이동거리(칸). 전사 2, 그 외 1.
-  moveBonusPoints: number; // 전직 강화로 투자한 이동력 포인트(비율 변환). 기본 0.
-  vision: number; // 기본 시야(칸). 기본 5.
+  vision: number; // 시야(칸). 모든 캐릭터 5 고정.
   armorType: ArmorType; // 장착 방어구
   weaponId: string;
   skills: string[];
@@ -190,12 +217,9 @@ export class TrpgGame {
       maxHp: ch.baseStats.hp,
       attack: ch.baseStats.attack,
       magic: unitMagic(ch),
-      strength: baseStrengthFor(job.type),
+      endurance: baseEnduranceFor(job.type),
       defense: 0, // 방어력은 방어구로만(능력치로 올리지 않음)
       speed: ch.baseStats.speed,
-      // 전사(근거리)는 이동력이 높다(2). 그 외 직업은 1.
-      move: baseMoveFor(job.type),
-      moveBonusPoints: 0,
       vision: 5,
       armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'leather' : 'cloth',
       weaponId,
@@ -231,9 +255,14 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 전직 강화 포인트를 비율로 변환해 더한 원시 이동력(상한 적용 전). */
+  /** 지구력에서 산출한 원시 이동력(상한 적용 전). */
   rawMove(unit: TrpgUnit): number {
-    return unit.move + Math.floor(unit.moveBonusPoints / MOVE_POINTS_PER_TILE);
+    return moveFromEndurance(unit.endurance);
+  }
+
+  /** 정신력: 상대 디버프/부가효과를 무시할 확률(마력 기반, 최대 70%). */
+  willpower(unit: TrpgUnit): number {
+    return Math.min(WILLPOWER_CAP, (WILLPOWER_CAP * unit.magic) / WILLPOWER_MAGIC_FOR_CAP);
   }
 
   /** 이번 턴 이동 페널티 합(방어구 제한 + 물 + 비). 소수 허용. */
@@ -260,7 +289,7 @@ export class TrpgGame {
     return Math.floor(this.effectiveMove(unit));
   }
 
-  /** 실제 방어력 = 방어구 보너스(천+1/가죽+2/중갑+3/판금+4) + 보정치(디버프), 최소 0. */
+  /** 실제 방어력 = 방어구 보너스(천1/가죽5/중갑10/판금15) + 보정치(디버프), 최소 0. */
   effectiveDefense(unit: TrpgUnit): number {
     return Math.max(0, ARMOR_STATS[unit.armorType].def + unit.defense);
   }
@@ -591,8 +620,12 @@ export class TrpgGame {
     } else if (skill.category === 'debuff') {
       const target = targetId ? this.unitById(targetId) : undefined;
       if (target) {
-        target.defense -= 1; // 방어력 보정치를 낮춤(실효 방어력 -1, 최소 0)
-        lines.push(`${unit.name}의 ${skill.name}! ${target.name}의 방어력이 하락했다.`);
+        if (this.rng() < this.willpower(target)) {
+          lines.push(`${unit.name}의 ${skill.name}! 하지만 ${target.name}가 정신력으로 저항했다.`);
+        } else {
+          target.defense -= 1; // 방어력 보정치를 낮춤(실효 방어력 -1, 최소 0)
+          lines.push(`${unit.name}의 ${skill.name}! ${target.name}의 방어력이 하락했다.`);
+        }
         affected.push(target.id);
       }
     } else {
@@ -632,14 +665,14 @@ export class TrpgGame {
     return { ok: true, lines };
   }
 
-  /** 방어구 교체(그 턴 공격 기술 사용 불가). 요구 근력을 만족해야 한다. */
+  /** 방어구 교체(그 턴 공격 기술 사용 불가). 요구 공격력을 만족해야 한다. */
   swapArmor(armorType: ArmorType): { ok: boolean; lines: string[] } {
     const unit = this.current();
     const lines: string[] = [];
     if (!unit) return { ok: false, lines };
-    const reqStr = ARMOR_STATS[armorType].reqStr;
-    if (unit.strength < reqStr) {
-      lines.push(`${unit.name}: ${armorName(armorType)} 착용에 필요한 근력(${reqStr})이 부족하다. (근력 ${unit.strength})`);
+    const req = armorAttackReq(armorType);
+    if (unit.attack < req) {
+      lines.push(`${unit.name}: ${armorName(armorType)} 착용에 필요한 공격력(${req})이 부족하다. (공격력 ${unit.attack})`);
       return { ok: false, lines };
     }
     unit.armorType = armorType;
