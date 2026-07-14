@@ -81,8 +81,11 @@ const MOVE_CAP = 3;
 /**
  * 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작). 연속값.
  * 방어구 무게로 인한 이동력/지구력 디버프는 없음 → 이동력은 순수 지구력에서만 산출.
+ * 보정(만렙 100, 297포인트 분배):
+ *  - 근력 250 몰빵(지구력 57) → 이동력 1.
+ *  - 근력 100 + 나머지 지구력(지구력 207) → 이동력 3.
  */
-const ENDURANCE_PER_TILE = 150;
+const ENDURANCE_PER_TILE = 100;
 /** 지구력 → 원시 이동력(칸, 연속값). floor는 최종 칸수 계산에서만 적용. */
 function moveFromEndurance(endurance: number): number {
   return 1 + (endurance - STAT_BASE) / ENDURANCE_PER_TILE;
