@@ -124,7 +124,8 @@ export class TrpgGame {
       magic: unitMagic(ch),
       defense: ch.baseStats.defense,
       speed: ch.baseStats.speed,
-      move: 1,
+      // 전사(근거리)는 이동력이 높다(마름모 반경 3). 그 외 직업은 1.
+      move: job.type === 'melee' ? 3 : 1,
       weaponId,
       skills: [...ch.skills],
       skillUses,
@@ -167,26 +168,86 @@ export class TrpgGame {
     return weaponRange(this.weaponOf(unit)) + (isAdjacentToCliff(this.map, unit.pos) ? 1 : 0);
   }
 
-  /** 이동 가능한 칸(이동력 예산 내, 절벽·물·점유 칸 제외). */
-  reachableTiles(unit: TrpgUnit): Coord[] {
+  /**
+   * 이동력 예산 내 각 칸까지의 최단 이동비용/경로를 다익스트라로 계산한다.
+   * - 절벽은 통과 불가, 물은 진입비용 2.
+   * - 적 유닛이 있는 칸은 장애물(통과 불가) → 넘어갈 수 없고 돌아가야 한다.
+   * - 아군 유닛 칸은 통과는 되지만 그 칸에 멈출 수는 없다.
+   */
+  private computeDistances(unit: TrpgUnit): { dist: Map<string, number>; prev: Map<string, string> } {
+    const dist = new Map<string, number>();
+    const prev = new Map<string, string>();
+    const visited = new Set<string>();
+    const startKey = `${unit.pos.r},${unit.pos.c}`;
+    dist.set(startKey, 0);
     const budget = unit.move;
+
+    while (true) {
+      let curKey: string | null = null;
+      let curDist = Infinity;
+      for (const [k, d] of dist) {
+        if (!visited.has(k) && d < curDist) {
+          curDist = d;
+          curKey = k;
+        }
+      }
+      if (curKey === null) break;
+      visited.add(curKey);
+      const [r, c] = curKey.split(',').map(Number);
+      for (const [dr, dc] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (!inBounds(nr, nc)) continue;
+        const terrain = this.map[nr][nc];
+        if (!isEnterable(terrain)) continue; // 절벽
+        const occ = this.unitAt(nr, nc);
+        if (occ && occ.team !== unit.team) continue; // 적 = 장애물, 통과 불가
+        const nd = curDist + moveCost(terrain);
+        if (nd > budget) continue;
+        const nk = `${nr},${nc}`;
+        if (nd < (dist.get(nk) ?? Infinity)) {
+          dist.set(nk, nd);
+          prev.set(nk, curKey);
+        }
+      }
+    }
+    return { dist, prev };
+  }
+
+  /** 이동 가능한 도착 칸(비용 예산 내, 빈 칸만). 마름모 형태로 퍼진다. */
+  reachableTiles(unit: TrpgUnit): Coord[] {
+    const { dist } = this.computeDistances(unit);
     const result: Coord[] = [];
-    for (const [dr, dc] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ]) {
-      const r = unit.pos.r + dr;
-      const c = unit.pos.c + dc;
-      if (!inBounds(r, c)) continue;
-      const terrain = this.map[r][c];
-      if (!isEnterable(terrain)) continue;
-      if (moveCost(terrain) > budget) continue; // 물(2)은 이동 1로 진입 불가
-      if (this.unitAt(r, c)) continue;
+    for (const [k, d] of dist) {
+      if (d <= 0 || d > unit.move) continue;
+      const [r, c] = k.split(',').map(Number);
+      if (this.unitAt(r, c)) continue; // 아군 칸 등 점유 칸엔 멈출 수 없음
       result.push({ r, c });
     }
     return result;
+  }
+
+  /** 출발 칸부터 목표 칸까지의 경로(양 끝 포함). 도달 불가면 null. */
+  pathTo(unit: TrpgUnit, coord: Coord): Coord[] | null {
+    const { prev } = this.computeDistances(unit);
+    const startKey = `${unit.pos.r},${unit.pos.c}`;
+    const goalKey = `${coord.r},${coord.c}`;
+    if (goalKey === startKey) return [{ ...unit.pos }];
+    if (!prev.has(goalKey)) return null;
+    const path: Coord[] = [];
+    let k: string | undefined = goalKey;
+    while (k) {
+      const [r, c] = k.split(',').map(Number);
+      path.push({ r, c });
+      if (k === startKey) break;
+      k = prev.get(k);
+    }
+    return path.reverse();
   }
 
   /** 원거리 시야가 나무/절벽에 막히는지. */
@@ -389,14 +450,24 @@ export class TrpgGame {
     return { ok: true, lines };
   }
 
-  moveTo(coord: Coord): boolean {
+  /**
+   * 이동을 예약하고 경로를 반환한다(양 끝 포함). 실제 위치 갱신은 호출측(애니메이션)에서
+   * 마지막 칸으로 설정한다. 도달 불가/이미 이동함이면 null.
+   */
+  planMoveTo(coord: Coord): Coord[] | null {
     const unit = this.current();
-    if (!unit || this.movedThisTurn) return false;
-    if (!this.reachableTiles(unit).some((t) => t.r === coord.r && t.c === coord.c)) return false;
+    if (!unit || this.movedThisTurn) return null;
+    if (!this.reachableTiles(unit).some((t) => t.r === coord.r && t.c === coord.c)) return null;
+    const path = this.pathTo(unit, coord);
+    if (!path) return null;
     this.moveFrom = { ...unit.pos };
-    unit.pos = { ...coord };
     this.movedThisTurn = true;
-    return true;
+    return path;
+  }
+
+  /** 유닛 위치를 즉시 지정(애니메이션 완료 후/헤드리스 처리용). */
+  setUnitPos(unit: TrpgUnit, coord: Coord) {
+    unit.pos = { ...coord };
   }
 
   /** 이동을 되돌려(뒤로가기) 이동 전 위치/상태로 복구한다. 아직 행동하지 않았을 때만 가능. */
@@ -465,12 +536,12 @@ export class TrpgGame {
     return { lines };
   }
 
-  /** AI 이동: 가장 가까운 적에게 한 칸 다가간다. 이동했으면 true. */
-  aiMoveToward(): boolean {
+  /** AI 이동 계획: 가장 가까운 적에게 최대한 다가가는 칸으로의 경로를 반환(예약만, 위치는 미갱신). */
+  aiPlanMove(): Coord[] | null {
     const unit = this.current();
-    if (!unit) return false;
+    if (!unit) return null;
     const foes = this.units.filter((u) => u.alive && u.team !== unit.team);
-    if (foes.length === 0) return false;
+    if (foes.length === 0) return null;
     const nearest = foes.reduce((a, b) => (manhattan(unit.pos, a.pos) <= manhattan(unit.pos, b.pos) ? a : b));
     let best: Coord | null = null;
     let bestDist = manhattan(unit.pos, nearest.pos);
@@ -481,21 +552,21 @@ export class TrpgGame {
         best = t;
       }
     }
-    if (best) {
-      this.moveTo(best);
-      this.log.push(`${unit.name}가 이동했다.`);
-      return true;
-    }
-    return false;
+    if (!best) return null;
+    return this.planMoveTo(best);
   }
 
-  /** 적 턴 일괄 처리(헤드리스/시뮬레이션용). UI는 aiMoveToward/aiTryAttack를 분리해 애니메이션한다. */
+  /** 적 턴 일괄 처리(헤드리스/시뮬레이션용). UI는 aiPlanMove/aiTryAttack를 분리해 애니메이션한다. */
   runEnemyTurn(): StepResult {
     const unit = this.current();
     if (!unit || unit.team !== 'enemy') return { lines: [] };
     const attack = this.aiTryAttack();
     if (attack.lines.length > 0) return attack;
-    this.aiMoveToward();
+    const path = this.aiPlanMove();
+    if (path && path.length > 0) {
+      this.setUnitPos(unit, path[path.length - 1]);
+      this.log.push(`${unit.name}가 이동했다.`);
+    }
     return this.aiTryAttack();
   }
 }

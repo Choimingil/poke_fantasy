@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getJob } from '../game/data/jobs';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
@@ -63,6 +63,18 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     setMotion({ attackerId, targetIds, id: motionCounter.current });
   };
 
+  // 경로(양 끝 포함)를 따라 유닛을 한 칸씩 이동시키며 애니메이션한다.
+  const animatePath = useCallback(
+    async (unit: TrpgUnit, path: Coord[]) => {
+      for (let i = 1; i < path.length; i += 1) {
+        game.setUnitPos(unit, path[i]);
+        rerender();
+        await delay(170);
+      }
+    },
+    [game],
+  );
+
   const current = game.current();
   const isPlayerTurn = !!current && current.team === 'player' && !game.finished && !busyRef.current;
   const currentId = current?.id ?? null;
@@ -89,11 +101,11 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
       if (first.lines.length > 0) {
         await showAttack(first);
       } else {
-        const moved = game.aiMoveToward();
-        if (moved) {
+        const path = game.aiPlanMove();
+        if (path && path.length > 1) {
           setMessage(`${cur.name}가 이동했다.`);
-          rerender();
-          await delay(520);
+          await animatePath(cur, path);
+          await delay(150);
         }
         const atk = game.aiTryAttack();
         if (atk.lines.length > 0) {
@@ -114,7 +126,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     return () => {
       active = false;
     };
-  }, [currentId, game]);
+  }, [currentId, game, animatePath]);
 
   const finishPlayerTurn = () => {
     game.endTurn();
@@ -154,13 +166,19 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
       ? new Set(crossTiles(hoverCell, selSkill.aoeRadius ?? 1).map((t) => `${t.r},${t.c}`))
       : new Set<string>();
 
-  const onCellClick = (r: number, c: number) => {
+  const onCellClick = async (r: number, c: number) => {
     if (!isPlayerTurn || !current) return;
     if (phase === 'move') {
       if (reachSet.has(`${r},${c}`)) {
-        game.moveTo({ r, c });
-        setPhase('action');
-        rerender();
+        const path = game.planMoveTo({ r, c });
+        if (path) {
+          busyRef.current = true;
+          rerender();
+          await animatePath(current, path);
+          busyRef.current = false;
+          setPhase('action');
+          rerender();
+        }
       }
       return;
     }
@@ -258,7 +276,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                     key={key}
                     className={`${cls}${isTarget ? ' targetable' : ''}`}
                     style={{ left: c * CELL, top: r * CELL, width: CELL, height: CELL }}
-                    onClick={() => onCellClick(r, c)}
+                    onClick={() => void onCellClick(r, c)}
                     onMouseEnter={() => isAoe && setHoverCell({ r, c })}
                   >
                     <span className="terrain-icon">{TERRAIN_LABEL[terrain]}</span>
