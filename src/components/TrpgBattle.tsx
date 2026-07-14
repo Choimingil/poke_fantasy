@@ -42,26 +42,30 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   }
   const game = gameRef.current;
 
-  const [tick, setTick] = useState(0);
+  const [, setTick] = useState(0);
   const rerender = () => setTick((t) => t + 1);
   const [phase, setPhase] = useState<Phase>('move');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [message, setMessage] = useState('전투 시작!');
   const busyRef = useRef(false);
+  const processingRef = useRef<string | null>(null);
 
   const current = game.current();
   const isPlayerTurn = !!current && current.team === 'player' && !game.finished && !busyRef.current;
+  const currentId = current?.id ?? null;
 
-  // 적 턴: 이동 → 공격 순으로 애니메이션하며 처리
+  // 적 턴: 이동 → 공격 순으로 애니메이션하며 처리.
+  // 의존성은 "현재 유닛 id"라서 처리 중 내부 rerender()로는 재실행되지 않는다.
   useEffect(() => {
-    if (game.finished) return;
+    if (game.finished) return undefined;
     const cur = game.current();
-    if (!cur || cur.team !== 'enemy' || busyRef.current) return undefined;
+    if (!cur || cur.team !== 'enemy') return undefined;
+    if (processingRef.current === cur.id) return undefined; // 이미 이 유닛 처리 중
+    processingRef.current = cur.id;
     busyRef.current = true;
-    let cancelled = false;
+    let active = true;
     (async () => {
       await delay(450);
-      if (cancelled) return;
       const first = game.aiTryAttack();
       if (first.lines.length > 0) {
         setMessage(first.lines.join(' '));
@@ -79,16 +83,17 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
         rerender();
         await delay(650);
       }
-      if (cancelled) return;
+      if (!active) return;
       game.endTurn();
-      setPhase('move');
+      processingRef.current = null;
       busyRef.current = false;
+      setPhase('move');
       rerender();
     })();
     return () => {
-      cancelled = true;
+      active = false;
     };
-  }, [tick, game]);
+  }, [currentId, game]);
 
   const finishPlayerTurn = () => {
     game.endTurn();
