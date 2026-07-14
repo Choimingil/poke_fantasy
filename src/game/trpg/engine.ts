@@ -36,6 +36,11 @@ export function armorName(t: ArmorType): string {
   return ARMORS.find((a) => a.id === t)?.name ?? t;
 }
 
+/** 방어구 착용 요구 근력. */
+export function armorRequiredStrength(t: ArmorType): number {
+  return ARMOR_STATS[t].reqStr;
+}
+
 function isHeavyArmor(t: ArmorType): boolean {
   return t === 'mail' || t === 'plate';
 }
@@ -44,13 +49,18 @@ function isLightArmor(t: ArmorType): boolean {
   return t === 'cloth' || t === 'leather';
 }
 
-/** 방어구별 방어력 보너스 / 이동력 제한(칸, 소수 허용). */
-const ARMOR_STATS: Record<ArmorType, { def: number; movePenalty: number }> = {
-  cloth: { def: 1, movePenalty: 0 },
-  leather: { def: 2, movePenalty: 0.5 },
-  mail: { def: 3, movePenalty: 1 },
-  plate: { def: 4, movePenalty: 1.5 },
+/** 방어구별 방어력 보너스 / 이동력 제한(칸, 소수) / 요구 근력. */
+const ARMOR_STATS: Record<ArmorType, { def: number; movePenalty: number; reqStr: number }> = {
+  cloth: { def: 1, movePenalty: 0, reqStr: 0 },
+  leather: { def: 2, movePenalty: 0.5, reqStr: 8 },
+  mail: { def: 3, movePenalty: 1, reqStr: 14 },
+  plate: { def: 4, movePenalty: 1.5, reqStr: 22 },
 };
+
+/** 직업별 기본 근력(진행 시스템 도입 전 임시값). 방어구 착용 가능 범위를 가른다. */
+function baseStrengthFor(jobType: 'melee' | 'ranged' | 'magic'): number {
+  return jobType === 'melee' ? 24 : jobType === 'ranged' ? 16 : 10;
+}
 
 // ── 이동력 밸런스 상수 ──────────────────────────────────────────────
 /** 유효 이동력 상한(칸). 이 값을 넘는 이동력은 페널티 완충용으로만 쓰인다. */
@@ -74,7 +84,8 @@ export interface TrpgUnit {
   maxHp: number;
   attack: number;
   magic: number;
-  defense: number;
+  strength: number; // 근력(방어구 착용 요구치 판정)
+  defense: number; // 방어력 보정치(기본 0, 방어력은 방어구로만; 디버프로 감소 가능)
   speed: number;
   move: number; // 기본 이동거리(칸). 전사 2, 그 외 1.
   moveBonusPoints: number; // 전직 강화로 투자한 이동력 포인트(비율 변환). 기본 0.
@@ -179,7 +190,8 @@ export class TrpgGame {
       maxHp: ch.baseStats.hp,
       attack: ch.baseStats.attack,
       magic: unitMagic(ch),
-      defense: ch.baseStats.defense,
+      strength: baseStrengthFor(job.type),
+      defense: 0, // 방어력은 방어구로만(능력치로 올리지 않음)
       speed: ch.baseStats.speed,
       // 전사(근거리)는 이동력이 높다(2). 그 외 직업은 1.
       move: baseMoveFor(job.type),
@@ -248,9 +260,9 @@ export class TrpgGame {
     return Math.floor(this.effectiveMove(unit));
   }
 
-  /** 방어구 보너스를 반영한 실제 방어력(천+1/가죽+2/중갑+3/판금+4). */
+  /** 실제 방어력 = 방어구 보너스(천+1/가죽+2/중갑+3/판금+4) + 보정치(디버프), 최소 0. */
   effectiveDefense(unit: TrpgUnit): number {
-    return unit.defense + ARMOR_STATS[unit.armorType].def;
+    return Math.max(0, ARMOR_STATS[unit.armorType].def + unit.defense);
   }
 
   /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 2칸으로 제한. */
@@ -579,7 +591,7 @@ export class TrpgGame {
     } else if (skill.category === 'debuff') {
       const target = targetId ? this.unitById(targetId) : undefined;
       if (target) {
-        target.defense = Math.max(1, Math.round(target.defense * 0.8));
+        target.defense -= 1; // 방어력 보정치를 낮춤(실효 방어력 -1, 최소 0)
         lines.push(`${unit.name}의 ${skill.name}! ${target.name}의 방어력이 하락했다.`);
         affected.push(target.id);
       }
@@ -620,11 +632,16 @@ export class TrpgGame {
     return { ok: true, lines };
   }
 
-  /** 방어구 교체(그 턴 공격 기술 사용 불가). */
+  /** 방어구 교체(그 턴 공격 기술 사용 불가). 요구 근력을 만족해야 한다. */
   swapArmor(armorType: ArmorType): { ok: boolean; lines: string[] } {
     const unit = this.current();
     const lines: string[] = [];
     if (!unit) return { ok: false, lines };
+    const reqStr = ARMOR_STATS[armorType].reqStr;
+    if (unit.strength < reqStr) {
+      lines.push(`${unit.name}: ${armorName(armorType)} 착용에 필요한 근력(${reqStr})이 부족하다. (근력 ${unit.strength})`);
+      return { ok: false, lines };
+    }
     unit.armorType = armorType;
     lines.push(`${unit.name}가 방어구를 ${armorName(armorType)}(으)로 교체했다. (이번 턴 공격 불가)`);
     this.actedThisTurn = true;

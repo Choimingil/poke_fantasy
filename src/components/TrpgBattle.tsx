@@ -7,6 +7,7 @@ import { crossTiles, GRID_SIZE, type Coord, type Terrain } from '../game/trpg/ma
 import {
   ARMORS,
   armorName,
+  armorRequiredStrength,
   TrpgGame,
   skillMaxUses,
   type ArmorType,
@@ -396,6 +397,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   <span>HP {current.hp}/{current.maxHp}</span>
                   <span>공 {current.attack}</span>
                   <span>마 {current.magic}</span>
+                  <span>근력 {current.strength}</span>
                   <span>방 {game.effectiveDefense(current)}</span>
                   <span>스피드 {current.speed}</span>
                   <span>이동 {game.moveTiles(current)}</span>
@@ -458,11 +460,22 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   </div>
                   <div className="trpg-swap">
                     <span>방어구 교체:</span>
-                    {ARMORS.filter((a) => a.id !== current.armorType).map((a) => (
-                      <button key={a.id} type="button" onClick={() => onSwapArmor(a.id)}>
-                        {a.name}
-                      </button>
-                    ))}
+                    {ARMORS.filter((a) => a.id !== current.armorType).map((a) => {
+                      const req = armorRequiredStrength(a.id);
+                      const locked = current.strength < req;
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          disabled={locked}
+                          title={req > 0 ? `요구 근력 ${req}` : '요구 근력 없음'}
+                          onClick={() => onSwapArmor(a.id)}
+                        >
+                          {a.name}
+                          {req > 0 ? ` (근력 ${req})` : ''}
+                        </button>
+                      );
+                    })}
                   </div>
                   <div className="trpg-action-row">
                     {game.movedThisTurn && (
