@@ -22,6 +22,23 @@ import {
 export type Team = 'player' | 'enemy';
 export type Weather = 'clear' | 'rain' | 'snow';
 export type TimeOfDay = 'day' | 'night';
+export type ArmorType = 'cloth' | 'leather' | 'mail' | 'plate';
+
+/** 방어구 종류. 중갑·판금은 무겁다(이동력 -1, 방어력 +5). */
+export const ARMORS: { id: ArmorType; name: string }[] = [
+  { id: 'cloth', name: '천' },
+  { id: 'leather', name: '가죽' },
+  { id: 'mail', name: '중갑' },
+  { id: 'plate', name: '판금' },
+];
+
+export function armorName(t: ArmorType): string {
+  return ARMORS.find((a) => a.id === t)?.name ?? t;
+}
+
+function isHeavyArmor(t: ArmorType): boolean {
+  return t === 'mail' || t === 'plate';
+}
 
 export interface TrpgUnit {
   id: string;
@@ -39,7 +56,7 @@ export interface TrpgUnit {
   speed: number;
   move: number; // 기본 이동거리(칸). 전사 2, 그 외 1.
   vision: number; // 기본 시야(칸). 기본 5.
-  armor: 'light' | 'heavy'; // 방어구 무게(전사=중장, 그 외=경장)
+  armorType: ArmorType; // 장착 방어구
   weaponId: string;
   skills: string[];
   skillUses: Record<string, number>;
@@ -143,7 +160,7 @@ export class TrpgGame {
       // 전사(근거리)는 이동력이 높다(2). 그 외 직업은 1.
       move: job.type === 'melee' ? 2 : 1,
       vision: 5,
-      armor: job.type === 'melee' ? 'heavy' : 'light',
+      armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'leather' : 'cloth',
       weaponId,
       skills: [...ch.skills],
       skillUses,
@@ -154,10 +171,10 @@ export class TrpgGame {
   }
 
   private buildOrder() {
-    // 눈: 라운드 시작 시 경장 방어구 유닛의 체력을 1/16 감소.
+    // 눈: 라운드 시작 시 가벼운 방어구(천/가죽) 유닛의 체력을 1/16 감소.
     if (this.weather === 'snow') {
       for (const u of this.units) {
-        if (!u.alive || u.armor !== 'light') continue;
+        if (!u.alive || isHeavyArmor(u.armorType)) continue;
         const dmg = Math.max(1, Math.floor(u.maxHp / 16));
         u.hp = Math.max(0, u.hp - dmg);
         this.log.push(`${u.name}가 눈보라로 체력 ${dmg} 감소.`);
@@ -177,12 +194,18 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 날씨/물 지형을 반영한 실제 이동력(최소 1). */
+  /** 방어구/날씨/물 지형을 반영한 실제 이동력(최소 1). */
   effectiveMove(unit: TrpgUnit): number {
     let m = unit.move;
+    if (isHeavyArmor(unit.armorType)) m -= 1; // 중갑/판금 -1
     if (this.map[unit.pos.r][unit.pos.c] === 'water') m -= 1; // 물에 있으면 -1
-    if (this.weather === 'rain' && unit.armor === 'heavy') m -= 1; // 비 + 중장 -1
+    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) m -= 1; // 비 + 중갑/판금 -1
     return Math.max(1, m);
+  }
+
+  /** 방어구 보너스를 반영한 실제 방어력(중갑/판금 +5). */
+  effectiveDefense(unit: TrpgUnit): number {
+    return unit.defense + (isHeavyArmor(unit.armorType) ? 5 : 0);
   }
 
   /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 2칸으로 제한. */
@@ -347,7 +370,7 @@ export class TrpgGame {
 
     const atkStat = (skill.type === 'magic' ? attacker.magic : attacker.attack) * attacker.attackMult;
     const power = skill.power + weapon.basePower * 0.5;
-    const defense = target.defense * (proc.pierce ? 0.5 : 1);
+    const defense = this.effectiveDefense(target) * (proc.pierce ? 0.5 : 1);
     const raw = (atkStat * power) / (defense + 50);
 
     // 무기 상성(들고 있는 무기끼리): 근거리>원거리>마법>근거리
@@ -505,6 +528,18 @@ export class TrpgGame {
     unit.weaponId = weaponId;
     lines.push(`${unit.name}가 무기를 ${weapon.name}(으)로 교체했다. (이번 턴 공격 불가)`);
     this.actedThisTurn = true; // 공격 기술 사용 불가 = 행동 종료
+    for (const l of lines) this.log.push(l);
+    return { ok: true, lines };
+  }
+
+  /** 방어구 교체(그 턴 공격 기술 사용 불가). */
+  swapArmor(armorType: ArmorType): { ok: boolean; lines: string[] } {
+    const unit = this.current();
+    const lines: string[] = [];
+    if (!unit) return { ok: false, lines };
+    unit.armorType = armorType;
+    lines.push(`${unit.name}가 방어구를 ${armorName(armorType)}(으)로 교체했다. (이번 턴 공격 불가)`);
+    this.actedThisTurn = true;
     for (const l of lines) this.log.push(l);
     return { ok: true, lines };
   }

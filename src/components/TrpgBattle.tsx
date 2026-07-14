@@ -5,8 +5,11 @@ import { getWeapon } from '../game/data/weapons';
 import { cloneRosterCharacter } from '../game/data/roster';
 import { crossTiles, GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
 import {
+  ARMORS,
+  armorName,
   TrpgGame,
   skillMaxUses,
+  type ArmorType,
   type StepResult,
   type TimeOfDay,
   type TrpgUnit,
@@ -245,6 +248,13 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     if (res.ok) finishPlayerTurn();
   };
 
+  const onSwapArmor = (armorType: ArmorType) => {
+    if (!current) return;
+    const res = game.swapArmor(armorType);
+    setMessage(res.lines.join(' '));
+    if (res.ok) finishPlayerTurn();
+  };
+
   const onUndoMove = () => {
     if (game.undoMove()) {
       setMessage('이동을 취소했습니다.');
@@ -362,11 +372,12 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   <span>HP {current.hp}/{current.maxHp}</span>
                   <span>공 {current.attack}</span>
                   <span>마 {current.magic}</span>
-                  <span>방 {current.defense}</span>
+                  <span>방 {game.effectiveDefense(current)}</span>
                   <span>스피드 {current.speed}</span>
                   <span>이동 {game.effectiveMove(current)}</span>
                   <span>시야 {game.effectiveVision(current)}</span>
                   <span>무기 {getWeapon(current.weaponId).name}(사거리 {game.rangeOf(current)})</span>
+                  <span>방어구 {armorName(current.armorType)}</span>
                 </div>
               </div>
 
@@ -413,6 +424,14 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                     {SWAP_WEAPONS.filter((w) => w !== current.weaponId).map((w) => (
                       <button key={w} type="button" onClick={() => onSwap(w)}>
                         {getWeapon(w).name}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="trpg-swap">
+                    <span>방어구 교체:</span>
+                    {ARMORS.filter((a) => a.id !== current.armorType).map((a) => (
+                      <button key={a.id} type="button" onClick={() => onSwapArmor(a.id)}>
+                        {a.name}
                       </button>
                     ))}
                   </div>
