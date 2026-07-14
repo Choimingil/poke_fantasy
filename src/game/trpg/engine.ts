@@ -40,6 +40,10 @@ function isHeavyArmor(t: ArmorType): boolean {
   return t === 'mail' || t === 'plate';
 }
 
+function isLightArmor(t: ArmorType): boolean {
+  return t === 'cloth' || t === 'leather';
+}
+
 export interface TrpgUnit {
   id: string;
   name: string;
@@ -175,7 +179,7 @@ export class TrpgGame {
     // 눈: 라운드 시작 시 가벼운 방어구(천/가죽) 유닛의 체력을 1/16 감소.
     if (this.weather === 'snow') {
       for (const u of this.units) {
-        if (!u.alive || isHeavyArmor(u.armorType)) continue;
+        if (!u.alive || !isLightArmor(u.armorType)) continue;
         const dmg = Math.max(1, Math.floor(u.maxHp / 16));
         u.hp = Math.max(0, u.hp - dmg);
         this.log.push(`${u.name}가 눈보라로 체력 ${dmg} 감소.`);
