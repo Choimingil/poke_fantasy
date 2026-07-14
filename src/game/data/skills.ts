@@ -42,7 +42,7 @@ const SKILLS: Skill[] = [
   { id: 'strat_scheme', name: '신산', type: 'magic', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['east_strategist'] },
 
   // 주술사(east_shaman)
-  { id: 'fire_bolt', name: '화염구', type: 'magic', category: 'attack', power: 55, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 55', typeLabel: '마법', learnableBy: ['east_shaman'] },
+  { id: 'fire_bolt', name: '화염구', type: 'magic', category: 'attack', power: 55, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 55, 십자 범위(선택 칸 + 상하좌우 1칸) 광역', typeLabel: '마법', aoeRadius: 1, learnableBy: ['east_shaman'] },
   { id: 'shaman_frost', name: '빙결술', type: 'magic', category: 'attack', power: 50, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 50, 15% 확률로 수면', typeLabel: '마법', statusEffect: { effect: 'sleep', chance: 0.15 }, learnableBy: ['east_shaman'] },
   { id: 'shaman_curse', name: '저주', type: 'magic', category: 'attack', power: 45, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 45, 35% 확률로 중독', typeLabel: '마법', statusEffect: { effect: 'poison', chance: 0.35 }, learnableBy: ['east_shaman'] },
   { id: 'shaman_thunder', name: '뇌격', type: 'magic', category: 'attack', power: 60, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 60, 25% 확률로 마비', typeLabel: '마법', statusEffect: { effect: 'paralysis', chance: 0.25 }, learnableBy: ['east_shaman'] },

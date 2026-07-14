@@ -3,8 +3,8 @@ import { getJob } from '../game/data/jobs';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { cloneRosterCharacter } from '../game/data/roster';
-import { GRID_SIZE, type Terrain } from '../game/trpg/map';
-import { TrpgGame, skillMaxUses, type TrpgUnit, type UnitDef } from '../game/trpg/engine';
+import { crossTiles, GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
+import { TrpgGame, skillMaxUses, type StepResult, type TrpgUnit, type UnitDef } from '../game/trpg/engine';
 import { TrainerSprite, type Gender } from './TrainerSprite';
 
 export interface PartyMember {
@@ -27,6 +27,11 @@ const VIEW = CELL * VIEW_TILES;
 const WORLD = CELL * GRID_SIZE;
 
 type Phase = 'move' | 'action' | 'target';
+interface Motion {
+  attackerId?: string;
+  targetIds: string[];
+  id: number;
+}
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -47,41 +52,57 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   const [phase, setPhase] = useState<Phase>('move');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null);
   const [message, setMessage] = useState('전투 시작!');
+  const [motion, setMotion] = useState<Motion | null>(null);
+  const [hoverCell, setHoverCell] = useState<Coord | null>(null);
   const busyRef = useRef(false);
   const processingRef = useRef<string | null>(null);
+  const motionCounter = useRef(0);
+
+  const playMotion = (attackerId?: string, targetIds: string[] = []) => {
+    motionCounter.current += 1;
+    setMotion({ attackerId, targetIds, id: motionCounter.current });
+  };
 
   const current = game.current();
   const isPlayerTurn = !!current && current.team === 'player' && !game.finished && !busyRef.current;
   const currentId = current?.id ?? null;
 
-  // 적 턴: 이동 → 공격 순으로 애니메이션하며 처리.
-  // 의존성은 "현재 유닛 id"라서 처리 중 내부 rerender()로는 재실행되지 않는다.
+  // 적 턴: 이동 → 공격 순으로 애니메이션하며 처리. 의존성은 "현재 유닛 id".
   useEffect(() => {
     if (game.finished) return undefined;
     const cur = game.current();
     if (!cur || cur.team !== 'enemy') return undefined;
-    if (processingRef.current === cur.id) return undefined; // 이미 이 유닛 처리 중
+    if (processingRef.current === cur.id) return undefined;
     processingRef.current = cur.id;
     busyRef.current = true;
     let active = true;
+    const showAttack = async (res: StepResult) => {
+      setMessage(res.lines.join(' '));
+      playMotion(res.attackerId, res.targetIds);
+      rerender();
+      await delay(720);
+      setMotion(null);
+    };
     (async () => {
-      await delay(450);
+      await delay(400);
       const first = game.aiTryAttack();
       if (first.lines.length > 0) {
-        setMessage(first.lines.join(' '));
-        rerender();
-        await delay(750);
+        await showAttack(first);
       } else {
         const moved = game.aiMoveToward();
         if (moved) {
           setMessage(`${cur.name}가 이동했다.`);
           rerender();
-          await delay(550);
+          await delay(520);
         }
         const atk = game.aiTryAttack();
-        setMessage(atk.lines.length > 0 ? atk.lines.join(' ') : `${cur.name}가 대기했다.`);
-        rerender();
-        await delay(650);
+        if (atk.lines.length > 0) {
+          await showAttack(atk);
+        } else {
+          setMessage(`${cur.name}가 대기했다.`);
+          rerender();
+          await delay(450);
+        }
       }
       if (!active) return;
       game.endTurn();
@@ -98,17 +119,40 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   const finishPlayerTurn = () => {
     game.endTurn();
     setSelectedSkill(null);
+    setHoverCell(null);
     setPhase('move');
     rerender();
   };
 
+  // 플레이어 공격 결과를 모션과 함께 보여준 뒤 턴을 종료한다.
+  const resolvePlayerAttack = async (res: StepResult) => {
+    busyRef.current = true;
+    setMessage(res.lines.join(' '));
+    playMotion(res.attackerId, res.targetIds);
+    rerender();
+    await delay(560);
+    setMotion(null);
+    busyRef.current = false;
+    finishPlayerTurn();
+  };
+
+  const selSkill = selectedSkill ? getSkill(selectedSkill) : null;
+  const isAoe = !!selSkill?.aoeRadius;
+
   const reachable = isPlayerTurn && phase === 'move' && current ? game.reachableTiles(current) : [];
   const reachSet = new Set(reachable.map((t) => `${t.r},${t.c}`));
-  const targets =
-    isPlayerTurn && phase === 'target' && current && selectedSkill
-      ? game.targetsFor(current, getSkill(selectedSkill))
-      : [];
-  const targetIds = new Set(targets.map((t) => t.id));
+
+  const singleTargets =
+    isPlayerTurn && phase === 'target' && current && selSkill && !isAoe ? game.targetsFor(current, selSkill) : [];
+  const targetIds = new Set(singleTargets.map((t) => t.id));
+
+  const aoeCenters =
+    isPlayerTurn && phase === 'target' && current && selSkill && isAoe ? game.aoeCenters(current, selSkill) : [];
+  const centerSet = new Set(aoeCenters.map((t) => `${t.r},${t.c}`));
+  const previewSet =
+    isAoe && hoverCell && selSkill
+      ? new Set(crossTiles(hoverCell, selSkill.aoeRadius ?? 1).map((t) => `${t.r},${t.c}`))
+      : new Set<string>();
 
   const onCellClick = (r: number, c: number) => {
     if (!isPlayerTurn || !current) return;
@@ -120,13 +164,13 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
       }
       return;
     }
-    if (phase === 'target') {
-      const unit = game.unitAt(r, c);
-      if (unit && targetIds.has(unit.id) && selectedSkill) {
-        const res = game.useSkill(selectedSkill, unit.id);
-        setMessage(res.lines.join(' '));
-        finishPlayerTurn();
+    if (phase === 'target' && selectedSkill) {
+      if (isAoe) {
+        if (centerSet.has(`${r},${c}`)) void resolvePlayerAttack(game.useSkillAoe(selectedSkill, { r, c }));
+        return;
       }
+      const unit = game.unitAt(r, c);
+      if (unit && targetIds.has(unit.id)) void resolvePlayerAttack(game.useSkill(selectedSkill, unit.id));
     }
   };
 
@@ -141,11 +185,12 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
       finishPlayerTurn();
       return;
     }
-    const skillTargets = game.targetsFor(current, skill);
-    if (skillTargets.length === 0) {
+    const hasTarget = skill.aoeRadius ? game.aoeCenters(current, skill).length > 0 : game.targetsFor(current, skill).length > 0;
+    if (!hasTarget) {
       setMessage('사거리 내에 대상이 없습니다. 이동하거나 다른 행동을 선택하세요.');
     } else {
       setSelectedSkill(skillId);
+      setHoverCell(null);
       setPhase('target');
       rerender();
     }
@@ -167,7 +212,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     }
   };
 
-  // 카메라: 현재 유닛(없으면 맵 중앙)을 중심에 두고, 맵 밖이 보이지 않도록 clamp
+  // 카메라: 현재 유닛(없으면 맵 중앙)을 중심에 두고 맵 밖이 보이지 않도록 clamp
   const camCenter = current ? current.pos : { r: (GRID_SIZE - 1) / 2, c: (GRID_SIZE - 1) / 2 };
   const camX = clamp(VIEW / 2 - (camCenter.c + 0.5) * CELL, VIEW - WORLD, 0);
   const camY = clamp(VIEW / 2 - (camCenter.r + 0.5) * CELL, VIEW - WORLD, 0);
@@ -193,41 +238,56 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
       <div className="trpg-main">
         <div className="trpg-viewport" style={{ width: VIEW, height: VIEW }}>
           <div className="trpg-world" style={{ width: WORLD, height: WORLD, transform: `translate(${camX}px, ${camY}px)` }}>
-            {/* 지형 */}
             {game.map.map((row, r) =>
               row.map((terrain, c) => {
                 const key = `${r},${c}`;
-                const isReach = reachSet.has(key);
+                const cls = [
+                  'trpg-cell',
+                  `terrain-${terrain}`,
+                  reachSet.has(key) ? 'reachable' : '',
+                  centerSet.has(key) ? 'aoe-center' : '',
+                  previewSet.has(key) ? 'aoe-preview' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ');
                 const unitHere = game.unitAt(r, c);
                 const isTarget = !!unitHere && targetIds.has(unitHere.id);
                 return (
                   <button
                     type="button"
                     key={key}
-                    className={`trpg-cell terrain-${terrain}${isReach ? ' reachable' : ''}${isTarget ? ' targetable' : ''}`}
+                    className={`${cls}${isTarget ? ' targetable' : ''}`}
                     style={{ left: c * CELL, top: r * CELL, width: CELL, height: CELL }}
                     onClick={() => onCellClick(r, c)}
+                    onMouseEnter={() => isAoe && setHoverCell({ r, c })}
                   >
                     <span className="terrain-icon">{TERRAIN_LABEL[terrain]}</span>
                   </button>
                 );
               }),
             )}
-            {/* 유닛(이동 애니메이션) */}
             {game.units
               .filter((u) => u.alive)
-              .map((u) => (
-                <div
-                  key={u.id}
-                  className={`trpg-unit ${u.team}${current && u.id === current.id ? ' current' : ''}`}
-                  style={{ width: CELL, height: CELL, transform: `translate(${u.pos.c * CELL}px, ${u.pos.r * CELL}px)` }}
-                >
-                  <span className="unit-hpbar">
-                    <span className="unit-hpfill" style={{ width: `${(u.hp / u.maxHp) * 100}%` }} />
-                  </span>
-                  <TrainerSprite jobId={u.jobId} gender={u.gender} facing="front" className="unit-sprite" />
-                </div>
-              ))}
+              .map((u) => {
+                const isAtk = motion?.attackerId === u.id;
+                const isHit = !!motion?.targetIds.includes(u.id);
+                const innerKey = (isAtk || isHit) && motion ? `m${motion.id}` : 'idle';
+                const innerCls = isAtk ? 'attacking' : isHit ? 'hit' : '';
+                return (
+                  <div
+                    key={u.id}
+                    className={`trpg-unit ${u.team}${current && u.id === current.id ? ' current' : ''}`}
+                    style={{ width: CELL, height: CELL, transform: `translate(${u.pos.c * CELL}px, ${u.pos.r * CELL}px)` }}
+                  >
+                    <div key={innerKey} className={`unit-inner ${innerCls}`}>
+                      <span className="unit-hpbar">
+                        <span className="unit-hpfill" style={{ width: `${(u.hp / u.maxHp) * 100}%` }} />
+                      </span>
+                      <TrainerSprite jobId={u.jobId} gender={u.gender} facing="front" className="unit-sprite" />
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
@@ -266,8 +326,10 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                 </div>
               ) : phase === 'target' ? (
                 <div className="trpg-actions">
-                  <p className="trpg-hint">공격할 대상(빨간색)을 선택하세요.</p>
-                  <button type="button" onClick={() => { setSelectedSkill(null); setPhase('action'); rerender(); }}>
+                  <p className="trpg-hint">
+                    {isAoe ? '주황색 칸을 선택하면 십자 범위의 적이 모두 피해를 입습니다.' : '공격할 대상(빨간색)을 선택하세요.'}
+                  </p>
+                  <button type="button" onClick={() => { setSelectedSkill(null); setHoverCell(null); setPhase('action'); rerender(); }}>
                     취소
                   </button>
                 </div>

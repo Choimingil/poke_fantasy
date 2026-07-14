@@ -54,6 +54,24 @@ export function manhattan(a: Coord, b: Coord): number {
   return Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
 }
 
+/** 중심 칸 + 상하좌우로 radius칸까지의 십자(+) 모양 범위. 기술 광역 판정용. */
+export function crossTiles(center: Coord, radius: number): Coord[] {
+  const tiles: Coord[] = [{ r: center.r, c: center.c }];
+  for (let d = 1; d <= radius; d += 1) {
+    for (const [dr, dc] of [
+      [d, 0],
+      [-d, 0],
+      [0, d],
+      [0, -d],
+    ]) {
+      const r = center.r + dr;
+      const c = center.c + dc;
+      if (inBounds(r, c)) tiles.push({ r, c });
+    }
+  }
+  return tiles;
+}
+
 /** 두 지점 사이(양 끝 제외)를 지나는 칸들. 원거리 시야 판정용. */
 export function lineBetween(a: Coord, b: Coord): Coord[] {
   const tiles: Coord[] = [];

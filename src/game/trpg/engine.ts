@@ -5,7 +5,9 @@ import { rollWeaponProc } from '../engine/weaponEffects';
 import { typeAdvantageMultiplier } from '../engine/typeChart';
 import type { Character, Faction, Skill } from '../types';
 import {
+  crossTiles,
   DEFAULT_MAP,
+  GRID_SIZE,
   isAdjacentToCliff,
   isEnterable,
   inBounds,
@@ -64,6 +66,8 @@ export function skillMaxUses(skill: Skill): number {
 
 export interface StepResult {
   lines: string[];
+  attackerId?: string;
+  targetIds?: string[];
 }
 
 export class TrpgGame {
@@ -247,6 +251,73 @@ export class TrpgGame {
     return { damage: Math.max(target.guardFactor === 0 ? 0 : 1, Math.round(dmg)), crit: false };
   }
 
+  /** 한 대상에게 공격 1회(다단히트 포함)를 적용하고 로그를 남긴다. */
+  private applyAttack(attacker: TrpgUnit, target: TrpgUnit, skill: Skill, lines: string[]) {
+    const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
+    let total = 0;
+    for (let i = 0; i < hitCount; i += 1) total += this.computeHit(attacker, target, skill).damage;
+    if (target.guardFactor === 0) {
+      total = 0;
+      lines.push(`${attacker.name}의 ${skill.name}! 하지만 ${target.name}가 완전히 막아냈다!`);
+    } else {
+      const hitLabel = hitCount > 1 ? ` (${hitCount}회 명중)` : '';
+      lines.push(`${attacker.name}의 ${skill.name}! ${target.name}에게 ${total}의 피해${hitLabel}.`);
+    }
+    target.guardFactor = 1;
+    target.hp = Math.max(0, target.hp - total);
+    if (target.hp <= 0) {
+      target.alive = false;
+      lines.push(`${target.name}가 쓰러져 묘지로 이동했다.`);
+    }
+  }
+
+  /** 광역 기술의 유효 중심 칸: 사거리·시야 내이면서 십자 범위에 적이 1명 이상 걸리는 칸. */
+  aoeCenters(unit: TrpgUnit, skill: Skill): Coord[] {
+    const range = this.rangeOf(unit);
+    const ranged = this.weaponOf(unit).type !== 'melee';
+    const radius = skill.aoeRadius ?? 1;
+    const centers: Coord[] = [];
+    for (let r = 0; r < GRID_SIZE; r += 1) {
+      for (let c = 0; c < GRID_SIZE; c += 1) {
+        const center = { r, c };
+        if (manhattan(unit.pos, center) > range) continue;
+        if (ranged && this.losBlocked(unit.pos, center)) continue;
+        const tiles = crossTiles(center, radius);
+        const hitsEnemy = this.units.some(
+          (u) => u.alive && u.team !== unit.team && tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
+        );
+        if (hitsEnemy) centers.push(center);
+      }
+    }
+    return centers;
+  }
+
+  /** 광역 공격: 선택한 중심 칸의 십자 범위 안 모든 적에게 피해. */
+  useSkillAoe(skillId: string, center: Coord): StepResult {
+    const unit = this.current();
+    const lines: string[] = [];
+    if (!unit) return { lines };
+    const skill = getSkill(skillId);
+    if ((unit.skillUses[skillId] ?? 0) <= 0) {
+      lines.push(`${unit.name}: ${skill.name}의 사용 횟수가 없다.`);
+      return { lines };
+    }
+    unit.skillUses[skillId] -= 1;
+    const tiles = crossTiles(center, skill.aoeRadius ?? 1);
+    const victims = this.units.filter(
+      (u) => u.alive && u.team !== unit.team && tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
+    );
+    if (victims.length === 0) {
+      lines.push(`${unit.name}의 ${skill.name}! 범위 안에 적이 없었다.`);
+    } else {
+      for (const v of victims) this.applyAttack(unit, v, skill, lines);
+    }
+    this.actedThisTurn = true;
+    for (const l of lines) this.log.push(l);
+    this.checkEnd();
+    return { lines, attackerId: unit.id, targetIds: victims.map((v) => v.id) };
+  }
+
   /** 현재 유닛이 기술을 사용한다. targetId 미지정 시 자기 대상 기술로 간주. */
   useSkill(skillId: string, targetId?: string): StepResult {
     const unit = this.current();
@@ -258,53 +329,43 @@ export class TrpgGame {
       return { lines };
     }
     unit.skillUses[skillId] -= 1;
+    const affected: string[] = [];
 
     if (skill.category === 'heal') {
       const heal = Math.max(1, Math.round(unit.maxHp * (skill.healPercent ?? 0)));
       const before = unit.hp;
       unit.hp = Math.min(unit.maxHp, unit.hp + heal);
       lines.push(`${unit.name}의 ${skill.name}! 체력을 ${unit.hp - before} 회복했다.`);
+      affected.push(unit.id);
     } else if (skill.category === 'buff') {
       unit.attackMult = Math.min(2, unit.attackMult * 1.2);
       lines.push(`${unit.name}의 ${skill.name}! 공격력이 상승했다.`);
+      affected.push(unit.id);
     } else if (skill.category === 'defense') {
       unit.guardFactor = skill.fullGuard ? 0 : 0.5;
       lines.push(`${unit.name}가 ${skill.name} 태세를 취했다.`);
+      affected.push(unit.id);
     } else if (skill.category === 'debuff') {
       const target = targetId ? this.unitById(targetId) : undefined;
       if (target) {
         target.defense = Math.max(1, Math.round(target.defense * 0.8));
         lines.push(`${unit.name}의 ${skill.name}! ${target.name}의 방어력이 하락했다.`);
+        affected.push(target.id);
       }
     } else {
-      // attack
       const target = targetId ? this.unitById(targetId) : undefined;
       if (!target) {
         lines.push(`${unit.name}: 대상이 없다.`);
-        return { lines };
+        return { lines, attackerId: unit.id };
       }
-      const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
-      let total = 0;
-      for (let i = 0; i < hitCount; i += 1) total += this.computeHit(unit, target, skill).damage;
-      if (target.guardFactor === 0) {
-        total = 0;
-        lines.push(`${unit.name}의 ${skill.name}! 하지만 ${target.name}가 완전히 막아냈다!`);
-      } else {
-        const hitLabel = hitCount > 1 ? ` (${hitCount}회 명중)` : '';
-        lines.push(`${unit.name}의 ${skill.name}! ${target.name}에게 ${total}의 피해${hitLabel}.`);
-      }
-      target.guardFactor = 1;
-      target.hp = Math.max(0, target.hp - total);
-      if (target.hp <= 0) {
-        target.alive = false;
-        lines.push(`${target.name}가 쓰러져 묘지로 이동했다.`);
-      }
+      this.applyAttack(unit, target, skill, lines);
+      affected.push(target.id);
     }
 
     this.actedThisTurn = true;
     for (const l of lines) this.log.push(l);
     this.checkEnd();
-    return { lines };
+    return { lines, attackerId: unit.id, targetIds: affected };
   }
 
   /** 무기 교체(그 턴 공격 기술 사용 불가). 요구 능력치를 만족해야 한다. */
@@ -375,17 +436,30 @@ export class TrpgGame {
     }
   }
 
-  /** AI 공격 시도: 사거리 내 대상이 있으면 가장 체력 낮은 적을 공격. */
+  /** AI 공격 시도: 사거리 내 대상이 있으면 공격(광역은 최다 명중 지점을 노림). */
   aiTryAttack(): StepResult {
     const unit = this.current();
     const lines: string[] = [];
     if (!unit) return { lines };
     const attacks = this.usableSkills(unit).filter((s) => s.category === 'attack' && (unit.skillUses[s.id] ?? 0) > 0);
     for (const skill of attacks) {
-      const targets = this.targetsFor(unit, skill);
-      if (targets.length > 0) {
-        const target = targets.reduce((a, b) => (a.hp <= b.hp ? a : b));
-        return this.useSkill(skill.id, target.id);
+      if (skill.aoeRadius) {
+        const centers = this.aoeCenters(unit, skill);
+        if (centers.length > 0) {
+          const radius = skill.aoeRadius;
+          const countAt = (ctr: Coord) => {
+            const tiles = crossTiles(ctr, radius);
+            return this.units.filter((u) => u.alive && u.team !== unit.team && tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c)).length;
+          };
+          const best = centers.reduce((a, b) => (countAt(b) > countAt(a) ? b : a));
+          return this.useSkillAoe(skill.id, best);
+        }
+      } else {
+        const targets = this.targetsFor(unit, skill);
+        if (targets.length > 0) {
+          const target = targets.reduce((a, b) => (a.hp <= b.hp ? a : b));
+          return this.useSkill(skill.id, target.id);
+        }
       }
     }
     return { lines };
