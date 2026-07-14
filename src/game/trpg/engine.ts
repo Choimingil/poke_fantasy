@@ -63,16 +63,17 @@ function fullStatAt(level: number): number {
 }
 
 /**
- * 방어구: 방어력 / 이동력 제한(칸,소수) / 착용 요구 레벨(5단위).
+ * 방어구: 방어력 / 지구력 감소율(무게) / 착용 요구 레벨(5단위).
  * 요구 공격력은 요구 레벨 몰빵 스탯값의 ATTACK_REQ_PERCENT 만큼(천은 요구 없음).
  * 방어력은 요구 레벨에 비례(=요구 레벨)해 재산정.
+ * 무거운 방어구는 **이동력이 아니라 지구력을 %로** 깎는다(`endurancePenalty`) → 실효 지구력이 낮아져 이동력이 감소.
  */
 const ATTACK_REQ_PERCENT = 0.5;
-const ARMOR_STATS: Record<ArmorType, { def: number; movePenalty: number; reqLevel: number }> = {
-  cloth: { def: 1, movePenalty: 0, reqLevel: 1 },
-  leather: { def: 5, movePenalty: 0.5, reqLevel: 5 },
-  mail: { def: 10, movePenalty: 1, reqLevel: 10 },
-  plate: { def: 15, movePenalty: 1.5, reqLevel: 15 },
+const ARMOR_STATS: Record<ArmorType, { def: number; endurancePenalty: number; reqLevel: number }> = {
+  cloth: { def: 1, endurancePenalty: 0, reqLevel: 1 },
+  leather: { def: 5, endurancePenalty: 0.15, reqLevel: 5 },
+  mail: { def: 10, endurancePenalty: 0.3, reqLevel: 10 },
+  plate: { def: 15, endurancePenalty: 0.5, reqLevel: 15 },
 };
 
 /** 방어구 착용에 필요한 공격력(천=0, 그 외=요구레벨 몰빵값의 절반). */
@@ -85,13 +86,14 @@ function armorAttackReq(t: ArmorType): number {
 /** 유효 이동력 상한(칸). 이 값을 넘는 이동력(지구력 초과분)은 페널티 완충용. */
 const MOVE_CAP = 3;
 /**
- * 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작).
- * 보정: 만렙100 판금 착용 가능 수준(지구력 205~몰빵 302)에서 rawMove 3 → 판금(−1.5) 착용 시 딱 1칸.
+ * (실효)지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작). 연속값.
+ * 보정: 만렙100 · 판금 요구 근력(24)만 채우고 나머지 전부 지구력(=283)에 몰빵 → 판금(−50%) 착용 시
+ *       실효 지구력 141.5 → rawMove ≈ 1.91 (2에 조금 못 미침). 판금은 어떤 빌드도 이동력 1칸.
  */
-const ENDURANCE_PER_TILE = 100;
-/** 지구력 → 원시 이동력(칸). */
+const ENDURANCE_PER_TILE = 150;
+/** 실효 지구력 → 원시 이동력(칸, 연속값). floor는 최종 칸수 계산에서만 적용. */
 function moveFromEndurance(endurance: number): number {
-  return 1 + Math.floor((endurance - STAT_BASE) / ENDURANCE_PER_TILE);
+  return 1 + (endurance - STAT_BASE) / ENDURANCE_PER_TILE;
 }
 /**
  * 직업별 기본 지구력(진행 시스템 전 임시값, 만렙 가정).
@@ -267,9 +269,14 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 지구력에서 산출한 원시 이동력(상한 적용 전). */
+  /** 방어구 무게(지구력 %감소)를 반영한 실효 지구력. */
+  effectiveEndurance(unit: TrpgUnit): number {
+    return unit.endurance * (1 - ARMOR_STATS[unit.armorType].endurancePenalty);
+  }
+
+  /** 실효 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). */
   rawMove(unit: TrpgUnit): number {
-    return moveFromEndurance(unit.endurance);
+    return moveFromEndurance(this.effectiveEndurance(unit));
   }
 
   /** 정신력: 상대 디버프/부가효과를 무시할 확률(마력 기반, 최대 70%). */
@@ -277,9 +284,9 @@ export class TrpgGame {
     return Math.min(WILLPOWER_CAP, (WILLPOWER_CAP * unit.magic) / WILLPOWER_MAGIC_FOR_CAP);
   }
 
-  /** 이번 턴 이동 페널티 합(방어구 제한 + 물 + 비). 소수 허용. */
+  /** 이번 턴 이동 페널티 합(물 + 비). 방어구 무게는 지구력 감소(실효 지구력)로 반영. */
   movePenalty(unit: TrpgUnit): number {
-    let p = ARMOR_STATS[unit.armorType].movePenalty; // 방어구별 제한(0/0.5/1/1.5)
+    let p = 0;
     if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
     if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 1; // 비 + 중갑/판금
     return p;
