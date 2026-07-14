@@ -77,16 +77,25 @@ export class TrpgGame {
   winner: Team | null = null;
   movedThisTurn = false;
   actedThisTurn = false;
+  moveFrom: Coord | null = null; // 이동 취소(뒤로가기)용 직전 위치
   private rng: () => number;
 
   constructor(playerDefs: UnitDef[], enemyDefs: UnitDef[], map: TerrainMap = DEFAULT_MAP, rng: () => number = Math.random) {
     this.map = map;
     this.rng = rng;
-    const playerCols = [0, 2, 4];
-    const enemyCols = [0, 2, 4];
+    const playerStarts: Coord[] = [
+      { r: 7, c: 2 },
+      { r: 7, c: 4 },
+      { r: 7, c: 6 },
+    ];
+    const enemyStarts: Coord[] = [
+      { r: 2, c: 2 },
+      { r: 2, c: 4 },
+      { r: 2, c: 6 },
+    ];
     this.units = [
-      ...playerDefs.map((d, i) => this.makeUnit(d, 'player', { r: 3, c: playerCols[i] ?? i })),
-      ...enemyDefs.map((d, i) => this.makeUnit(d, 'enemy', { r: 1, c: enemyCols[i] ?? i })),
+      ...playerDefs.map((d, i) => this.makeUnit(d, 'player', playerStarts[i] ?? { r: 7, c: i })),
+      ...enemyDefs.map((d, i) => this.makeUnit(d, 'enemy', enemyStarts[i] ?? { r: 2, c: i })),
     ];
     this.buildOrder();
   }
@@ -323,8 +332,19 @@ export class TrpgGame {
     const unit = this.current();
     if (!unit || this.movedThisTurn) return false;
     if (!this.reachableTiles(unit).some((t) => t.r === coord.r && t.c === coord.c)) return false;
+    this.moveFrom = { ...unit.pos };
     unit.pos = { ...coord };
     this.movedThisTurn = true;
+    return true;
+  }
+
+  /** 이동을 되돌려(뒤로가기) 이동 전 위치/상태로 복구한다. 아직 행동하지 않았을 때만 가능. */
+  undoMove(): boolean {
+    const unit = this.current();
+    if (!unit || !this.moveFrom || this.actedThisTurn) return false;
+    unit.pos = { ...this.moveFrom };
+    this.moveFrom = null;
+    this.movedThisTurn = false;
     return true;
   }
 
@@ -332,6 +352,7 @@ export class TrpgGame {
   endTurn() {
     if (this.finished) return;
     // 다음 살아있는 유닛으로
+    this.moveFrom = null;
     do {
       this.turnIndex += 1;
       if (this.turnIndex >= this.order.length) {
@@ -354,50 +375,53 @@ export class TrpgGame {
     }
   }
 
-  /** 적 AI: 사거리 내 대상이 있으면 공격, 없으면 가장 가까운 적에게 한 칸 이동 후 재시도. */
-  runEnemyTurn(): StepResult {
+  /** AI 공격 시도: 사거리 내 대상이 있으면 가장 체력 낮은 적을 공격. */
+  aiTryAttack(): StepResult {
     const unit = this.current();
     const lines: string[] = [];
-    if (!unit || unit.team !== 'enemy') return { lines };
-
-    const tryAttack = (): boolean => {
-      const attacks = this.usableSkills(unit).filter((s) => s.category === 'attack' && (unit.skillUses[s.id] ?? 0) > 0);
-      for (const skill of attacks) {
-        const targets = this.targetsFor(unit, skill);
-        if (targets.length > 0) {
-          const target = targets.reduce((a, b) => (a.hp <= b.hp ? a : b));
-          const res = this.useSkill(skill.id, target.id);
-          lines.push(...res.lines);
-          return true;
-        }
+    if (!unit) return { lines };
+    const attacks = this.usableSkills(unit).filter((s) => s.category === 'attack' && (unit.skillUses[s.id] ?? 0) > 0);
+    for (const skill of attacks) {
+      const targets = this.targetsFor(unit, skill);
+      if (targets.length > 0) {
+        const target = targets.reduce((a, b) => (a.hp <= b.hp ? a : b));
+        return this.useSkill(skill.id, target.id);
       }
-      return false;
-    };
-
-    if (tryAttack()) return { lines };
-
-    // 이동: 가장 가까운 플레이어에게 다가가는 칸 선택
-    const foes = this.units.filter((u) => u.alive && u.team === 'player');
-    if (foes.length > 0) {
-      const nearest = foes.reduce((a, b) => (manhattan(unit.pos, a.pos) <= manhattan(unit.pos, b.pos) ? a : b));
-      const tiles = this.reachableTiles(unit);
-      let best: Coord | null = null;
-      let bestDist = manhattan(unit.pos, nearest.pos);
-      for (const t of tiles) {
-        const d = manhattan(t, nearest.pos);
-        if (d < bestDist) {
-          bestDist = d;
-          best = t;
-        }
-      }
-      if (best) {
-        this.moveTo(best);
-        const moveLine = `${unit.name}가 이동했다.`;
-        this.log.push(moveLine);
-        lines.push(moveLine);
-      }
-      tryAttack();
     }
     return { lines };
+  }
+
+  /** AI 이동: 가장 가까운 적에게 한 칸 다가간다. 이동했으면 true. */
+  aiMoveToward(): boolean {
+    const unit = this.current();
+    if (!unit) return false;
+    const foes = this.units.filter((u) => u.alive && u.team !== unit.team);
+    if (foes.length === 0) return false;
+    const nearest = foes.reduce((a, b) => (manhattan(unit.pos, a.pos) <= manhattan(unit.pos, b.pos) ? a : b));
+    let best: Coord | null = null;
+    let bestDist = manhattan(unit.pos, nearest.pos);
+    for (const t of this.reachableTiles(unit)) {
+      const d = manhattan(t, nearest.pos);
+      if (d < bestDist) {
+        bestDist = d;
+        best = t;
+      }
+    }
+    if (best) {
+      this.moveTo(best);
+      this.log.push(`${unit.name}가 이동했다.`);
+      return true;
+    }
+    return false;
+  }
+
+  /** 적 턴 일괄 처리(헤드리스/시뮬레이션용). UI는 aiMoveToward/aiTryAttack를 분리해 애니메이션한다. */
+  runEnemyTurn(): StepResult {
+    const unit = this.current();
+    if (!unit || unit.team !== 'enemy') return { lines: [] };
+    const attack = this.aiTryAttack();
+    if (attack.lines.length > 0) return attack;
+    this.aiMoveToward();
+    return this.aiTryAttack();
   }
 }

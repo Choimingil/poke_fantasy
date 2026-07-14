@@ -326,21 +326,26 @@
   flex-wrap: wrap;
 }
 
-.trpg-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--n), 1fr);
-  gap: 3px;
-  width: min(560px, 92vw);
-  aspect-ratio: 1;
-  background: #3b4a2f;
-  padding: 3px;
+.trpg-viewport {
+  position: relative;
+  overflow: hidden;
+  background: #2c3a22;
   border-radius: 10px;
+  max-width: 92vw;
+  flex: 0 0 auto;
+}
+
+.trpg-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: transform 0.4s ease;
 }
 
 .trpg-cell {
-  position: relative;
-  border: none;
-  border-radius: 4px;
+  position: absolute;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
   padding: 0;
   cursor: default;
   overflow: hidden;
@@ -387,13 +392,28 @@
 }
 
 .trpg-unit {
-  position: relative;
-  width: 92%;
-  height: 92%;
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 1;
+  pointer-events: none;
+  transition: transform 0.35s ease;
+}
+
+.trpg-unit.current {
+  z-index: 2;
+}
+
+.trpg-unit.current::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 2px solid #f4b400;
+  border-radius: 6px;
+  box-shadow: 0 0 8px rgba(244, 180, 0, 0.7);
 }
 
 .trpg-unit .unit-sprite {
@@ -443,6 +463,7 @@
 .trpg-panel {
   flex: 1 1 300px;
   min-width: 260px;
+  max-width: 460px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -525,6 +546,29 @@
   border-radius: 8px;
   padding: 6px 12px;
   cursor: pointer;
+}
+
+.trpg-action-row {
+  display: flex;
+  gap: 8px;
+}
+
+.trpg-action-row .trpg-wait {
+  flex: 1;
+}
+
+.trpg-undo {
+  flex: 0 0 auto;
+  background: #a9814a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.trpg-undo:hover {
+  background: #916c3a;
 }
 
 .trpg-wait {

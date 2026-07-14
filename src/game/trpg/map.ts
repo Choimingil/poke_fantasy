@@ -1,6 +1,6 @@
 export type Terrain = 'plain' | 'tree' | 'water' | 'cliff';
 
-export const GRID_SIZE = 5;
+export const GRID_SIZE = 10;
 
 export interface Coord {
   r: number;
@@ -9,19 +9,29 @@ export interface Coord {
 
 export type TerrainMap = Terrain[][];
 
+const P: Terrain = 'plain';
+const T: Terrain = 'tree';
+const W: Terrain = 'water';
+const C: Terrain = 'cliff';
+
 /**
- * 5x5 기본 전장.
- * - 중앙(2,2)은 절벽: 통과 불가(돌아가야 함).
- * - (2,1),(2,3) 물: 이동력 소모 증가(이동 1칸 예산으로는 진입 불가).
- * - (2,0),(2,4) 나무: 원거리 공격 시야를 막음.
- * 플레이어는 아래(row 3), 적은 위(row 1)에서 시작한다.
+ * 10x10 기본 전장.
+ * - 중앙 (3,4)(3,5)(4,4)(4,5) 절벽: 통과 불가(돌아가야 함) + 높은 지대 사거리 보정.
+ * - 물: 이동력 소모 증가(이동 1칸으로는 진입 불가).
+ * - 나무: 원거리 공격 시야를 막고 엄폐 제공.
+ * 적은 위(row 2), 플레이어는 아래(row 7)에서 시작한다.
  */
 export const DEFAULT_MAP: TerrainMap = [
-  ['plain', 'plain', 'plain', 'plain', 'plain'],
-  ['plain', 'plain', 'plain', 'plain', 'plain'],
-  ['tree', 'water', 'cliff', 'water', 'tree'],
-  ['plain', 'plain', 'plain', 'plain', 'plain'],
-  ['plain', 'plain', 'plain', 'plain', 'plain'],
+  [P, P, P, P, P, P, P, P, P, P],
+  [P, P, P, T, P, P, T, P, P, P],
+  [P, P, P, P, P, P, P, P, P, P],
+  [P, W, P, P, C, C, P, P, W, P],
+  [P, W, P, P, C, C, P, P, W, P],
+  [P, P, P, T, P, P, T, P, P, P],
+  [P, P, P, P, P, P, P, P, P, P],
+  [P, P, P, P, P, P, P, P, P, P],
+  [P, P, T, P, P, P, P, T, P, P],
+  [P, P, P, P, P, P, P, P, P, P],
 ];
 
 export function inBounds(r: number, c: number): boolean {
