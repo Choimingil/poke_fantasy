@@ -410,7 +410,9 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
               ) : phase === 'move' ? (
                 <div className="trpg-actions">
                   <p className="trpg-hint">
-                    이동할 칸(파란색)을 선택하거나 이동을 생략하세요.
+                    {reachable.length === 0 && climb.length === 0
+                      ? '이동력이 부족해 이동할 수 없습니다. 이동을 생략하고 행동하세요.'
+                      : '이동할 칸(파란색)을 선택하거나 이동을 생략하세요.'}
                     {climb.length > 0 && ' 주황 점선 칸(언덕/산)은 등반 시 그 턴 행동이 종료됩니다.'}
                   </p>
                   <button type="button" onClick={() => setPhase('action')}>

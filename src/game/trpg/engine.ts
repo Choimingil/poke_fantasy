@@ -44,6 +44,12 @@ function isLightArmor(t: ArmorType): boolean {
   return t === 'cloth' || t === 'leather';
 }
 
+// ── 이동력 밸런스 상수 ──────────────────────────────────────────────
+/** 유효 이동력 상한(칸). 이 값을 넘는 이동력은 페널티 완충용으로만 쓰인다. */
+const MOVE_CAP = 3;
+/** 전직 이동력 강화 비율: 강화 포인트 N점당 원시 이동력 +1칸. */
+const MOVE_POINTS_PER_TILE = 2;
+
 export interface TrpgUnit {
   id: string;
   name: string;
@@ -59,6 +65,7 @@ export interface TrpgUnit {
   defense: number;
   speed: number;
   move: number; // 기본 이동거리(칸). 전사 2, 그 외 1.
+  moveBonusPoints: number; // 전직 강화로 투자한 이동력 포인트(비율 변환). 기본 0.
   vision: number; // 기본 시야(칸). 기본 5.
   armorType: ArmorType; // 장착 방어구
   weaponId: string;
@@ -164,6 +171,7 @@ export class TrpgGame {
       speed: ch.baseStats.speed,
       // 전사(근거리)는 이동력이 높다(2). 그 외 직업은 1.
       move: job.type === 'melee' ? 2 : 1,
+      moveBonusPoints: 0,
       vision: 5,
       armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'leather' : 'cloth',
       weaponId,
@@ -199,13 +207,27 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 방어구/날씨/물 지형을 반영한 실제 이동력(최소 1). */
+  /** 전직 강화 포인트를 비율로 변환해 더한 원시 이동력(상한 적용 전). */
+  rawMove(unit: TrpgUnit): number {
+    return unit.move + Math.floor(unit.moveBonusPoints / MOVE_POINTS_PER_TILE);
+  }
+
+  /** 이번 턴 이동 페널티 합(중갑/판금·물·비). */
+  movePenalty(unit: TrpgUnit): number {
+    let p = 0;
+    if (isHeavyArmor(unit.armorType)) p += 1; // 중갑/판금
+    if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
+    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 1; // 비 + 중갑/판금
+    return p;
+  }
+
+  /**
+   * 유효 이동력 E = min(CAP, rawMove − 페널티).
+   * - CAP(3)로 상한을 두되, rawMove가 3을 넘으면 그 초과분이 페널티를 먼저 흡수(완충).
+   * - E가 1 미만(0 이하)이면 그 턴에는 이동만 불가하고 다른 행동은 가능(값은 그대로 반환).
+   */
   effectiveMove(unit: TrpgUnit): number {
-    let m = unit.move;
-    if (isHeavyArmor(unit.armorType)) m -= 1; // 중갑/판금 -1
-    if (this.map[unit.pos.r][unit.pos.c] === 'water') m -= 1; // 물에 있으면 -1
-    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) m -= 1; // 비 + 중갑/판금 -1
-    return Math.max(1, m);
+    return Math.min(MOVE_CAP, this.rawMove(unit) - this.movePenalty(unit));
   }
 
   /** 방어구 보너스를 반영한 실제 방어력(중갑/판금 +5). */
@@ -349,6 +371,7 @@ export class TrpgGame {
    */
   climbTiles(unit: TrpgUnit): Coord[] {
     const { dist, budget } = this.computeDistances(unit);
+    if (budget < 1) return []; // 이동력이 0 이하면 등반도 불가
     const seen = new Set<string>();
     const res: Coord[] = [];
     for (const [k, d] of dist) {
