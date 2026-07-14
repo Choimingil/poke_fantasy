@@ -398,7 +398,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   <span>마 {current.magic}</span>
                   <span>방 {game.effectiveDefense(current)}</span>
                   <span>스피드 {current.speed}</span>
-                  <span>이동 {game.effectiveMove(current)}</span>
+                  <span>이동 {game.moveTiles(current)}</span>
                   <span>시야 {game.effectiveVision(current)}</span>
                   <span>무기 {getWeapon(current.weaponId).name}(사거리 {game.rangeOf(current)})</span>
                   <span>방어구 {armorName(current.armorType)}</span>

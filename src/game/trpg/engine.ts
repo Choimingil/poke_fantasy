@@ -44,11 +44,23 @@ function isLightArmor(t: ArmorType): boolean {
   return t === 'cloth' || t === 'leather';
 }
 
+/** 방어구별 방어력 보너스 / 이동력 제한(칸, 소수 허용). */
+const ARMOR_STATS: Record<ArmorType, { def: number; movePenalty: number }> = {
+  cloth: { def: 1, movePenalty: 0 },
+  leather: { def: 2, movePenalty: 0.5 },
+  mail: { def: 3, movePenalty: 1 },
+  plate: { def: 4, movePenalty: 1.5 },
+};
+
 // ── 이동력 밸런스 상수 ──────────────────────────────────────────────
 /** 유효 이동력 상한(칸). 이 값을 넘는 이동력은 페널티 완충용으로만 쓰인다. */
 const MOVE_CAP = 3;
 /** 전직 이동력 강화 비율: 강화 포인트 N점당 원시 이동력 +1칸. */
 const MOVE_POINTS_PER_TILE = 2;
+/** 직업별 기본 이동력(방어구 적용 전). 기본 방어구 착용 시 유효 이동력이 모두 2가 되도록 설정. */
+function baseMoveFor(jobType: 'melee' | 'ranged' | 'magic'): number {
+  return jobType === 'melee' ? 4 : jobType === 'ranged' ? 3 : 2;
+}
 
 export interface TrpgUnit {
   id: string;
@@ -170,7 +182,7 @@ export class TrpgGame {
       defense: ch.baseStats.defense,
       speed: ch.baseStats.speed,
       // 전사(근거리)는 이동력이 높다(2). 그 외 직업은 1.
-      move: job.type === 'melee' ? 2 : 1,
+      move: baseMoveFor(job.type),
       moveBonusPoints: 0,
       vision: 5,
       armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'leather' : 'cloth',
@@ -212,27 +224,33 @@ export class TrpgGame {
     return unit.move + Math.floor(unit.moveBonusPoints / MOVE_POINTS_PER_TILE);
   }
 
-  /** 이번 턴 이동 페널티 합(중갑/판금·물·비). */
+  /** 이번 턴 이동 페널티 합(방어구 제한 + 물 + 비). 소수 허용. */
   movePenalty(unit: TrpgUnit): number {
-    let p = 0;
-    if (isHeavyArmor(unit.armorType)) p += 1; // 중갑/판금
+    let p = ARMOR_STATS[unit.armorType].movePenalty; // 방어구별 제한(0/0.5/1/1.5)
     if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
     if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 1; // 비 + 중갑/판금
     return p;
   }
 
   /**
-   * 유효 이동력 E = min(CAP, rawMove − 페널티).
+   * 유효 이동력 E = min(CAP, rawMove − 페널티). 소수일 수 있다(완충 계산용).
    * - CAP(3)로 상한을 두되, rawMove가 3을 넘으면 그 초과분이 페널티를 먼저 흡수(완충).
-   * - E가 1 미만(0 이하)이면 그 턴에는 이동만 불가하고 다른 행동은 가능(값은 그대로 반환).
    */
   effectiveMove(unit: TrpgUnit): number {
     return Math.min(MOVE_CAP, this.rawMove(unit) - this.movePenalty(unit));
   }
 
-  /** 방어구 보너스를 반영한 실제 방어력(중갑/판금 +5). */
+  /**
+   * 실제 이동 가능 칸수 = floor(유효 이동력).
+   * 1 미만(0 이하)이면 그 턴에는 이동만 불가하고 다른 행동은 가능하다.
+   */
+  moveTiles(unit: TrpgUnit): number {
+    return Math.floor(this.effectiveMove(unit));
+  }
+
+  /** 방어구 보너스를 반영한 실제 방어력(천+1/가죽+2/중갑+3/판금+4). */
   effectiveDefense(unit: TrpgUnit): number {
-    return unit.defense + (isHeavyArmor(unit.armorType) ? 5 : 0);
+    return unit.defense + ARMOR_STATS[unit.armorType].def;
   }
 
   /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 2칸으로 제한. */
@@ -288,7 +306,7 @@ export class TrpgGame {
     const visited = new Set<string>();
     const startKey = `${unit.pos.r},${unit.pos.c}`;
     dist.set(startKey, 0);
-    const budget = this.effectiveMove(unit);
+    const budget = this.moveTiles(unit);
 
     while (true) {
       let curKey: string | null = null;
