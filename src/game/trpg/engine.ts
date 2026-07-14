@@ -84,15 +84,18 @@ function armorAttackReq(t: ArmorType): number {
 // ── 이동력 상수 ────────────────────────────────────────────────────
 /** 유효 이동력 상한(칸). 이 값을 넘는 이동력(지구력 초과분)은 페널티 완충용. */
 const MOVE_CAP = 3;
-/** 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작). */
-const ENDURANCE_PER_TILE = 15;
+/**
+ * 지구력 N당 원시 이동력 +1칸(초기 지구력 5에서 1칸 시작).
+ * 보정: 만렙100 지구력 몰빵(=302)에서 rawMove 5 → 판금(−1.5) 착용 시 딱 3칸.
+ */
+const ENDURANCE_PER_TILE = 70;
 /** 지구력 → 원시 이동력(칸). */
 function moveFromEndurance(endurance: number): number {
   return 1 + Math.floor((endurance - STAT_BASE) / ENDURANCE_PER_TILE);
 }
-/** 직업별 기본 지구력(진행 시스템 전 임시값). 기본 방어구 착용 시 유효 이동력이 모두 2가 되도록. */
+/** 직업별 기본 지구력(진행 시스템 전 임시값, 만렙 가정). 기본 방어구 착용 시 유효 이동력 2칸. */
 function baseEnduranceFor(jobType: 'melee' | 'ranged' | 'magic'): number {
-  return jobType === 'melee' ? 50 : jobType === 'ranged' ? 35 : 20;
+  return jobType === 'melee' ? 215 : jobType === 'ranged' ? 145 : 75;
 }
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
