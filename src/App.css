@@ -353,6 +353,10 @@
   background: rgba(232, 240, 255, 0.24);
 }
 
+.trpg-viewport.weather-heat::before {
+  background: rgba(255, 140, 40, 0.2);
+}
+
 .trpg-viewport.time-night::after {
   background: rgba(14, 20, 55, 0.44);
 }

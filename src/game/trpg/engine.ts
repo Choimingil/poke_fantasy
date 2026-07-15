@@ -20,7 +20,7 @@ import {
 } from './map';
 
 export type Team = 'player' | 'enemy';
-export type Weather = 'clear' | 'rain' | 'snow';
+export type Weather = 'clear' | 'rain' | 'snow' | 'heat';
 export type TimeOfDay = 'day' | 'night';
 export type ArmorType = 'cloth' | 'leather' | 'mail' | 'plate';
 
@@ -191,7 +191,7 @@ export class TrpgGame {
     this.rng = rng;
     this.map = map ?? generateMap(rng);
     this.time = time ?? (rng() < 0.5 ? 'day' : 'night');
-    this.weather = weather ?? (['clear', 'rain', 'snow'] as const)[Math.floor(rng() * 3)];
+    this.weather = weather ?? (['clear', 'rain', 'snow', 'heat'] as const)[Math.floor(rng() * 4)];
     const playerStarts: Coord[] = [
       { r: 7, c: 2 },
       { r: 7, c: 4 },
@@ -260,6 +260,24 @@ export class TrpgGame {
       }
       this.checkEnd();
     }
+    // 폭염: 라운드 시작 시 모든 유닛의 체력을 1/16 감소. 단 정신력(부가효과 무시 확률)로 저항 가능.
+    if (this.weather === 'heat') {
+      for (const u of this.units) {
+        if (!u.alive) continue;
+        if (this.rng() < this.willpower(u)) {
+          this.log.push(`${u.name}가 정신력으로 폭염을 버텨냈다.`);
+          continue;
+        }
+        const dmg = Math.max(1, Math.floor(u.maxHp / 16));
+        u.hp = Math.max(0, u.hp - dmg);
+        this.log.push(`${u.name}가 폭염으로 체력 ${dmg} 감소.`);
+        if (u.hp <= 0) {
+          u.alive = false;
+          this.log.push(`${u.name}가 쓰러져 묘지로 이동했다.`);
+        }
+      }
+      this.checkEnd();
+    }
     this.order = this.units
       .filter((u) => u.alive)
       .sort((a, b) => b.speed - a.speed || (a.team === 'player' ? -1 : 1))
@@ -279,11 +297,15 @@ export class TrpgGame {
     return Math.min(WILLPOWER_CAP, (WILLPOWER_CAP * unit.magic) / WILLPOWER_MAGIC_FOR_CAP);
   }
 
-  /** 이번 턴 이동 페널티 합(물 + 비·중장). 소수 허용(rawMove에서 차감). */
+  /** 이번 턴 이동 페널티 합(방어구 무게 + 물 + 날씨). 소수 허용(rawMove에서 차감). */
   movePenalty(unit: TrpgUnit): number {
     let p = 0;
+    // 방어구 무게(날씨 무관): 중갑 −0.3, 판금 −0.5. 맑음에도 중장은 이동 감소.
+    if (unit.armorType === 'mail') p += 0.3;
+    else if (unit.armorType === 'plate') p += 0.5;
     if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
-    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 0.7; // 비 + 중갑/판금: rawMove −0.7
+    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 0.5; // 비: 중갑·판금 추가 −0.5
+    if (this.weather === 'snow' && isLightArmor(unit.armorType)) p += 0.5; // 눈: 천·가죽 −0.5
     return p;
   }
 

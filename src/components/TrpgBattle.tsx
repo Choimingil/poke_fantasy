@@ -39,7 +39,7 @@ const TERRAIN_LABEL: Record<Terrain, string> = {
   hill: '⛰️',
   mountain: '🏔️',
 };
-const WEATHER_LABEL: Record<Weather, string> = { clear: '맑음', rain: '비', snow: '눈' };
+const WEATHER_LABEL: Record<Weather, string> = { clear: '맑음', rain: '비', snow: '눈', heat: '폭염' };
 const TIME_LABEL: Record<TimeOfDay, string> = { day: '낮', night: '밤' };
 const SWAP_WEAPONS = ['trpg_sword', 'trpg_bow', 'trpg_staff'];
 
