@@ -384,7 +384,7 @@ export class TrpgGame {
 
   /**
    * 이동력 예산 내 각 칸까지의 최단 이동비용/경로를 다익스트라로 계산한다.
-   * - 바위는 통과 불가, 언덕은 진입비용 2.
+   * - 바위는 통과 불가. 물·언덕은 밟고 멈출 수만 있고 통과(관통) 불가.
    * - 적 유닛이 있는 칸은 장애물(통과 불가) → 넘어갈 수 없고 돌아가야 한다.
    * - 아군 유닛 칸은 통과는 되지만 그 칸에 멈출 수는 없다.
    */
@@ -408,8 +408,9 @@ export class TrpgGame {
       if (curKey === null) break;
       visited.add(curKey);
       const [r, c] = curKey.split(',').map(Number);
-      // 물 타일은 밟고 멈출 수는 있으나 **통과 불가**(물 너머로는 진행할 수 없음). 출발 칸은 예외.
-      if (this.map[r][c] === 'water' && curKey !== startKey) continue;
+      // 물·언덕 타일은 밟고 멈출 수는 있으나 **통과 불가**(너머로는 진행 못 함). 출발 칸은 예외.
+      const here = this.map[r][c];
+      if ((here === 'water' || here === 'hill') && curKey !== startKey) continue;
       for (const [dr, dc] of [
         [1, 0],
         [-1, 0],
@@ -472,44 +473,6 @@ export class TrpgGame {
     return this.buildPath(prev, unit.pos, coord);
   }
 
-  /**
-   * 등반 칸: 이동력이 모자라도 마지막 한 칸을 "무리해서" 올라갈 수 있는 언덕/산 칸.
-   * 이동력 예산 안의 어떤 칸에서 이웃으로 한 발 더 딛되, 그 비용이 예산을 넘는 경우.
-   * 이 칸으로 이동하면 그 턴에는 더 이상 행동할 수 없다.
-   */
-  climbTiles(unit: TrpgUnit): Coord[] {
-    const { dist, budget } = this.computeDistances(unit);
-    if (budget < 1) return []; // 이동력이 0 이하면 등반도 불가
-    const seen = new Set<string>();
-    const res: Coord[] = [];
-    for (const [k, d] of dist) {
-      if (d > budget) continue;
-      const [r, c] = k.split(',').map(Number);
-      for (const [dr, dc] of [
-        [1, 0],
-        [-1, 0],
-        [0, 1],
-        [0, -1],
-      ]) {
-        const nr = r + dr;
-        const nc = c + dc;
-        if (!inBounds(nr, nc)) continue;
-        const terrain = this.map[nr][nc];
-        if (!isEnterable(terrain)) continue;
-        if (moveCost(terrain) <= 1) continue; // 등반(오버스텝)은 언덕/산(고비용 지형)만
-        if (this.unitAt(nr, nc)) continue;
-        const nk = `${nr},${nc}`;
-        if ((dist.get(nk) ?? Infinity) <= budget) continue; // 이미 정상 이동 가능
-        if (d + moveCost(terrain) <= budget) continue; // 넘어서는 비용이 아님
-        if (!seen.has(nk)) {
-          seen.add(nk);
-          res.push({ r: nr, c: nc });
-        }
-      }
-    }
-    return res;
-  }
-
   /** 원거리 시야가 나무/바위에 막히는지. */
   private losBlocked(from: Coord, to: Coord): boolean {
     for (const t of lineBetween(from, to)) {
@@ -563,12 +526,10 @@ export class TrpgGame {
     const isBow = weapon.kind === 'bow';
     // 나무 위의 대상은 활 공격에 대해 엄폐(0.5배).
     const cover = isBow && this.map[target.pos.r][target.pos.c] === 'tree' ? 0.5 : 1;
-    // 산 위에서 쏘는 활은 공격력 증가(1.3배).
-    const highGround = isBow && this.map[attacker.pos.r][attacker.pos.c] === 'mountain' ? 1.3 : 1;
-    // 산 위의 대상은 받는 피해 감소(0.5배).
-    const mountainCover = this.map[target.pos.r][target.pos.c] === 'mountain' ? 0.5 : 1;
+    // 언덕 위의 대상은 받는 피해 감소(0.5배).
+    const hillCover = this.map[target.pos.r][target.pos.c] === 'hill' ? 0.5 : 1;
 
-    let dmg = raw * matchup * stab * variance * cover * highGround * mountainCover;
+    let dmg = raw * matchup * stab * variance * cover * hillCover;
     dmg = dmg * target.guardFactor; // 방어 상태면 0 또는 0.5
     if (proc.extraHit) dmg *= 1.3; // 활 연사 부가효과
 
@@ -745,43 +706,13 @@ export class TrpgGame {
     const { dist, prev, budget } = this.computeDistances(unit);
     const goalKey = `${coord.r},${coord.c}`;
     const dGoal = dist.get(goalKey);
+    if (dGoal == null || dGoal <= 0 || dGoal > budget) return null; // 도달 불가
 
-    // 정상 이동(예산 내)
-    if (dGoal != null && dGoal <= budget) {
-      this.moveFrom = { ...unit.pos };
-      this.movedThisTurn = true;
-      this.movedExhausted = false;
-      return this.buildPath(prev, unit.pos, coord);
-    }
-
-    // 등반 이동(예산 초과 마지막 한 칸): 이동 후 그 턴 행동 불가
-    const cost = moveCost(this.map[coord.r][coord.c]);
-    let bestT: Coord | null = null;
-    let bestD = Infinity;
-    for (const [dr, dc] of [
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    ]) {
-      const tr = coord.r + dr;
-      const tc = coord.c + dc;
-      if (!inBounds(tr, tc)) continue;
-      const dT = dist.get(`${tr},${tc}`);
-      if (dT == null || dT > budget) continue;
-      if (dT + cost <= budget) continue; // 정상 이동이면 위에서 처리됨
-      if (dT < bestD) {
-        bestD = dT;
-        bestT = { r: tr, c: tc };
-      }
-    }
-    if (!bestT) return null;
-    const path = this.buildPath(prev, unit.pos, bestT);
-    path.push({ ...coord });
     this.moveFrom = { ...unit.pos };
     this.movedThisTurn = true;
-    this.movedExhausted = true;
-    return path;
+    // 언덕에 오르면 그 턴에는 더 이상 행동(공격·무기 교체 등)할 수 없다.
+    this.movedExhausted = this.map[coord.r][coord.c] === 'hill';
+    return this.buildPath(prev, unit.pos, coord);
   }
 
   /** 유닛 위치를 즉시 지정(애니메이션 완료 후/헤드리스 처리용). */

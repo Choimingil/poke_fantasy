@@ -1,4 +1,4 @@
-export type Terrain = 'plain' | 'tree' | 'water' | 'rock' | 'hill' | 'mountain';
+export type Terrain = 'plain' | 'tree' | 'water' | 'rock' | 'hill';
 
 export const GRID_SIZE = 10;
 
@@ -23,8 +23,8 @@ const START_TILES: Coord[] = [
  * 무작위 전장 생성. 지형 특성:
  * - 바위(rock): 장애물, 통과 불가 + 시야 차단.
  * - 나무(tree): 그 위에 있으면 활 공격 방어(엄폐) + 활 시야 차단.
- * - 물(water): 그 칸에 있으면 이동력 1 감소(최소 1).
- * - 언덕(hill)/산(mountain): 진입 비용 2(등반). 산 위에서는 활 공격력 증가.
+ * - 물(water): 그 칸에 있으면 이동력 −0.5, 통과 불가(밟고 멈춤만).
+ * - 언덕(hill): 진입 비용 일반(1). 물처럼 통과 불가(밟고 멈춤만) + 오른 턴 행동 불가 + 그 위 대상 피해 −50%.
  * 시작 칸과 그 주변은 평지로 보정한다.
  */
 export function generateMap(rng: () => number = Math.random): TerrainMap {
@@ -33,8 +33,7 @@ export function generateMap(rng: () => number = Math.random): TerrainMap {
     if (x < 0.5) return 'plain';
     if (x < 0.63) return 'tree';
     if (x < 0.73) return 'water';
-    if (x < 0.83) return 'hill';
-    if (x < 0.92) return 'mountain';
+    if (x < 0.88) return 'hill';
     return 'rock';
   };
   const map: TerrainMap = Array.from({ length: GRID_SIZE }, () =>
@@ -60,7 +59,7 @@ function isWalkConnected(map: TerrainMap, from: Coord, to: Coord): boolean {
     if (cur.r === to.r && cur.c === to.c) return true;
     for (const n of neighbors(cur)) {
       if (!inBounds(n.r, n.c)) continue;
-      if (map[n.r][n.c] === 'rock') continue; // 바위만 통과 불가(물/언덕/산은 걸을 수 있음)
+      if (map[n.r][n.c] === 'rock') continue; // 바위만 완전 차단(물/언덕은 밟고 멈출 수 있어 연결로 인정)
       const key = `${n.r},${n.c}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -132,10 +131,9 @@ export function isEnterable(terrain: Terrain): boolean {
   return terrain !== 'rock';
 }
 
-/** 한 칸 진입 시 이동력 소모(언덕·산은 2=등반, 바위는 무한). 물의 "그 칸에 있으면 -1"은 별도 처리. */
+/** 한 칸 진입 시 이동력 소모(바위는 무한, 그 외 1). 물·언덕 "통과 불가"는 경로 탐색에서 별도 처리. */
 export function moveCost(terrain: Terrain): number {
   if (terrain === 'rock') return Infinity;
-  if (terrain === 'hill' || terrain === 'mountain') return 2;
   return 1;
 }
 

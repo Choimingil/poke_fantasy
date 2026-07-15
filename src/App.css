@@ -412,10 +412,6 @@
   background: #c2a86a;
 }
 
-.terrain-mountain {
-  background: #9a8f7a;
-}
-
 /* 암흑(시야 밖) 타일 */
 .trpg-cell.fog {
   filter: brightness(0.28) saturate(0.4);
@@ -435,14 +431,6 @@
 .trpg-cell.reachable {
   cursor: pointer;
   box-shadow: inset 0 0 0 3px rgba(70, 130, 255, 0.9);
-}
-
-/* 등반 가능 칸(이동 시 그 턴 행동 종료) */
-.trpg-cell.climb {
-  cursor: pointer;
-  box-shadow: inset 0 0 0 3px rgba(240, 150, 40, 0.95);
-  outline: 2px dashed rgba(240, 150, 40, 0.9);
-  outline-offset: -6px;
 }
 
 .trpg-cell.targetable {

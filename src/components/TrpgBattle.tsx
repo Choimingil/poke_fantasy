@@ -37,7 +37,6 @@ const TERRAIN_LABEL: Record<Terrain, string> = {
   water: '🌊',
   rock: '🪨',
   hill: '⛰️',
-  mountain: '🏔️',
 };
 const WEATHER_LABEL: Record<Weather, string> = { clear: '맑음', rain: '비', snow: '눈', heat: '폭염' };
 const TIME_LABEL: Record<TimeOfDay, string> = { day: '낮', night: '밤' };
@@ -200,8 +199,6 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
 
   const reachable = isPlayerTurn && phase === 'move' && current ? game.reachableTiles(current) : [];
   const reachSet = new Set(reachable.map((t) => `${t.r},${t.c}`));
-  const climb = isPlayerTurn && phase === 'move' && current ? game.climbTiles(current) : [];
-  const climbSet = new Set(climb.map((t) => `${t.r},${t.c}`));
 
   const singleTargets =
     isPlayerTurn && phase === 'target' && current && selSkill && !isAoe ? game.targetsFor(current, selSkill) : [];
@@ -219,7 +216,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     if (!isPlayerTurn || !current) return;
     if (phase === 'move') {
       const key = `${r},${c}`;
-      if (reachSet.has(key) || climbSet.has(key)) {
+      if (reachSet.has(key)) {
         const path = game.planMoveTo({ r, c });
         if (path) {
           busyRef.current = true;
@@ -227,7 +224,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
           await animatePath(current, path);
           busyRef.current = false;
           if (game.movedExhausted) {
-            setMessage('언덕/산을 오르느라 이번 턴 행동을 마쳤다.');
+            setMessage('언덕에 올라 이번 턴 행동을 마쳤다.');
             finishPlayerTurn();
           } else {
             setPhase('action');
@@ -330,7 +327,6 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   `terrain-${terrain}`,
                   isVisible(r, c) ? '' : 'fog',
                   reachSet.has(key) ? 'reachable' : '',
-                  climbSet.has(key) ? 'climb' : '',
                   centerSet.has(key) ? 'aoe-center' : '',
                   previewSet.has(key) ? 'aoe-preview' : '',
                 ]
@@ -414,12 +410,11 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
               ) : phase === 'move' ? (
                 <div className="trpg-actions">
                   <p className="trpg-hint">
-                    {reachable.length === 0 && climb.length === 0
+                    {reachable.length === 0
                       ? game.isSlowMover(current)
                         ? '이동력이 1 미만이라 이번 턴은 이동할 수 없습니다(2턴에 1칸). 행동을 선택하세요.'
                         : '이동력이 부족해 이동할 수 없습니다. 이동을 생략하고 행동하세요.'
-                      : '이동할 칸(파란색)을 선택하거나 이동을 생략하세요.'}
-                    {climb.length > 0 && ' 주황 점선 칸(언덕/산)은 등반 시 그 턴 행동이 종료됩니다.'}
+                      : '이동할 칸(파란색)을 선택하세요. 언덕(⛰️)은 오르면 그 턴 행동이 종료됩니다.'}
                   </p>
                   <button type="button" onClick={() => setPhase('action')}>
                     이동 생략
