@@ -350,10 +350,21 @@ export class TrpgGame {
     return Math.max(0, v);
   }
 
-  /** 지정 칸에 상하좌우 인접(맨해튼 1)한 살아있는 아군이 있는지. 숲 안 캐릭터 감지용. */
-  private allyOrthAdjacent(r: number, c: number): boolean {
+  /** 지정 칸에 상하좌우 인접(맨해튼 1)한 살아있는 team 유닛이 있는지. 숲 안 캐릭터 감지용. */
+  private teamOrthAdjacent(r: number, c: number, team: Team): boolean {
     return this.units.some(
-      (u) => u.alive && u.team === 'player' && Math.abs(u.pos.r - r) + Math.abs(u.pos.c - c) <= 1,
+      (u) => u.alive && u.team === team && Math.abs(u.pos.r - r) + Math.abs(u.pos.c - c) <= 1,
+    );
+  }
+
+  /**
+   * 대상이 숲에 은폐되어 attackerTeam이 볼 수 없는지(공격/타게팅 불가).
+   * 숲 안 유닛은 상대 팀이 **상하좌우 인접**해야만 노출된다(양방향 대칭).
+   */
+  forestConcealed(target: TrpgUnit, attackerTeam: Team): boolean {
+    return (
+      this.map[target.pos.r][target.pos.c] === 'forest' &&
+      !this.teamOrthAdjacent(target.pos.r, target.pos.c, attackerTeam)
     );
   }
 
@@ -375,7 +386,7 @@ export class TrpgGame {
    */
   unitVisibleToPlayer(u: TrpgUnit): boolean {
     if (u.team === 'player') return true;
-    if (this.map[u.pos.r][u.pos.c] === 'forest') return this.allyOrthAdjacent(u.pos.r, u.pos.c);
+    if (this.map[u.pos.r][u.pos.c] === 'forest') return this.teamOrthAdjacent(u.pos.r, u.pos.c, 'player');
     return this.visibleSet().has(`${u.pos.r},${u.pos.c}`);
   }
 
@@ -525,6 +536,7 @@ export class TrpgGame {
       if (!t.alive || t.team === unit.team) return false;
       if (manhattan(unit.pos, t.pos) > range) return false;
       if (ranged && this.losBlocked(unit.pos, t.pos)) return false; // 바위가 활 사선 차단
+      if (this.forestConcealed(t, unit.team)) return false; // 숲 은폐(인접해야 노출)
       return true;
     });
   }
@@ -592,7 +604,11 @@ export class TrpgGame {
         if (ranged && this.losBlocked(unit.pos, center)) continue;
         const tiles = crossTiles(center, radius);
         const hitsEnemy = this.units.some(
-          (u) => u.alive && u.team !== unit.team && tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
+          (u) =>
+            u.alive &&
+            u.team !== unit.team &&
+            !this.forestConcealed(u, unit.team) &&
+            tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
         );
         if (hitsEnemy) centers.push(center);
       }
@@ -617,7 +633,11 @@ export class TrpgGame {
     unit.skillUses[skillId] -= 1;
     const tiles = crossTiles(center, skill.aoeRadius ?? 1);
     const victims = this.units.filter(
-      (u) => u.alive && u.team !== unit.team && tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
+      (u) =>
+        u.alive &&
+        u.team !== unit.team &&
+        !this.forestConcealed(u, unit.team) &&
+        tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
     );
     if (victims.length === 0) {
       lines.push(`${unit.name}의 ${skill.name}! 범위 안에 적이 없었다.`);
