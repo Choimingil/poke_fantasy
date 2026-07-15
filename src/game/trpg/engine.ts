@@ -368,26 +368,36 @@ export class TrpgGame {
     );
   }
 
-  /** 플레이어 팀이 볼 수 있는 칸 집합("r,c"). 각 아군 유닛의 시야 마름모 합집합. (숲 지형 자체는 항상 표시) */
-  visibleSet(): Set<string> {
+  /** team이 볼 수 있는 칸 집합("r,c"). 각 팀 유닛의 시야 마름모 합집합. (양 팀 동일 규칙) */
+  private visibleSetForTeam(team: Team): Set<string> {
     const set = new Set<string>();
     for (const u of this.units) {
-      if (!u.alive || u.team !== 'player') continue;
+      if (!u.alive || u.team !== team) continue;
       for (const t of diamondTiles(u.pos, this.effectiveVision(u))) set.add(`${t.r},${t.c}`);
     }
     return set;
   }
 
+  /** 플레이어 팀 시야 칸 집합(UI 안개용). */
+  visibleSet(): Set<string> {
+    return this.visibleSetForTeam('player');
+  }
+
   /**
-   * 상대 유닛이 플레이어에게 보이는지.
-   * - 아군은 항상 보임.
-   * - 숲 안의 상대는 **상하좌우 인접 아군**이 있어야만 보임(없으면 숨음).
-   * - 그 외는 해당 칸이 시야 안이면 보임.
+   * observerTeam 관점에서 유닛 u가 보이는지(양 팀 대칭 규칙).
+   * - 같은 팀은 항상 보임.
+   * - 숲 안의 상대는 **상하좌우 인접**한 observerTeam 유닛이 있어야만 보임.
+   * - 그 외는 해당 칸이 observerTeam 시야 안이면 보임.
    */
+  unitVisibleTo(u: TrpgUnit, observerTeam: Team): boolean {
+    if (u.team === observerTeam) return true;
+    if (this.map[u.pos.r][u.pos.c] === 'forest') return this.teamOrthAdjacent(u.pos.r, u.pos.c, observerTeam);
+    return this.visibleSetForTeam(observerTeam).has(`${u.pos.r},${u.pos.c}`);
+  }
+
+  /** 상대 유닛이 플레이어에게 보이는지(UI용). */
   unitVisibleToPlayer(u: TrpgUnit): boolean {
-    if (u.team === 'player') return true;
-    if (this.map[u.pos.r][u.pos.c] === 'forest') return this.teamOrthAdjacent(u.pos.r, u.pos.c, 'player');
-    return this.visibleSet().has(`${u.pos.r},${u.pos.c}`);
+    return this.unitVisibleTo(u, 'player');
   }
 
   /** 숲 안에서는 원거리·마법 무기로 공격할 수 없다(근접 무기만 가능). */
@@ -857,8 +867,11 @@ export class TrpgGame {
   aiPlanMove(): Coord[] | null {
     const unit = this.current();
     if (!unit) return null;
-    const foes = this.units.filter((u) => u.alive && u.team !== unit.team);
-    if (foes.length === 0) return null;
+    const allFoes = this.units.filter((u) => u.alive && u.team !== unit.team);
+    if (allFoes.length === 0) return null;
+    // 플레이어와 동일한 시야 규칙 적용: 보이는 적을 우선 추격, 보이는 적이 없으면 전체 기준으로 전진.
+    const visibleFoes = allFoes.filter((f) => this.unitVisibleTo(f, unit.team));
+    const foes = visibleFoes.length > 0 ? visibleFoes : allFoes;
     const nearest = foes.reduce((a, b) => (manhattan(unit.pos, a.pos) <= manhattan(unit.pos, b.pos) ? a : b));
     let best: Coord | null = null;
     let bestDist = manhattan(unit.pos, nearest.pos);
