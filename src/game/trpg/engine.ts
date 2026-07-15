@@ -341,12 +341,12 @@ export class TrpgGame {
     return Math.max(0, ARMOR_STATS[unit.armorType].def + unit.defense);
   }
 
-  /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 2칸으로 제한. */
+  /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 3칸으로 제한. */
   effectiveVision(unit: TrpgUnit): number {
     let v = unit.vision;
     if (this.map[unit.pos.r][unit.pos.c] === 'hill') v += 1; // 언덕 위: 시야 +1
     if (this.weather === 'rain' || this.weather === 'snow') v -= 1;
-    if (this.time === 'night') v = Math.min(v, 2);
+    if (this.time === 'night') v = Math.min(v, 3);
     return Math.max(0, v);
   }
 
