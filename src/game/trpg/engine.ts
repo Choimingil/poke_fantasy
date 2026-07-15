@@ -46,6 +46,10 @@ export function armorRequiredLevel(t: ArmorType): number {
   return ARMOR_STATS[t].reqLevel;
 }
 
+function isHeavyArmor(t: ArmorType): boolean {
+  return t === 'mail' || t === 'plate';
+}
+
 function isLightArmor(t: ArmorType): boolean {
   return t === 'cloth' || t === 'leather';
 }
@@ -89,10 +93,9 @@ function moveFromEndurance(endurance: number): number {
 /**
  * 테스트 캐릭터 아키타입 빌드(만렙 100, 분배 포인트 297, 기본 스탯 5).
  * 착용 방어구 요구 레벨 100 기준 요구 근력 → 판금 150 / 중갑 100 / 가죽 50.
- * 요구 근력을 채우고 나머지 포인트를 직업별로 한 스탯에 몰빵:
- *  - 전사: 근력 150(판금) + 나머지 전부 체력 → HP 157, 지구력 5(이동력 1)
- *  - 궁수: 근력 100(중갑) + 나머지 전부 지구력 → 지구력 207(이동력 3)
- *  - 법사: 근력 50(가죽) + 나머지 전부 마력 → 마력 257, 지구력 5(이동력 1)
+ *  - 전사: 근력 150(판금) / 체력 80 / 지구력 77 → 이동력 1(맑음·비 모두 1)
+ *  - 궁수: 근력 100(중갑) / 지구력 207 → 이동력 3(맑음), 비 시 −50% → 1
+ *  - 법사: 근력 50(가죽) / 마력 150 / 스피드 50 / 지구력 57 → 이동력 1(경장이라 비 영향 없음)
  */
 interface StatBuild {
   hp: number;
@@ -102,9 +105,9 @@ interface StatBuild {
   speed: number;
 }
 const TEST_BUILD: Record<'melee' | 'ranged' | 'magic', StatBuild> = {
-  melee: { hp: 157, attack: 150, magic: 5, endurance: 5, speed: 5 },
+  melee: { hp: 80, attack: 150, magic: 5, endurance: 77, speed: 5 },
   ranged: { hp: 5, attack: 100, magic: 5, endurance: 207, speed: 5 },
-  magic: { hp: 5, attack: 50, magic: 257, endurance: 5, speed: 5 },
+  magic: { hp: 5, attack: 50, magic: 150, endurance: 57, speed: 50 },
 };
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
@@ -266,9 +269,10 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 비 날씨 시 실효 지구력(−50%). 그 외에는 그대로. */
+  /** 비 날씨 + 중장(중갑/판금) 시 실효 지구력 −50%. 그 외에는 그대로. */
   effectiveEndurance(unit: TrpgUnit): number {
-    return this.weather === 'rain' ? unit.endurance * 0.5 : unit.endurance;
+    const rainHeavy = this.weather === 'rain' && isHeavyArmor(unit.armorType);
+    return rainHeavy ? unit.endurance * 0.5 : unit.endurance;
   }
 
   /** 실효 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). 방어구 무게 디버프 없음. */
