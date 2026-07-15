@@ -64,10 +64,10 @@ const STAT_BASE = 5; // 초기 능력치(레벨1)
  * 무게로 인한 이동력/지구력 디버프는 없음(이동력은 지구력에서만 산출).
  */
 const ARMOR_STATS: Record<ArmorType, { def: number; strengthMult: number; reqLevel: number }> = {
-  cloth: { def: 1, strengthMult: 0, reqLevel: 1 },
-  leather: { def: 5, strengthMult: 1, reqLevel: 5 },
-  mail: { def: 10, strengthMult: 1.75, reqLevel: 10 },
-  plate: { def: 15, strengthMult: 2.5, reqLevel: 15 },
+  cloth: { def: 1, strengthMult: 0, reqLevel: 100 },
+  leather: { def: 5, strengthMult: 1, reqLevel: 100 },
+  mail: { def: 10, strengthMult: 1.75, reqLevel: 100 },
+  plate: { def: 15, strengthMult: 2.5, reqLevel: 100 },
 };
 
 /** 방어구 착용에 필요한 근력(공격력) = round(요구 레벨 × 배수). 천=0. */
@@ -91,18 +91,25 @@ function moveFromEndurance(endurance: number): number {
   return 1 + (endurance - STAT_BASE) / ENDURANCE_PER_TILE;
 }
 /**
- * 직업별 기본 지구력(진행 시스템 전 임시값, 만렙 가정).
- * 기본 방어구(전사=판금 / 궁수=중갑 / 무당=가죽) 착용 시 모두 유효 이동력 1칸이 되도록 보정.
+ * 테스트 캐릭터 아키타입 빌드(만렙 100, 분배 포인트 297, 기본 스탯 5).
+ * 착용 방어구 요구 레벨 100 기준 요구 근력 → 판금 250 / 중갑 175 / 가죽 100.
+ * 요구 근력을 채우고 나머지 포인트를 직업별로 한 스탯에 몰빵:
+ *  - 전사: 근력 250(판금) + 나머지 전부 체력 → HP 57, 지구력 5(이동력 1)
+ *  - 궁수: 근력 175(중갑) + 나머지 전부 지구력 → 지구력 132(이동력 2)
+ *  - 법사: 근력 100(가죽) + 나머지 전부 마력 → 마력 207, 지구력 5(이동력 1)
  */
-function baseEnduranceFor(jobType: 'melee' | 'ranged' | 'magic'): number {
-  return jobType === 'melee' ? 215 : jobType === 'ranged' ? 145 : 105;
+interface StatBuild {
+  hp: number;
+  attack: number;
+  magic: number;
+  endurance: number;
+  speed: number;
 }
-
-/**
- * 마법 직업의 근력(공격력)은 낮게 고정한다. 마법 데미지는 마력으로 계산하므로
- * 물리 공격력은 방어구 착용 판정에만 쓰이며, 이 값으로 **최대 가죽**까지만 착용 가능(중갑/판금 불가).
- */
-const MAGIC_STRENGTH = 12;
+const TEST_BUILD: Record<'melee' | 'ranged' | 'magic', StatBuild> = {
+  melee: { hp: 57, attack: 250, magic: 5, endurance: 5, speed: 5 },
+  ranged: { hp: 5, attack: 175, magic: 5, endurance: 132, speed: 5 },
+  magic: { hp: 5, attack: 100, magic: 207, endurance: 5, speed: 5 },
+};
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
 /** 정신력(디버프/부가효과 무시 확률) 상한. */
@@ -140,11 +147,6 @@ export interface UnitDef {
   gender: 'male' | 'female';
 }
 
-/** 캐릭터의 마력 수치(마법 직업은 공격 수치를 마력으로, 그 외는 절반). */
-function unitMagic(ch: Character): number {
-  const job = getJob(ch.jobId);
-  return job.type === 'magic' ? ch.baseStats.attack : Math.round(ch.baseStats.attack * 0.5);
-}
 
 /** 기술 사용 횟수 기본값(명시값 우선). */
 export function skillMaxUses(skill: Skill): number {
@@ -215,19 +217,8 @@ export class TrpgGame {
     const skillUses: Record<string, number> = {};
     for (const id of ch.skills) skillUses[id] = skillMaxUses(getSkill(id));
 
-    // 근력(공격력)/지구력 산출.
-    // - 마법 직업: 근력을 낮게 고정(최대 가죽) — 데미지는 마력으로 계산.
-    // - 근접 직업: 기본 방어구(판금) 요구 근력을 충족하도록 공격력을 끌어올리고,
-    //   올린 만큼 지구력에서 차감(총 포인트 보존).
-    let attack = ch.baseStats.attack;
-    let endurance = baseEnduranceFor(job.type);
-    if (job.type === 'magic') {
-      attack = MAGIC_STRENGTH;
-    } else if (job.type === 'melee') {
-      const bumped = Math.max(attack, armorAttackReq('plate'));
-      endurance -= bumped - attack; // 판금 요구 충족을 위해 올린 근력만큼 지구력 감소
-      attack = bumped;
-    }
+    // 테스트 캐릭터 능력치는 직업별 아키타입 빌드(만렙 100)로 통일한다.
+    const build = TEST_BUILD[job.type];
 
     return {
       id: `${team}_${ch.jobId}`,
@@ -237,13 +228,13 @@ export class TrpgGame {
       team,
       gender: def.gender,
       pos,
-      hp: ch.baseStats.hp,
-      maxHp: ch.baseStats.hp,
-      attack,
-      magic: unitMagic(ch),
-      endurance,
+      hp: build.hp,
+      maxHp: build.hp,
+      attack: build.attack,
+      magic: build.magic,
+      endurance: build.endurance,
       defense: 0, // 방어력은 방어구로만(능력치로 올리지 않음)
-      speed: ch.baseStats.speed,
+      speed: build.speed,
       vision: 5,
       armorType: job.type === 'melee' ? 'plate' : job.type === 'ranged' ? 'mail' : 'leather',
       weaponId,
