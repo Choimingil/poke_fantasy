@@ -144,19 +144,28 @@ export function manhattan(a: Coord, b: Coord): number {
   return Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
 }
 
-/** 중심 칸 + 상하좌우로 radius칸까지의 십자(+) 모양 범위. 기술 광역 판정용. */
-export function crossTiles(center: Coord, radius: number): Coord[] {
+/**
+ * 중심 기준 십자(+) 범위. 각 방향으로 뻗다가 `blocked`(예: 바위)를 만나면
+ * 그 칸(포함)과 그 뒤는 범위에서 제외한다. 광역 기술이 바위를 넘어가지 않도록.
+ */
+export function crossTilesBlocked(
+  center: Coord,
+  radius: number,
+  blocked: (r: number, c: number) => boolean,
+): Coord[] {
   const tiles: Coord[] = [{ r: center.r, c: center.c }];
-  for (let d = 1; d <= radius; d += 1) {
-    for (const [dr, dc] of [
-      [d, 0],
-      [-d, 0],
-      [0, d],
-      [0, -d],
-    ]) {
-      const r = center.r + dr;
-      const c = center.c + dc;
-      if (inBounds(r, c)) tiles.push({ r, c });
+  for (const [dr, dc] of [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]) {
+    for (let d = 1; d <= radius; d += 1) {
+      const r = center.r + dr * d;
+      const c = center.c + dc * d;
+      if (!inBounds(r, c)) break;
+      if (blocked(r, c)) break; // 바위를 만나면 그 뒤(바위 포함)는 범위 제외
+      tiles.push({ r, c });
     }
   }
   return tiles;

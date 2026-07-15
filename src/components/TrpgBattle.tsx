@@ -3,7 +3,7 @@ import { getJob } from '../game/data/jobs';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { cloneRosterCharacter } from '../game/data/roster';
-import { crossTiles, GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
+import { GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
 import {
   ARMORS,
   armorName,
@@ -210,7 +210,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
   const centerSet = new Set(aoeCenters.map((t) => `${t.r},${t.c}`));
   const previewSet =
     isAoe && hoverCell && selSkill
-      ? new Set(crossTiles(hoverCell, selSkill.aoeRadius ?? 1).map((t) => `${t.r},${t.c}`))
+      ? new Set(game.aoeTiles(hoverCell, selSkill.aoeRadius ?? 1).map((t) => `${t.r},${t.c}`))
       : new Set<string>();
 
   const onCellClick = async (r: number, c: number) => {

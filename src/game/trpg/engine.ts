@@ -6,7 +6,7 @@ import { typeAdvantageMultiplier } from '../engine/typeChart';
 import type { Character, Faction, Skill } from '../types';
 import {
   blocksSight,
-  crossTiles,
+  crossTilesBlocked,
   diamondTiles,
   generateMap,
   GRID_SIZE,
@@ -540,7 +540,7 @@ export class TrpgGame {
       return [unit];
     }
     if (this.forestBlocksAttack(unit)) return []; // 숲 안: 원거리·마법 공격 불가
-    const range = this.rangeOf(unit);
+    const range = skill.range ?? this.rangeOf(unit);
     const ranged = this.weaponOf(unit).type !== 'melee';
     return this.units.filter((t) => {
       if (!t.alive || t.team === unit.team) return false;
@@ -600,10 +600,15 @@ export class TrpgGame {
     }
   }
 
+  /** 광역 십자 범위(중심 기준). 각 방향으로 **바위를 만나면 그 뒤(바위 포함)는 제외**. */
+  aoeTiles(center: Coord, radius: number): Coord[] {
+    return crossTilesBlocked(center, radius, (r, c) => this.map[r][c] === 'rock');
+  }
+
   /** 광역 기술의 유효 중심 칸: 사거리·시야 내이면서 십자 범위에 적이 1명 이상 걸리는 칸. */
   aoeCenters(unit: TrpgUnit, skill: Skill): Coord[] {
     if (this.forestBlocksAttack(unit)) return []; // 숲 안: 원거리·마법 공격 불가
-    const range = this.rangeOf(unit);
+    const range = skill.range ?? this.rangeOf(unit);
     const ranged = this.weaponOf(unit).type !== 'melee';
     const radius = skill.aoeRadius ?? 1;
     const centers: Coord[] = [];
@@ -612,7 +617,7 @@ export class TrpgGame {
         const center = { r, c };
         if (manhattan(unit.pos, center) > range) continue;
         if (ranged && this.losBlocked(unit.pos, center)) continue;
-        const tiles = crossTiles(center, radius);
+        const tiles = this.aoeTiles(center, radius);
         const hitsEnemy = this.units.some(
           (u) =>
             u.alive &&
@@ -641,16 +646,17 @@ export class TrpgGame {
       return { lines };
     }
     unit.skillUses[skillId] -= 1;
-    const tiles = crossTiles(center, skill.aoeRadius ?? 1);
+    const tiles = this.aoeTiles(center, skill.aoeRadius ?? 1);
+    // 광역은 아군 오사(friendly fire) 포함: 범위 내 모든 유닛 피격(시전자 제외, 숨은 적 제외).
     const victims = this.units.filter(
       (u) =>
         u.alive &&
-        u.team !== unit.team &&
+        u.id !== unit.id &&
         !this.forestConcealed(u, unit.team) &&
         tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c),
     );
     if (victims.length === 0) {
-      lines.push(`${unit.name}의 ${skill.name}! 범위 안에 적이 없었다.`);
+      lines.push(`${unit.name}의 ${skill.name}! 범위 안에 아무도 없었다.`);
     } else {
       for (const v of victims) this.applyAttack(unit, v, skill, lines);
     }
@@ -845,12 +851,20 @@ export class TrpgGame {
         const centers = this.aoeCenters(unit, skill);
         if (centers.length > 0) {
           const radius = skill.aoeRadius;
-          const countAt = (ctr: Coord) => {
-            const tiles = crossTiles(ctr, radius);
-            return this.units.filter((u) => u.alive && u.team !== unit.team && tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c)).length;
+          // 아군 오사가 있으므로 순이득(적 명중 − 아군 명중)이 가장 큰 중심을 고른다.
+          const scoreAt = (ctr: Coord) => {
+            const tiles = this.aoeTiles(ctr, radius);
+            let score = 0;
+            for (const u of this.units) {
+              if (!u.alive || u.id === unit.id) continue;
+              if (!tiles.some((t) => t.r === u.pos.r && t.c === u.pos.c)) continue;
+              if (u.team === unit.team) score -= 1; // 아군 오사 회피
+              else if (!this.forestConcealed(u, unit.team)) score += 1;
+            }
+            return score;
           };
-          const best = centers.reduce((a, b) => (countAt(b) > countAt(a) ? b : a));
-          return this.useSkillAoe(skill.id, best);
+          const best = centers.reduce((a, b) => (scoreAt(b) > scoreAt(a) ? b : a));
+          if (scoreAt(best) > 0) return this.useSkillAoe(skill.id, best);
         }
       } else {
         const targets = this.targetsFor(unit, skill);

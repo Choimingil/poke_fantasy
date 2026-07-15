@@ -49,6 +49,7 @@ export interface Skill {
   hits?: { min: number; max: number }; // 다단히트: 1회 위력으로 min~max회 랜덤 공격
   uses?: number; // TRPG 사용 횟수(PP). 미지정 시 위력/분류로 자동 산정.
   aoeRadius?: number; // TRPG 광역: 선택 칸 기준 십자(+) 반경. 범위 내 모든 적 피격.
+  range?: number; // TRPG 이 기술의 사거리(칸). 미지정 시 무기 사거리 사용.
   fullGuard?: boolean; // 방어류: 다음 피격 1회의 피해를 0으로(미보유 시 0.5배)
   consecutivePenaltyAccuracy?: number; // 직전 턴에 같은 기술을 썼다면 적용되는 명중률
   statusEffect?: SkillStatusEffect;
