@@ -93,9 +93,9 @@ function moveFromEndurance(endurance: number): number {
 /**
  * 테스트 캐릭터 아키타입 빌드(만렙 100, 분배 포인트 297, 기본 스탯 5).
  * 착용 방어구 요구 레벨 100 기준 요구 근력 → 판금 150 / 중갑 100 / 가죽 50.
- *  - 전사: 근력 150(판금) / 체력 80 / 지구력 77 → 이동력 1(맑음·비 모두 1)
- *  - 궁수: 근력 100(중갑) / 지구력 207 → 이동력 3(맑음), 비 시 −50% → 1
- *  - 법사: 근력 50(가죽) / 마력 150 / 스피드 50 / 지구력 57 → 이동력 1(경장이라 비 영향 없음)
+ *  - 전사: 근력 150(판금) / 체력 80 / 지구력 77 → 이동력 맑음 1 · 비 1
+ *  - 궁수: 근력 100(중갑) / 스피드 70 / 체력 30 / 나머지 지구력 117 → 이동력 맑음 2 · 비 1
+ *  - 법사: 근력 50(가죽) / 마력 120 / 체력 30 / 스피드 50 / 지구력 57 → 이동력 맑음 1 · 비 1(경장)
  */
 interface StatBuild {
   hp: number;
@@ -106,8 +106,8 @@ interface StatBuild {
 }
 const TEST_BUILD: Record<'melee' | 'ranged' | 'magic', StatBuild> = {
   melee: { hp: 80, attack: 150, magic: 5, endurance: 77, speed: 5 },
-  ranged: { hp: 5, attack: 100, magic: 5, endurance: 207, speed: 5 },
-  magic: { hp: 5, attack: 50, magic: 150, endurance: 57, speed: 50 },
+  ranged: { hp: 30, attack: 100, magic: 5, endurance: 117, speed: 70 },
+  magic: { hp: 30, attack: 50, magic: 120, endurance: 57, speed: 50 },
 };
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
@@ -269,15 +269,9 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 비 날씨 + 중장(중갑/판금) 시 실효 지구력 −50%. 그 외에는 그대로. */
-  effectiveEndurance(unit: TrpgUnit): number {
-    const rainHeavy = this.weather === 'rain' && isHeavyArmor(unit.armorType);
-    return rainHeavy ? unit.endurance * 0.5 : unit.endurance;
-  }
-
-  /** 실효 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). 방어구 무게 디버프 없음. */
+  /** 지구력에서 산출한 원시 이동력(상한/페널티 적용 전, 연속값). */
   rawMove(unit: TrpgUnit): number {
-    return moveFromEndurance(this.effectiveEndurance(unit));
+    return moveFromEndurance(unit.endurance);
   }
 
   /** 정신력: 상대 디버프/부가효과를 무시할 확률(마력 기반, 최대 70%). */
@@ -285,10 +279,11 @@ export class TrpgGame {
     return Math.min(WILLPOWER_CAP, (WILLPOWER_CAP * unit.magic) / WILLPOWER_MAGIC_FOR_CAP);
   }
 
-  /** 이번 턴 이동 페널티 합(물). 비 페널티는 지구력 −50%로 반영, 방어구 무게 디버프는 없음. */
+  /** 이번 턴 이동 페널티 합(물 + 비·중장). 소수 허용(rawMove에서 차감). */
   movePenalty(unit: TrpgUnit): number {
     let p = 0;
     if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
+    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 0.7; // 비 + 중갑/판금: rawMove −0.7
     return p;
   }
 
