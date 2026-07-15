@@ -100,7 +100,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     async (unit: TrpgUnit, path: Coord[]) => {
       for (let i = 1; i < path.length; i += 1) {
         game.setUnitPos(unit, path[i]);
-        centerOn(path[i]);
+        // 암흑(숨은) 상대는 카메라로 따라가지 않는다 — 아군 시점 그대로 유지.
+        if (unit.team === 'player' || game.unitVisibleToPlayer(unit)) centerOn(path[i]);
         rerender();
         await delay(170);
       }
@@ -124,7 +125,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     const visibleAt = (unitId?: string) => {
       if (!unitId) return false;
       const u = game.unitById(unitId);
-      return !!u && game.visibleSet().has(`${u.pos.r},${u.pos.c}`);
+      return !!u && game.unitVisibleToPlayer(u);
     };
     // 공격은 아군이 피격되므로 항상 알 수 있다. 단, 공격자가 시야 밖이면 모션은 숨긴다.
     const showAttack = async (res: StepResult) => {
@@ -168,10 +169,10 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
     };
   }, [currentId, game, animatePath]);
 
-  // 턴이 바뀌면 현재 유닛을 화면 중앙으로(수동 스크롤은 언제든 가능).
+  // 턴이 바뀌면 현재 유닛을 화면 중앙으로(단, 숨은 상대에게는 카메라를 옮기지 않음).
   useEffect(() => {
     const cur = game.current();
-    if (cur) centerOn(cur.pos, true);
+    if (cur && (cur.team === 'player' || game.unitVisibleToPlayer(cur))) centerOn(cur.pos, true);
   }, [currentId, game, centerOn]);
 
   const finishPlayerTurn = () => {
@@ -291,7 +292,10 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
 
   const orderedUnits = game.order.map((id) => game.unitById(id)).filter((u): u is TrpgUnit => !!u && u.alive);
   const visible = game.visibleSet();
-  const isVisible = (r: number, c: number) => visible.has(`${r},${c}`);
+  // 타일 안개: 숲 지형은 항상 표시(멀리서도 숲 모양은 보임), 그 외는 시야 밖이면 암흑.
+  const tileRevealed = (r: number, c: number) => game.map[r][c] === 'forest' || visible.has(`${r},${c}`);
+  // 유닛 표시 여부: 숲 안 상대는 상하좌우 인접 아군이 있어야만 보임.
+  const unitShown = (u: TrpgUnit) => game.unitVisibleToPlayer(u);
 
   return (
     <div className="app-shell trpg-screen">
@@ -305,7 +309,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
         </div>
         <div className="trpg-initiative">
           {orderedUnits.map((u) => {
-            const seen = u.team === 'player' || isVisible(u.pos.r, u.pos.c);
+            const seen = unitShown(u);
             return (
               <span key={u.id} className={`init-chip ${u.team} ${current && u.id === current.id ? 'active' : ''}`}>
                 {seen ? u.name : '???'}
@@ -325,7 +329,7 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                 const cls = [
                   'trpg-cell',
                   `terrain-${terrain}`,
-                  isVisible(r, c) ? '' : 'fog',
+                  tileRevealed(r, c) ? '' : 'fog',
                   reachSet.has(key) ? 'reachable' : '',
                   centerSet.has(key) ? 'aoe-center' : '',
                   previewSet.has(key) ? 'aoe-preview' : '',
@@ -350,8 +354,8 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
             )}
             {game.units
               .filter((u) => u.alive)
-              // 적 유닛은 시야(암흑) 밖이면 표시하지 않는다. 아군은 항상 표시.
-              .filter((u) => u.team === 'player' || isVisible(u.pos.r, u.pos.c))
+              // 적 유닛은 시야(암흑) 밖이거나 숲에 숨어있으면 표시하지 않는다. 아군은 항상 표시.
+              .filter((u) => unitShown(u))
               .map((u) => {
                 const isAtk = motion?.attackerId === u.id;
                 const isHit = !!motion?.targetIds.includes(u.id);

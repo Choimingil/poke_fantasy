@@ -349,26 +349,38 @@ export class TrpgGame {
     return Math.max(0, v);
   }
 
-  /** 지정 칸에 인접(체비쇼프 1, 8방향)한 살아있는 아군이 있는지. */
-  private allyAdjacent(r: number, c: number): boolean {
+  /** 지정 칸에 상하좌우 인접(맨해튼 1)한 살아있는 아군이 있는지. 숲 안 캐릭터 감지용. */
+  private allyOrthAdjacent(r: number, c: number): boolean {
     return this.units.some(
-      (u) => u.alive && u.team === 'player' && Math.max(Math.abs(u.pos.r - r), Math.abs(u.pos.c - c)) <= 1,
+      (u) => u.alive && u.team === 'player' && Math.abs(u.pos.r - r) + Math.abs(u.pos.c - c) <= 1,
     );
   }
 
-  /** 플레이어 팀이 볼 수 있는 칸 집합("r,c"). 각 아군 유닛의 시야 마름모 합집합. */
+  /** 플레이어 팀이 볼 수 있는 칸 집합("r,c"). 각 아군 유닛의 시야 마름모 합집합. (숲 지형 자체는 항상 표시) */
   visibleSet(): Set<string> {
     const set = new Set<string>();
     for (const u of this.units) {
       if (!u.alive || u.team !== 'player') continue;
       for (const t of diamondTiles(u.pos, this.effectiveVision(u))) set.add(`${t.r},${t.c}`);
     }
-    // 숲 타일은 인접(1칸) 아군이 있어야만 보인다 — 멀리서는 숲 내부를 확인할 수 없다.
-    for (const key of [...set]) {
-      const [r, c] = key.split(',').map(Number);
-      if (this.map[r][c] === 'forest' && !this.allyAdjacent(r, c)) set.delete(key);
-    }
     return set;
+  }
+
+  /**
+   * 상대 유닛이 플레이어에게 보이는지.
+   * - 아군은 항상 보임.
+   * - 숲 안의 상대는 **상하좌우 인접 아군**이 있어야만 보임(없으면 숨음).
+   * - 그 외는 해당 칸이 시야 안이면 보임.
+   */
+  unitVisibleToPlayer(u: TrpgUnit): boolean {
+    if (u.team === 'player') return true;
+    if (this.map[u.pos.r][u.pos.c] === 'forest') return this.allyOrthAdjacent(u.pos.r, u.pos.c);
+    return this.visibleSet().has(`${u.pos.r},${u.pos.c}`);
+  }
+
+  /** 숲 안에서는 원거리·마법 무기로 공격할 수 없다(근접 무기만 가능). */
+  forestBlocksAttack(unit: TrpgUnit): boolean {
+    return this.map[unit.pos.r][unit.pos.c] === 'forest' && this.weaponOf(unit).type !== 'melee';
   }
 
   unitById(id: string): TrpgUnit | undefined {
@@ -435,7 +447,9 @@ export class TrpgGame {
         const terrain = this.map[nr][nc];
         if (!isEnterable(terrain)) continue; // 바위
         const occ = this.unitAt(nr, nc);
-        if (occ && occ.team !== unit.team) continue; // 적 = 장애물, 통과 불가
+        // 적 유닛은 장애물(통과 불가). 단 숲 안의 적은 시야 밖일 수 있어 경로 계산에서는 통과 가능으로 두고,
+        // 실제 이동 시 그 숲 앞칸에서 멈춘다(planMoveTo에서 처리).
+        if (occ && occ.team !== unit.team && terrain !== 'forest') continue;
         const nd = curDist + moveCost(terrain);
         if (nd > budget) continue;
         const nk = `${nr},${nc}`;
@@ -503,6 +517,7 @@ export class TrpgGame {
     if (skill.target === 'self' || skill.category === 'heal' || skill.category === 'buff' || skill.category === 'defense') {
       return [unit];
     }
+    if (this.forestBlocksAttack(unit)) return []; // 숲 안: 원거리·마법 공격 불가
     const range = this.rangeOf(unit);
     const ranged = this.weaponOf(unit).type !== 'melee';
     return this.units.filter((t) => {
@@ -567,6 +582,7 @@ export class TrpgGame {
 
   /** 광역 기술의 유효 중심 칸: 사거리·시야 내이면서 십자 범위에 적이 1명 이상 걸리는 칸. */
   aoeCenters(unit: TrpgUnit, skill: Skill): Coord[] {
+    if (this.forestBlocksAttack(unit)) return []; // 숲 안: 원거리·마법 공격 불가
     const range = this.rangeOf(unit);
     const ranged = this.weaponOf(unit).type !== 'melee';
     const radius = skill.aoeRadius ?? 1;
@@ -592,6 +608,10 @@ export class TrpgGame {
     const lines: string[] = [];
     if (!unit) return { lines };
     const skill = getSkill(skillId);
+    if (this.forestBlocksAttack(unit)) {
+      lines.push(`${unit.name}: 숲 안에서는 원거리·마법 무기로 공격할 수 없다.`);
+      return { lines };
+    }
     if ((unit.skillUses[skillId] ?? 0) <= 0) {
       lines.push(`${unit.name}: ${skill.name}의 사용 횟수가 없다.`);
       return { lines };
@@ -618,6 +638,12 @@ export class TrpgGame {
     const lines: string[] = [];
     if (!unit) return { lines };
     const skill = getSkill(skillId);
+    const isSupport =
+      skill.target === 'self' || skill.category === 'heal' || skill.category === 'buff' || skill.category === 'defense';
+    if (!isSupport && this.forestBlocksAttack(unit)) {
+      lines.push(`${unit.name}: 숲 안에서는 원거리·마법 무기로 공격할 수 없다.`);
+      return { lines };
+    }
     if ((unit.skillUses[skillId] ?? 0) <= 0) {
       lines.push(`${unit.name}: ${skill.name}의 사용 횟수가 없다.`);
       return { lines };
@@ -717,11 +743,23 @@ export class TrpgGame {
     const dGoal = dist.get(goalKey);
     if (dGoal == null || dGoal <= 0 || dGoal > budget) return null; // 도달 불가
 
+    let path = this.buildPath(prev, unit.pos, coord);
+    // 경로상 적이 숨어있는 숲 칸을 만나면 그 앞칸에서 멈춘다(매복). 첫 번째 그런 칸 기준.
+    for (let i = 1; i < path.length; i += 1) {
+      const p = path[i];
+      const occ = this.unitAt(p.r, p.c);
+      if (this.map[p.r][p.c] === 'forest' && occ && occ.team !== unit.team) {
+        path = path.slice(0, i); // path[i-1](숲 앞칸)까지만
+        break;
+      }
+    }
+
     this.moveFrom = { ...unit.pos };
     this.movedThisTurn = true;
+    const dest = path[path.length - 1];
     // 언덕에 오르면 그 턴에는 더 이상 행동(공격·무기 교체 등)할 수 없다.
-    this.movedExhausted = this.map[coord.r][coord.c] === 'hill';
-    return this.buildPath(prev, unit.pos, coord);
+    this.movedExhausted = this.map[dest.r][dest.c] === 'hill';
+    return path;
   }
 
   /** 유닛 위치를 즉시 지정(애니메이션 완료 후/헤드리스 처리용). */
