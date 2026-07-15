@@ -303,7 +303,7 @@ export class TrpgGame {
     // 방어구 무게(날씨 무관): 중갑 −0.3, 판금 −0.5. 맑음에도 중장은 이동 감소.
     if (unit.armorType === 'mail') p += 0.3;
     else if (unit.armorType === 'plate') p += 0.5;
-    if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
+    if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 0.5; // 물 위: rawMove −0.5
     if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 0.5; // 비: 중갑·판금 추가 −0.5
     if (this.weather === 'snow' && isLightArmor(unit.armorType)) p += 0.5; // 눈: 천·가죽 −0.5
     return p;
@@ -408,6 +408,8 @@ export class TrpgGame {
       if (curKey === null) break;
       visited.add(curKey);
       const [r, c] = curKey.split(',').map(Number);
+      // 물 타일은 밟고 멈출 수는 있으나 **통과 불가**(물 너머로는 진행할 수 없음). 출발 칸은 예외.
+      if (this.map[r][c] === 'water' && curKey !== startKey) continue;
       for (const [dr, dc] of [
         [1, 0],
         [-1, 0],
@@ -494,6 +496,7 @@ export class TrpgGame {
         if (!inBounds(nr, nc)) continue;
         const terrain = this.map[nr][nc];
         if (!isEnterable(terrain)) continue;
+        if (moveCost(terrain) <= 1) continue; // 등반(오버스텝)은 언덕/산(고비용 지형)만
         if (this.unitAt(nr, nc)) continue;
         const nk = `${nr},${nc}`;
         if ((dist.get(nk) ?? Infinity) <= budget) continue; // 이미 정상 이동 가능
@@ -562,8 +565,10 @@ export class TrpgGame {
     const cover = isBow && this.map[target.pos.r][target.pos.c] === 'tree' ? 0.5 : 1;
     // 산 위에서 쏘는 활은 공격력 증가(1.3배).
     const highGround = isBow && this.map[attacker.pos.r][attacker.pos.c] === 'mountain' ? 1.3 : 1;
+    // 산 위의 대상은 받는 피해 감소(0.5배).
+    const mountainCover = this.map[target.pos.r][target.pos.c] === 'mountain' ? 0.5 : 1;
 
-    let dmg = raw * matchup * stab * variance * cover * highGround;
+    let dmg = raw * matchup * stab * variance * cover * highGround * mountainCover;
     dmg = dmg * target.guardFactor; // 방어 상태면 0 또는 0.5
     if (proc.extraHit) dmg *= 1.3; // 활 연사 부가효과
 
