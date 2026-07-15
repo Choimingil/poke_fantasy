@@ -33,7 +33,7 @@ interface TrpgBattleProps {
 
 const TERRAIN_LABEL: Record<Terrain, string> = {
   plain: '',
-  tree: '🌲',
+  forest: '🌳',
   water: '🌊',
   rock: '🪨',
   hill: '⛰️',

@@ -1,4 +1,4 @@
-export type Terrain = 'plain' | 'tree' | 'water' | 'rock' | 'hill';
+export type Terrain = 'plain' | 'forest' | 'water' | 'rock' | 'hill';
 
 export const GRID_SIZE = 10;
 
@@ -22,7 +22,7 @@ const START_TILES: Coord[] = [
 /**
  * 무작위 전장 생성. 지형 특성:
  * - 바위(rock): 장애물, 통과 불가 + 시야 차단.
- * - 나무(tree): 그 위에 있으면 활 공격 방어(엄폐) + 활 시야 차단.
+ * - 숲(forest): 진입 불가(장애물, 숲 앞까지만 이동). 인접(1칸) 아군이 있어야만 그 칸이 보임.
  * - 물(water): 그 칸에 있으면 이동력 −0.5, 통과 불가(밟고 멈춤만).
  * - 언덕(hill): 진입 비용 일반(1). 물처럼 통과 불가(밟고 멈춤만) + 오른 턴 행동 불가 + 그 위 대상 피해 −50%.
  * 시작 칸과 그 주변은 평지로 보정한다.
@@ -31,7 +31,7 @@ export function generateMap(rng: () => number = Math.random): TerrainMap {
   const pick = (): Terrain => {
     const x = rng();
     if (x < 0.5) return 'plain';
-    if (x < 0.63) return 'tree';
+    if (x < 0.63) return 'forest';
     if (x < 0.73) return 'water';
     if (x < 0.88) return 'hill';
     return 'rock';
@@ -50,7 +50,12 @@ export function generateMap(rng: () => number = Math.random): TerrainMap {
   return map;
 }
 
-/** 바위(통과 불가)만 장애물로 보고 두 진영 대표 칸이 연결되는지 BFS로 확인. */
+/** 진입 불가 지형(바위·숲)인지. 연결성 판정용. */
+function blocksWalk(t: Terrain): boolean {
+  return t === 'rock' || t === 'forest';
+}
+
+/** 진입 불가 지형(바위·숲)을 장애물로 보고 두 진영 대표 칸이 연결되는지 BFS로 확인. */
 function isWalkConnected(map: TerrainMap, from: Coord, to: Coord): boolean {
   const seen = new Set<string>([`${from.r},${from.c}`]);
   const queue: Coord[] = [from];
@@ -59,7 +64,7 @@ function isWalkConnected(map: TerrainMap, from: Coord, to: Coord): boolean {
     if (cur.r === to.r && cur.c === to.c) return true;
     for (const n of neighbors(cur)) {
       if (!inBounds(n.r, n.c)) continue;
-      if (map[n.r][n.c] === 'rock') continue; // 바위만 완전 차단(물/언덕은 밟고 멈출 수 있어 연결로 인정)
+      if (blocksWalk(map[n.r][n.c])) continue; // 바위·숲 차단(물/언덕은 밟고 멈출 수 있어 연결로 인정)
       const key = `${n.r},${n.c}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -69,13 +74,13 @@ function isWalkConnected(map: TerrainMap, from: Coord, to: Coord): boolean {
   return false;
 }
 
-/** 양 진영이 단절돼 있으면, 바위를 관통하는 최단 경로를 찾아 그 위의 바위만 평지로 뚫는다. */
+/** 양 진영이 단절돼 있으면 최단 경로를 찾아 그 위의 바위·숲을 평지로 뚫는다. */
 function ensureConnected(map: TerrainMap) {
   const from: Coord = { r: 7, c: 4 };
   const to: Coord = { r: 2, c: 4 };
   if (isWalkConnected(map, from, to)) return;
 
-  // 바위도 통과 가능하다고 보되 비용을 크게 줘, 되도록 기존 통로를 활용하는 최단 경로 탐색.
+  // 바위·숲도 통과 가능하다고 보되 비용을 크게 줘, 되도록 기존 통로를 활용하는 최단 경로 탐색.
   const key = (r: number, c: number) => `${r},${c}`;
   const dist = new Map<string, number>([[key(from.r, from.c), 0]]);
   const prev = new Map<string, string>();
@@ -94,7 +99,7 @@ function ensureConnected(map: TerrainMap) {
     const [r, c] = curKey.split(',').map(Number);
     for (const n of neighbors({ r, c })) {
       if (!inBounds(n.r, n.c)) continue;
-      const step = map[n.r][n.c] === 'rock' ? 100 : 1; // 바위는 큰 비용, 나머지는 1
+      const step = blocksWalk(map[n.r][n.c]) ? 100 : 1; // 바위·숲은 큰 비용, 나머지는 1
       const nd = curDist + step;
       const nk = key(n.r, n.c);
       if (nd < (dist.get(nk) ?? Infinity)) {
@@ -103,11 +108,11 @@ function ensureConnected(map: TerrainMap) {
       }
     }
   }
-  // 경로 복원 후 그 위의 바위만 평지로 변경.
+  // 경로 복원 후 그 위의 바위·숲을 평지로 변경.
   let k: string | undefined = key(to.r, to.c);
   while (k) {
     const [r, c] = k.split(',').map(Number);
-    if (map[r][c] === 'rock') map[r][c] = 'plain';
+    if (blocksWalk(map[r][c])) map[r][c] = 'plain';
     if (k === key(from.r, from.c)) break;
     k = prev.get(k);
   }
@@ -126,9 +131,9 @@ export function inBounds(r: number, c: number): boolean {
   return r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE;
 }
 
-/** 진입 가능 지형인지(바위는 통과 불가). */
+/** 진입 가능 지형인지(바위·숲은 진입 불가 = 앞까지만 이동). */
 export function isEnterable(terrain: Terrain): boolean {
-  return terrain !== 'rock';
+  return terrain !== 'rock' && terrain !== 'forest';
 }
 
 /** 한 칸 진입 시 이동력 소모(바위는 무한, 그 외 1). 물·언덕 "통과 불가"는 경로 탐색에서 별도 처리. */
@@ -137,9 +142,9 @@ export function moveCost(terrain: Terrain): number {
   return 1;
 }
 
-/** 원거리 시야를 막는 지형(나무·바위). */
+/** 원거리 시야(활 사선)를 막는 지형(바위). */
 export function blocksSight(terrain: Terrain): boolean {
-  return terrain === 'tree' || terrain === 'rock';
+  return terrain === 'rock';
 }
 
 export function manhattan(a: Coord, b: Coord): number {

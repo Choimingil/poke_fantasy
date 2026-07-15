@@ -349,12 +349,24 @@ export class TrpgGame {
     return Math.max(0, v);
   }
 
+  /** 지정 칸에 인접(체비쇼프 1, 8방향)한 살아있는 아군이 있는지. */
+  private allyAdjacent(r: number, c: number): boolean {
+    return this.units.some(
+      (u) => u.alive && u.team === 'player' && Math.max(Math.abs(u.pos.r - r), Math.abs(u.pos.c - c)) <= 1,
+    );
+  }
+
   /** 플레이어 팀이 볼 수 있는 칸 집합("r,c"). 각 아군 유닛의 시야 마름모 합집합. */
   visibleSet(): Set<string> {
     const set = new Set<string>();
     for (const u of this.units) {
       if (!u.alive || u.team !== 'player') continue;
       for (const t of diamondTiles(u.pos, this.effectiveVision(u))) set.add(`${t.r},${t.c}`);
+    }
+    // 숲 타일은 인접(1칸) 아군이 있어야만 보인다 — 멀리서는 숲 내부를 확인할 수 없다.
+    for (const key of [...set]) {
+      const [r, c] = key.split(',').map(Number);
+      if (this.map[r][c] === 'forest' && !this.allyAdjacent(r, c)) set.delete(key);
     }
     return set;
   }
@@ -473,7 +485,7 @@ export class TrpgGame {
     return this.buildPath(prev, unit.pos, coord);
   }
 
-  /** 원거리 시야가 나무/바위에 막히는지. */
+  /** 원거리 시야(활 사선)가 바위에 막히는지. */
   private losBlocked(from: Coord, to: Coord): boolean {
     for (const t of lineBetween(from, to)) {
       if (blocksSight(this.map[t.r][t.c])) return true;
@@ -496,7 +508,7 @@ export class TrpgGame {
     return this.units.filter((t) => {
       if (!t.alive || t.team === unit.team) return false;
       if (manhattan(unit.pos, t.pos) > range) return false;
-      if (ranged && this.losBlocked(unit.pos, t.pos)) return false; // 나무/절벽이 시야 차단
+      if (ranged && this.losBlocked(unit.pos, t.pos)) return false; // 바위가 활 사선 차단
       return true;
     });
   }
@@ -523,13 +535,10 @@ export class TrpgGame {
     const varianceWidth = 0.2;
     const variance = 1 - varianceWidth + this.rng() * varianceWidth * 2;
 
-    const isBow = weapon.kind === 'bow';
-    // 나무 위의 대상은 활 공격에 대해 엄폐(0.5배).
-    const cover = isBow && this.map[target.pos.r][target.pos.c] === 'tree' ? 0.5 : 1;
     // 언덕 위의 대상은 받는 피해 감소(0.5배).
     const hillCover = this.map[target.pos.r][target.pos.c] === 'hill' ? 0.5 : 1;
 
-    let dmg = raw * matchup * stab * variance * cover * hillCover;
+    let dmg = raw * matchup * stab * variance * hillCover;
     dmg = dmg * target.guardFactor; // 방어 상태면 0 또는 0.5
     if (proc.extraHit) dmg *= 1.3; // 활 연사 부가효과
 
