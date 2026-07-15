@@ -46,10 +46,6 @@ export function armorRequiredLevel(t: ArmorType): number {
   return ARMOR_STATS[t].reqLevel;
 }
 
-function isHeavyArmor(t: ArmorType): boolean {
-  return t === 'mail' || t === 'plate';
-}
-
 function isLightArmor(t: ArmorType): boolean {
   return t === 'cloth' || t === 'leather';
 }
@@ -65,9 +61,9 @@ const STAT_BASE = 5; // 초기 능력치(레벨1)
  */
 const ARMOR_STATS: Record<ArmorType, { def: number; strengthMult: number; reqLevel: number }> = {
   cloth: { def: 1, strengthMult: 0, reqLevel: 100 },
-  leather: { def: 5, strengthMult: 1, reqLevel: 100 },
-  mail: { def: 10, strengthMult: 1.75, reqLevel: 100 },
-  plate: { def: 15, strengthMult: 2.5, reqLevel: 100 },
+  leather: { def: 5, strengthMult: 0.5, reqLevel: 100 },
+  mail: { def: 10, strengthMult: 1, reqLevel: 100 },
+  plate: { def: 15, strengthMult: 1.5, reqLevel: 100 },
 };
 
 /** 방어구 착용에 필요한 근력(공격력) = round(요구 레벨 × 배수). 천=0. */
@@ -92,11 +88,11 @@ function moveFromEndurance(endurance: number): number {
 }
 /**
  * 테스트 캐릭터 아키타입 빌드(만렙 100, 분배 포인트 297, 기본 스탯 5).
- * 착용 방어구 요구 레벨 100 기준 요구 근력 → 판금 250 / 중갑 175 / 가죽 100.
+ * 착용 방어구 요구 레벨 100 기준 요구 근력 → 판금 150 / 중갑 100 / 가죽 50.
  * 요구 근력을 채우고 나머지 포인트를 직업별로 한 스탯에 몰빵:
- *  - 전사: 근력 250(판금) + 나머지 전부 체력 → HP 57, 지구력 5(이동력 1)
- *  - 궁수: 근력 175(중갑) + 나머지 전부 지구력 → 지구력 132(이동력 2)
- *  - 법사: 근력 100(가죽) + 나머지 전부 마력 → 마력 207, 지구력 5(이동력 1)
+ *  - 전사: 근력 150(판금) + 나머지 전부 체력 → HP 157, 지구력 5(이동력 1)
+ *  - 궁수: 근력 100(중갑) + 나머지 전부 지구력 → 지구력 207(이동력 3)
+ *  - 법사: 근력 50(가죽) + 나머지 전부 마력 → 마력 257, 지구력 5(이동력 1)
  */
 interface StatBuild {
   hp: number;
@@ -106,9 +102,9 @@ interface StatBuild {
   speed: number;
 }
 const TEST_BUILD: Record<'melee' | 'ranged' | 'magic', StatBuild> = {
-  melee: { hp: 57, attack: 250, magic: 5, endurance: 5, speed: 5 },
-  ranged: { hp: 5, attack: 175, magic: 5, endurance: 132, speed: 5 },
-  magic: { hp: 5, attack: 100, magic: 207, endurance: 5, speed: 5 },
+  melee: { hp: 157, attack: 150, magic: 5, endurance: 5, speed: 5 },
+  ranged: { hp: 5, attack: 100, magic: 5, endurance: 207, speed: 5 },
+  magic: { hp: 5, attack: 50, magic: 257, endurance: 5, speed: 5 },
 };
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
@@ -270,9 +266,14 @@ export class TrpgGame {
     this.actedThisTurn = false;
   }
 
-  /** 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). 방어구 무게 디버프 없음. */
+  /** 비 날씨 시 실효 지구력(−50%). 그 외에는 그대로. */
+  effectiveEndurance(unit: TrpgUnit): number {
+    return this.weather === 'rain' ? unit.endurance * 0.5 : unit.endurance;
+  }
+
+  /** 실효 지구력에서 산출한 원시 이동력(상한 적용 전, 연속값). 방어구 무게 디버프 없음. */
   rawMove(unit: TrpgUnit): number {
-    return moveFromEndurance(unit.endurance);
+    return moveFromEndurance(this.effectiveEndurance(unit));
   }
 
   /** 정신력: 상대 디버프/부가효과를 무시할 확률(마력 기반, 최대 70%). */
@@ -280,11 +281,10 @@ export class TrpgGame {
     return Math.min(WILLPOWER_CAP, (WILLPOWER_CAP * unit.magic) / WILLPOWER_MAGIC_FOR_CAP);
   }
 
-  /** 이번 턴 이동 페널티 합(물 + 비). 방어구 무게는 지구력 감소(실효 지구력)로 반영. */
+  /** 이번 턴 이동 페널티 합(물). 비 페널티는 지구력 −50%로 반영, 방어구 무게 디버프는 없음. */
   movePenalty(unit: TrpgUnit): number {
     let p = 0;
     if (this.map[unit.pos.r][unit.pos.c] === 'water') p += 1; // 물 위
-    if (this.weather === 'rain' && isHeavyArmor(unit.armorType)) p += 1; // 비 + 중갑/판금
     return p;
   }
 
@@ -297,11 +297,22 @@ export class TrpgGame {
   }
 
   /**
-   * 실제 이동 가능 칸수 = floor(유효 이동력).
-   * 1 미만(0 이하)이면 그 턴에는 이동만 불가하고 다른 행동은 가능하다.
+   * 실제 이동 가능 칸수.
+   * - 유효 이동력 ≥ 1 → floor(유효 이동력).
+   * - 0 < 유효 이동력 < 1 → **2턴에 1칸**(라운드 홀수에만 1칸, 짝수엔 0). 다른 행동은 가능.
+   * - 0 이하 → 이동 불가.
    */
   moveTiles(unit: TrpgUnit): number {
-    return Math.floor(this.effectiveMove(unit));
+    const e = this.effectiveMove(unit);
+    if (e >= 1) return Math.floor(e);
+    if (e > 0) return this.round % 2 === 1 ? 1 : 0; // 이동력 1 미만: 2턴에 한 번 이동
+    return 0;
+  }
+
+  /** 이동력이 1 미만이라 2턴에 한 번만 이동 가능한 상태인지(UI 안내용). */
+  isSlowMover(unit: TrpgUnit): boolean {
+    const e = this.effectiveMove(unit);
+    return e > 0 && e < 1;
   }
 
   /** 실제 방어력 = 방어구 보너스(천1/가죽5/중갑10/판금15) + 보정치(디버프), 최소 0. */
