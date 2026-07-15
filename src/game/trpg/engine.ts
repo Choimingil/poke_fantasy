@@ -344,6 +344,7 @@ export class TrpgGame {
   /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 2칸으로 제한. */
   effectiveVision(unit: TrpgUnit): number {
     let v = unit.vision;
+    if (this.map[unit.pos.r][unit.pos.c] === 'hill') v += 1; // 언덕 위: 시야 +1
     if (this.weather === 'rain' || this.weather === 'snow') v -= 1;
     if (this.time === 'night') v = Math.min(v, 2);
     return Math.max(0, v);
@@ -550,10 +551,7 @@ export class TrpgGame {
     const varianceWidth = 0.2;
     const variance = 1 - varianceWidth + this.rng() * varianceWidth * 2;
 
-    // 언덕 위의 대상은 받는 피해 감소(0.5배).
-    const hillCover = this.map[target.pos.r][target.pos.c] === 'hill' ? 0.5 : 1;
-
-    let dmg = raw * matchup * stab * variance * hillCover;
+    let dmg = raw * matchup * stab * variance;
     dmg = dmg * target.guardFactor; // 방어 상태면 0 또는 0.5
     if (proc.extraHit) dmg *= 1.3; // 활 연사 부가효과
 
