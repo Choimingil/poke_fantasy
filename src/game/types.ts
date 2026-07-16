@@ -14,7 +14,8 @@ type WeaponKind =
   | 'bow'
   | 'crossbow'
   | 'tome'
-  | 'staff';
+  | 'staff'
+  | 'dagger';
 
 type StatKey = 'attack' | 'defense' | 'hp' | 'speed';
 

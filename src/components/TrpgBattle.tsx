@@ -406,8 +406,16 @@ export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, onExit }: 
                   <span>방어 {game.effectiveDefense(current)}</span>
                   <span>이동 {game.moveTiles(current)}{game.isSlowMover(current) ? ' (2턴에 1칸)' : ''}</span>
                   <span>시야 {game.effectiveVision(current)}</span>
-                  <span>무기 {getWeapon(current.weaponId).name}(사거리 {game.rangeOf(current)})</span>
+                  <span>
+                    무기 {getWeapon(current.weaponId).name}(사거리 {game.rangeOf(current)}
+                    {game.weaponEffectLabel(current) ? `, ${game.weaponEffectLabel(current)}` : ''})
+                  </span>
                   <span>방어구 {armorName(current.armorType)}</span>
+                  {(current.bleed > 0 || current.stun > 0) && (
+                    <span className="trpg-status">
+                      {current.bleed > 0 ? `🩸출혈${current.bleed}` : ''} {current.stun > 0 ? `💫기절${current.stun}` : ''}
+                    </span>
+                  )}
                 </div>
               </div>
 

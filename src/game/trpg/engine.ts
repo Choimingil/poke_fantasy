@@ -124,6 +124,47 @@ const STAT_ATK_DIVISOR = 6;
 /** 숙련도 하한(현재 강화 없음). 데미지 랜덤 계수 = [PROFICIENCY_BASE, 1]. */
 const PROFICIENCY_BASE = 0.8;
 
+// ── 무기 부가효과 상수 ─────────────────────────────────────────────
+/** 적중 시 무기 부가효과 발동 확률. */
+const WEAPON_PROC_CHANCE = 0.3;
+/** 출혈/기절 지속 턴. */
+const STATUS_TURNS = 2;
+type WeaponEffect = 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit' | 'none';
+/**
+ * 무기 종류별 적중 부가효과:
+ * 검/단검=출혈, 둔기=기절, 창=관통(방어 무시), 활=집중(회피 무시), 석궁=급소(1.5배),
+ * 마법서/투척=종류별(임시 출혈), 지팡이=광역(적중 효과 없음)·방패=방어(별도).
+ */
+function weaponEffectOf(kind: string): WeaponEffect {
+  switch (kind) {
+    case 'sword':
+    case 'dagger':
+      return 'bleed';
+    case 'blunt':
+      return 'stun';
+    case 'spear':
+      return 'pierce';
+    case 'bow':
+      return 'focus';
+    case 'crossbow':
+      return 'crit';
+    case 'thrown':
+    case 'tome':
+      return 'bleed';
+    default:
+      return 'none';
+  }
+}
+/** UI 표기용 부가효과 이름. */
+const WEAPON_EFFECT_LABEL: Record<WeaponEffect, string> = {
+  bleed: '출혈',
+  stun: '기절',
+  pierce: '관통',
+  focus: '집중',
+  crit: '급소',
+  none: '없음',
+};
+
 export interface TrpgUnit {
   id: string;
   name: string;
@@ -148,6 +189,8 @@ export interface TrpgUnit {
   alive: boolean;
   guardFactor: number; // 다음 피격 피해 배수(방어 1회용). 기본 1.
   attackMult: number; // 기합/버프 누적 공격 배수.
+  bleed: number; // 출혈 남은 턴(라운드 시작 시 maxHp/8 감소).
+  stun: number; // 기절 남은 턴(그 턴 행동 불가).
 }
 
 export interface UnitDef {
@@ -252,7 +295,16 @@ export class TrpgGame {
       alive: true,
       guardFactor: 1,
       attackMult: 1,
+      bleed: 0,
+      stun: 0,
     };
+  }
+
+  /** 현재 무기의 적중 부가효과(UI 표기용, 없으면 null). */
+  weaponEffectLabel(unit: TrpgUnit): string | null {
+    const e = weaponEffectOf(this.weaponOf(unit).kind);
+    if (e === 'none') return this.weaponOf(unit).kind === 'staff' ? '광역' : null;
+    return WEAPON_EFFECT_LABEL[e];
   }
 
   private buildOrder() {
@@ -288,6 +340,19 @@ export class TrpgGame {
       }
       this.checkEnd();
     }
+    // 출혈: 라운드 시작 시 출혈 유닛 체력 1/8 감소, 지속 턴 1 감소.
+    for (const u of this.units) {
+      if (!u.alive || u.bleed <= 0) continue;
+      const dmg = Math.max(1, Math.floor(u.maxHp / 8));
+      u.hp = Math.max(0, u.hp - dmg);
+      u.bleed -= 1;
+      this.log.push(`${u.name}가 출혈로 체력 ${dmg} 감소.`);
+      if (u.hp <= 0) {
+        u.alive = false;
+        this.log.push(`${u.name}가 쓰러져 묘지로 이동했다.`);
+      }
+    }
+    this.checkEnd();
     this.order = this.units
       .filter((u) => u.alive)
       .sort((a, b) => b.speed - a.speed || (a.team === 'player' ? -1 : 1))
@@ -577,44 +642,64 @@ export class TrpgGame {
     return min + Math.floor(this.rng() * (max - min + 1));
   }
 
-  private computeHit(attacker: TrpgUnit, target: TrpgUnit, skill: Skill): { damage: number; crit: boolean } {
+  private computeHit(
+    attacker: TrpgUnit,
+    target: TrpgUnit,
+    skill: Skill,
+    opts?: { pierce?: boolean; crit?: boolean },
+  ): { damage: number; crit: boolean } {
     // 최종공격력 = (주스탯/6 + 무기공격력) × (숙련도~100% 랜덤) × 기술위력(%).
-    // 주스탯: 마법 기술=지력(magic), 그 외=근력(attack). 기술위력%는 초기 위력을 80~200%로 리스케일.
     const mainStat = skill.type === 'magic' ? attacker.magic : attacker.attack;
     const weaponAtk = this.weaponAttackValue(attacker);
     const prof = PROFICIENCY_BASE + this.rng() * (1 - PROFICIENCY_BASE);
     const powerPct = skillPowerPercent(skill.power) / 100;
     const atkPower = (mainStat / STAT_ATK_DIVISOR + weaponAtk) * prof * powerPct * attacker.attackMult;
 
-    // 최종데미지 = 최종공격력 − 방어력 (뺄셈). 방어 태세면 guardFactor(0/0.5) 적용.
-    let dmg = (atkPower - this.effectiveDefense(target)) * target.guardFactor;
+    // 최종데미지 = 최종공격력 − 방어력(관통 시 0). 방어 태세면 guardFactor(0/0.5), 급소면 1.5배.
+    const defense = opts?.pierce ? 0 : this.effectiveDefense(target);
+    let dmg = (atkPower - defense) * target.guardFactor;
+    if (opts?.crit) dmg *= 1.5;
     dmg = Math.max(target.guardFactor === 0 ? 0 : 1, Math.round(dmg));
-    return { damage: dmg, crit: false };
+    return { damage: dmg, crit: !!opts?.crit };
   }
 
   /** 한 대상에게 공격 1회(다단히트 포함)를 적용하고 로그를 남긴다. */
   private applyAttack(attacker: TrpgUnit, target: TrpgUnit, skill: Skill, lines: string[]) {
-    // 회피 판정: 실패하면 피해 없음.
-    if (this.rng() < this.evasion(target, attacker)) {
+    // 무기 부가효과(적중 시 30% 확률로 1가지 효과).
+    const proc = this.rng() < WEAPON_PROC_CHANCE ? weaponEffectOf(this.weaponOf(attacker).kind) : 'none';
+
+    // 회피 판정(집중=회피 무시). 실패하면 피해 없음.
+    if (proc !== 'focus' && this.rng() < this.evasion(target, attacker)) {
       lines.push(`${attacker.name}의 ${skill.name}! 하지만 ${target.name}가 회피했다!`);
       target.guardFactor = 1;
       return;
     }
+    const opts = { pierce: proc === 'pierce', crit: proc === 'crit' };
     const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
     let total = 0;
-    for (let i = 0; i < hitCount; i += 1) total += this.computeHit(attacker, target, skill).damage;
+    for (let i = 0; i < hitCount; i += 1) total += this.computeHit(attacker, target, skill, opts).damage;
     if (target.guardFactor === 0) {
       total = 0;
       lines.push(`${attacker.name}의 ${skill.name}! 하지만 ${target.name}가 완전히 막아냈다!`);
     } else {
+      const tags = `${proc === 'crit' ? ' 급소!' : ''}${proc === 'pierce' ? ' 관통!' : ''}${proc === 'focus' ? ' 집중!' : ''}`;
       const hitLabel = hitCount > 1 ? ` (${hitCount}회 명중)` : '';
-      lines.push(`${attacker.name}의 ${skill.name}! ${target.name}에게 ${total}의 피해${hitLabel}.`);
+      lines.push(`${attacker.name}의 ${skill.name}!${tags} ${target.name}에게 ${total}의 피해${hitLabel}.`);
     }
     target.guardFactor = 1;
     target.hp = Math.max(0, target.hp - total);
     if (target.hp <= 0) {
       target.alive = false;
       lines.push(`${target.name}가 쓰러져 묘지로 이동했다.`);
+      return;
+    }
+    // 상태이상 부여(생존 시).
+    if (proc === 'bleed') {
+      target.bleed = STATUS_TURNS;
+      lines.push(`${target.name}가 출혈 상태가 되었다!`);
+    } else if (proc === 'stun') {
+      target.stun = STATUS_TURNS;
+      lines.push(`${target.name}가 기절했다!`);
     }
   }
 
@@ -625,6 +710,7 @@ export class TrpgGame {
 
   /** 광역 기술의 유효 중심 칸: 사거리·시야 내이면서 십자 범위에 적이 1명 이상 걸리는 칸. */
   aoeCenters(unit: TrpgUnit, skill: Skill): Coord[] {
+    if (this.weaponOf(unit).kind !== 'staff') return []; // 광역은 지팡이만
     if (this.forestBlocksAttack(unit)) return []; // 숲 안: 원거리·마법 공격 불가
     const range = skill.range ?? this.rangeOf(unit);
     const ranged = this.weaponOf(unit).type !== 'melee';
@@ -655,6 +741,10 @@ export class TrpgGame {
     const lines: string[] = [];
     if (!unit) return { lines };
     const skill = getSkill(skillId);
+    if (this.weaponOf(unit).kind !== 'staff') {
+      lines.push(`${unit.name}: 광역 마법은 지팡이로만 사용할 수 있다.`);
+      return { lines };
+    }
     if (this.forestBlocksAttack(unit)) {
       lines.push(`${unit.name}: 숲 안에서는 원거리·마법 무기로 공격할 수 없다.`);
       return { lines };
@@ -833,17 +923,32 @@ export class TrpgGame {
   /** 현재 유닛의 턴을 종료하고 다음 유닛으로 넘어간다. */
   endTurn() {
     if (this.finished) return;
-    // 다음 살아있는 유닛으로
+    // 다음 행동 가능한 유닛으로(죽은 유닛·기절 유닛은 건너뛴다).
     this.moveFrom = null;
     this.movedExhausted = false;
-    do {
-      this.turnIndex += 1;
+    this.turnIndex += 1;
+    let guard = 0;
+    while (guard < this.order.length * 3 + 3) {
+      guard += 1;
       if (this.turnIndex >= this.order.length) {
         this.round += 1;
-        this.buildOrder();
-        return;
+        this.buildOrder(); // 라운드 효과 적용 + turnIndex 0으로
+        if (this.finished) return;
+        continue;
       }
-    } while (!this.current());
+      const cur = this.current();
+      if (!cur) {
+        this.turnIndex += 1;
+        continue;
+      }
+      if (cur.stun > 0) {
+        cur.stun -= 1;
+        this.log.push(`${cur.name}가 기절해 이번 턴 움직이지 못했다.`);
+        this.turnIndex += 1;
+        continue;
+      }
+      break; // 행동 가능한 유닛
+    }
     this.movedThisTurn = false;
     this.actedThisTurn = false;
   }

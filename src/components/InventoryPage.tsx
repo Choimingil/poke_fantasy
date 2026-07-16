@@ -7,7 +7,7 @@ import type { LoadoutMap } from '../game/data/loadouts';
 import {
   baseWeaponId,
   EXTRA_WEAPON_SLOTS,
-  TRPG_WEAPON_IDS,
+  registerableWeapons,
   type WeaponLoadoutMap,
 } from '../game/data/weaponLoadouts';
 import { TrainerSprite, type Gender } from './TrainerSprite';
@@ -34,6 +34,7 @@ export function InventoryPage({ loadouts, onChange, weaponLoadouts, onWeaponChan
 
   const base = baseWeaponId(jobId);
   const extras = weaponLoadouts[jobId] ?? [];
+  const weaponPool = registerableWeapons(jobId);
 
   const toggle = (skillId: string) => {
     if (equipped.includes(skillId)) {
@@ -102,11 +103,13 @@ export function InventoryPage({ loadouts, onChange, weaponLoadouts, onWeaponChan
               return (
                 <select key={i} value={cur} onChange={(e) => setExtra(i, e.target.value)} aria-label={`추가 무기 슬롯 ${i + 1}`}>
                   <option value="">(비어있음)</option>
-                  {TRPG_WEAPON_IDS.filter((w) => w === cur || (w !== base && !extras.includes(w))).map((w) => (
-                    <option key={w} value={w}>
-                      {getWeapon(w).name}
-                    </option>
-                  ))}
+                  {weaponPool
+                    .filter((w) => w === cur || (w !== base && !extras.includes(w)))
+                    .map((w) => (
+                      <option key={w} value={w}>
+                        {getWeapon(w).name}
+                      </option>
+                    ))}
                 </select>
               );
             })}

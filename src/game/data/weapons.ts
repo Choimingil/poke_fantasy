@@ -36,9 +36,18 @@ export const WEAPONS: WeaponTemplate[] = [
   { id: 'staff_2h_west', name: '스태프', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'west', basePower: 60, baseSpeed: 11 },
 
   // ---- TRPG 전용 3종 (근거리=검, 원거리=활, 마법=지팡이) ----
-  { id: 'trpg_sword', name: '검', type: 'melee', kind: 'sword', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 18, range: 1, requirement: { attack: 15 } },
-  { id: 'trpg_bow', name: '활', type: 'ranged', kind: 'bow', handedness: 'twoHanded', culture: 'east', basePower: 42, baseSpeed: 16, range: 2, requirement: { speed: 12 } },
+  // 근접(물리)
+  { id: 'trpg_sword', name: '검', type: 'melee', kind: 'sword', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 18, range: 1, requirement: {} },
+  { id: 'trpg_mace', name: '둔기', type: 'melee', kind: 'blunt', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 16, range: 1, requirement: {} },
+  { id: 'trpg_spear', name: '창', type: 'melee', kind: 'spear', handedness: 'twoHanded', culture: 'east', basePower: 45, baseSpeed: 15, range: 1, requirement: {} },
+  { id: 'trpg_dagger', name: '단검', type: 'melee', kind: 'dagger', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 22, range: 1, requirement: {} },
+  // 원거리(물리)
+  { id: 'trpg_bow', name: '활', type: 'ranged', kind: 'bow', handedness: 'twoHanded', culture: 'east', basePower: 42, baseSpeed: 16, range: 2, requirement: {} },
+  { id: 'trpg_crossbow', name: '석궁', type: 'ranged', kind: 'crossbow', handedness: 'twoHanded', culture: 'east', basePower: 42, baseSpeed: 12, range: 2, requirement: {} },
+  { id: 'trpg_thrown', name: '투척무기', type: 'ranged', kind: 'thrown', handedness: 'oneHanded', culture: 'east', basePower: 42, baseSpeed: 20, range: 2, requirement: {} },
+  // 마법
   { id: 'trpg_staff', name: '지팡이', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'east', basePower: 44, baseSpeed: 14, range: 1, requirement: {} },
+  { id: 'trpg_tome', name: '마법서', type: 'magic', kind: 'tome', handedness: 'oneHanded', culture: 'east', basePower: 44, baseSpeed: 18, range: 1, requirement: {} },
 ];
 
 /** TRPG 무기 사거리(칸). 명시값이 없으면 원거리 2, 그 외 1. */
