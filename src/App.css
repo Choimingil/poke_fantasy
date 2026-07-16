@@ -188,6 +188,48 @@
   border: 1px solid #c3c8dc;
 }
 
+.inventory-level {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #d8dcea;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.inventory-level h3 {
+  margin: 0 0 2px;
+  font-size: 1em;
+  color: #3b4a77;
+}
+
+.stat-alloc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9em;
+}
+
+.stat-alloc-btns button {
+  width: 26px;
+  height: 26px;
+  margin-left: 4px;
+  border-radius: 6px;
+  border: 1px solid #c3c8dc;
+  background: #eef0f6;
+  cursor: pointer;
+}
+
+.stat-alloc-btns button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.trpg-xp {
+  color: #3b4a77;
+  font-weight: bold;
+}
+
 .inventory-main {
   flex: 1 1 420px;
   min-width: 0;

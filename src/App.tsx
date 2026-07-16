@@ -13,6 +13,7 @@ import { cloneRosterCharacter, ROSTER } from './game/data/roster';
 import { loadLoadouts, saveLoadouts, type LoadoutMap } from './game/data/loadouts';
 import { loadWeaponLoadouts, saveWeaponLoadouts, type WeaponLoadoutMap } from './game/data/weaponLoadouts';
 import { loadEquipConfig, saveEquipConfig, type EquipConfig } from './game/data/equipment';
+import { applyXp, loadProgress, saveProgress, type Progress, type ProgressMap } from './game/data/progression';
 import type { Character } from './game/types';
 
 const STEP_DURATION_MS = 1100;
@@ -81,6 +82,7 @@ function App() {
   const [loadouts, setLoadouts] = useState<LoadoutMap>(() => loadLoadouts());
   const [weaponLoadouts, setWeaponLoadouts] = useState<WeaponLoadoutMap>(() => loadWeaponLoadouts());
   const [equipConfig, setEquipConfig] = useState<EquipConfig>(() => loadEquipConfig());
+  const [progress, setProgress] = useState<ProgressMap>(() => loadProgress());
   const [trpgActive, setTrpgActive] = useState(false);
   const [trpgParty, setTrpgParty] = useState<PartyMember[]>([
     { jobId: 'east_general', gender: 'male' },
@@ -154,6 +156,25 @@ function App() {
     saveEquipConfig(next);
   };
 
+  const updateProgress = (jobId: string, p: Progress) => {
+    setProgress((prev) => {
+      const next = { ...prev, [jobId]: p };
+      saveProgress(next);
+      return next;
+    });
+  };
+
+  const handleBattleEnd = (xpGained: Record<string, number>) => {
+    setProgress((prev) => {
+      const next = { ...prev };
+      for (const [jobId, xp] of Object.entries(xpGained)) {
+        if (next[jobId]) next[jobId] = applyXp(next[jobId], xp);
+      }
+      saveProgress(next);
+      return next;
+    });
+  };
+
   const activeA = battle?.getActive('A');
   const activeB = battle?.getActive('B');
 
@@ -220,6 +241,8 @@ function App() {
         enemyParty={trpgEnemyParty}
         weaponLoadouts={weaponLoadouts}
         equipConfig={equipConfig}
+        progress={progress}
+        onBattleEnd={handleBattleEnd}
         onExit={() => {
           setTrpgActive(false);
           setView('home');
@@ -237,6 +260,8 @@ function App() {
         onWeaponChange={updateWeaponLoadout}
         equipConfig={equipConfig}
         onEquipChange={updateEquip}
+        progress={progress}
+        onProgressChange={updateProgress}
         onBack={() => setView('home')}
       />
     );

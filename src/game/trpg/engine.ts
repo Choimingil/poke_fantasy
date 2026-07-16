@@ -203,6 +203,8 @@ export interface UnitDef {
   gender: 'male' | 'female';
   offhand?: Offhand;
   tomeEffect?: WeaponEffect;
+  level?: number;
+  stats?: StatBuild;
 }
 
 
@@ -231,6 +233,7 @@ export class TrpgGame {
   log: string[] = [];
   finished = false;
   winner: Team | null = null;
+  xpGained: Record<string, number> = {}; // 플레이어 jobId -> 이번 전투 획득 경험치
   movedThisTurn = false;
   actedThisTurn = false;
   moveFrom: Coord | null = null; // 이동 취소(뒤로가기)용 직전 위치
@@ -275,8 +278,8 @@ export class TrpgGame {
     const skillUses: Record<string, number> = {};
     for (const id of ch.skills) skillUses[id] = skillMaxUses(getSkill(id));
 
-    // 테스트 캐릭터 능력치는 직업별 아키타입 빌드(만렙 100)로 통일한다.
-    const build = TEST_BUILD[job.type];
+    // 능력치: 진행(progression)에서 넘어온 분배값 우선, 없으면 직업별 기본 빌드.
+    const build = def.stats ?? TEST_BUILD[job.type];
 
     return {
       id: `${team}_${ch.jobId}`,
@@ -285,7 +288,7 @@ export class TrpgGame {
       faction: ch.faction,
       team,
       gender: def.gender,
-      level: CHAR_LEVEL,
+      level: def.level ?? CHAR_LEVEL,
       pos,
       hp: build.hp,
       maxHp: build.hp,
@@ -693,9 +696,7 @@ export class TrpgGame {
       return;
     }
     const opts = { pierce: proc === 'pierce', crit: proc === 'crit' };
-    // 이도류(단검 주무기 + 단검 보조): 타격 1회 추가.
-    const dualHit = attacker.offhand === 'dagger' && kind === 'dagger' ? 1 : 0;
-    const hitCount = (skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1) + dualHit;
+    const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
     let total = 0;
     for (let i = 0; i < hitCount; i += 1) total += this.computeHit(attacker, target, skill, opts).damage;
     if (target.guardFactor === 0) {
@@ -711,6 +712,9 @@ export class TrpgGame {
     if (target.hp <= 0) {
       target.alive = false;
       lines.push(`${target.name}가 쓰러져 묘지로 이동했다.`);
+      if (attacker.team === 'player') {
+        this.xpGained[attacker.jobId] = (this.xpGained[attacker.jobId] ?? 0) + target.level * 30; // 처치 경험치
+      }
       return;
     }
     // 상태이상 부여(생존 시).

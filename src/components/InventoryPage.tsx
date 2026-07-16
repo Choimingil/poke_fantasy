@@ -17,6 +17,13 @@ import {
   type Offhand,
   type TomeEffect,
 } from '../game/data/equipment';
+import {
+  pendingPoints,
+  xpForNext,
+  type Progress,
+  type ProgressMap,
+  type StatAlloc,
+} from '../game/data/progression';
 import { TrainerSprite, type Gender } from './TrainerSprite';
 
 interface InventoryPageProps {
@@ -26,10 +33,19 @@ interface InventoryPageProps {
   onWeaponChange: (jobId: string, weapons: string[]) => void;
   equipConfig: EquipConfig;
   onEquipChange: (cfg: EquipConfig) => void;
+  progress: ProgressMap;
+  onProgressChange: (jobId: string, p: Progress) => void;
   onBack: () => void;
 }
 
 const ARMOR_BY_TYPE: Record<string, string> = { melee: '판금', ranged: '중갑', magic: '가죽' };
+const STAT_ROWS: { key: keyof StatAlloc; label: string }[] = [
+  { key: 'hp', label: '체력' },
+  { key: 'attack', label: '근력' },
+  { key: 'magic', label: '지력' },
+  { key: 'speed', label: '스피드' },
+  { key: 'endurance', label: '지구력' },
+];
 
 export function InventoryPage({
   loadouts,
@@ -38,6 +54,8 @@ export function InventoryPage({
   onWeaponChange,
   equipConfig,
   onEquipChange,
+  progress,
+  onProgressChange,
   onBack,
 }: InventoryPageProps) {
   const [jobId, setJobId] = useState(ROSTER[0].jobId);
@@ -59,6 +77,15 @@ export function InventoryPage({
     } else if (equipped.length < slots) {
       onChange(jobId, [...equipped, skillId]);
     }
+  };
+
+  const prog = progress[jobId];
+  const pending = prog ? pendingPoints(prog) : 0;
+  const allocStat = (key: keyof StatAlloc, delta: number) => {
+    if (!prog) return;
+    if (delta > 0 && pending <= 0) return;
+    if (delta < 0 && prog.alloc[key] <= 5) return; // 기본치 5 미만으로는 못 내림
+    onProgressChange(jobId, { ...prog, alloc: { ...prog.alloc, [key]: prog.alloc[key] + delta } });
   };
 
   const offhand = equipConfig.offhand[jobId] ?? 'none';
@@ -109,6 +136,34 @@ export function InventoryPage({
           <p className="inventory-slots">
             장착 기술 <strong>{equipped.length}</strong> / {slots}
           </p>
+
+          {prog && (
+            <div className="inventory-level">
+              <h3>레벨 · 능력치</h3>
+              <p className="equip-row">
+                <span>Lv.{prog.level}</span>
+                <span>EXP {prog.xp}/{xpForNext(prog.level)}</span>
+              </p>
+              <p className="equip-label">
+                잔여 포인트 <strong>{pending}</strong> (레벨업 시 +3)
+              </p>
+              {STAT_ROWS.map(({ key, label }) => (
+                <div key={key} className="stat-alloc-row">
+                  <span>
+                    {label} {prog.alloc[key]}
+                  </span>
+                  <span className="stat-alloc-btns">
+                    <button type="button" onClick={() => allocStat(key, -1)} disabled={prog.alloc[key] <= 5}>
+                      −
+                    </button>
+                    <button type="button" onClick={() => allocStat(key, 1)} disabled={pending <= 0}>
+                      ＋
+                    </button>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="inventory-equip">
             <h3>장비</h3>

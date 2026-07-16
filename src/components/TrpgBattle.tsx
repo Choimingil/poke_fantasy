@@ -4,6 +4,7 @@ import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { baseWeaponId, type WeaponLoadoutMap } from '../game/data/weaponLoadouts';
 import type { EquipConfig } from '../game/data/equipment';
+import type { ProgressMap } from '../game/data/progression';
 import { cloneRosterCharacter } from '../game/data/roster';
 import { GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
 import {
@@ -32,6 +33,8 @@ interface TrpgBattleProps {
   enemyParty: PartyMember[];
   weaponLoadouts?: WeaponLoadoutMap;
   equipConfig?: EquipConfig;
+  progress?: ProgressMap;
+  onBattleEnd?: (xpGained: Record<string, number>) => void;
   onExit: () => void;
 }
 
@@ -61,20 +64,31 @@ interface Motion {
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-function toDefs(party: PartyMember[], equip?: EquipConfig): UnitDef[] {
+function toDefs(party: PartyMember[], equip?: EquipConfig, progress?: ProgressMap): UnitDef[] {
   return party.map((m) => ({
     character: cloneRosterCharacter(m.jobId),
     gender: m.gender,
     offhand: equip?.offhand[m.jobId] ?? 'none',
     tomeEffect: equip?.tomeEffect[m.jobId],
+    level: progress?.[m.jobId]?.level,
+    stats: progress?.[m.jobId]?.alloc,
   }));
 }
 
-export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, equipConfig, onExit }: TrpgBattleProps) {
+export function TrpgBattle({
+  playerParty,
+  enemyParty,
+  weaponLoadouts,
+  equipConfig,
+  progress,
+  onBattleEnd,
+  onExit,
+}: TrpgBattleProps) {
   const gameRef = useRef<TrpgGame | null>(null);
   if (!gameRef.current) {
-    gameRef.current = new TrpgGame(toDefs(playerParty, equipConfig), toDefs(enemyParty));
+    gameRef.current = new TrpgGame(toDefs(playerParty, equipConfig, progress), toDefs(enemyParty));
   }
+  const endReportedRef = useRef(false);
   const game = gameRef.current;
 
   const [, setTick] = useState(0);
@@ -184,6 +198,14 @@ export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, equipConfi
     const cur = game.current();
     if (cur && (cur.team === 'player' || game.unitVisibleToPlayer(cur))) centerOn(cur.pos, true);
   }, [currentId, game, centerOn]);
+
+  // 전투 종료 시 획득 경험치를 1회 상위로 보고(레벨업 반영).
+  useEffect(() => {
+    if (game.finished && !endReportedRef.current) {
+      endReportedRef.current = true;
+      onBattleEnd?.(game.xpGained);
+    }
+  }, [game, game.finished, onBattleEnd]);
 
   const finishPlayerTurn = () => {
     game.endTurn();
@@ -396,6 +418,14 @@ export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, equipConfi
           {game.finished ? (
             <div className="trpg-result">
               <p>{game.winner === 'player' ? '🎉 승리했습니다!' : '패배했습니다...'}</p>
+              {Object.keys(game.xpGained).length > 0 && (
+                <p className="trpg-xp">
+                  획득 경험치:{' '}
+                  {Object.entries(game.xpGained)
+                    .map(([job, xp]) => `${getJob(job).name} +${xp}`)
+                    .join(', ')}
+                </p>
+              )}
               <button type="button" onClick={onExit}>
                 홈으로
               </button>
