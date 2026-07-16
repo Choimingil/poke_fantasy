@@ -2,7 +2,7 @@ import type { BattleMap, Character } from '../types';
 import type { UnitAction } from './battle';
 import { getSkill } from '../data/skills';
 import { getWeapon } from '../data/weapons';
-import { getUsableSkillIds } from '../data/promotions';
+import { getLoadoutSkillIds } from '../data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
@@ -26,7 +26,7 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
 
   const weaponInstance = unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
-  const usableIds = getUsableSkillIds(unit, weapon.kind).filter((id) => {
+  const usableIds = getLoadoutSkillIds(unit, weapon.kind).filter((id) => {
     const skill = getSkill(id);
     return skill.maxUses === undefined || (unit.skillUses[id] ?? 0) > 0;
   });

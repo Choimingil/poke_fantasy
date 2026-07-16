@@ -138,6 +138,154 @@ button:disabled {
   gap: 12px;
 }
 
+/* ---------------- 홈 화면 액션 ---------------- */
+
+.home-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.secondary-button {
+  background: #6b5b3e;
+}
+.secondary-button:hover {
+  background: #574a32;
+}
+
+/* ---------------- 인벤토리(캐릭터 세팅) 화면 ---------------- */
+
+.inventory-screen {
+  padding: 16px 20px;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.inventory-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.inventory-header h1 {
+  margin: 0;
+  font-size: 1.3em;
+}
+
+.link-button {
+  background: transparent;
+  color: #3b4a77;
+  padding: 6px 8px;
+}
+.link-button:hover {
+  background: rgba(59, 74, 119, 0.1);
+}
+
+.inventory-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+.inventory-select select {
+  color: #222;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.inventory-screen .inventory-body {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.inventory-side {
+  width: 200px;
+  background: #f4f6ee;
+  border: 2px solid #4a4a58;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.inventory-preview {
+  text-align: center;
+}
+.inventory-sprite {
+  width: 120px;
+  height: auto;
+}
+
+.inventory-stats h3,
+.inventory-main h3 {
+  margin: 12px 0 6px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0;
+  font-size: 0.95em;
+}
+
+.inventory-main {
+  flex: 1;
+  min-width: 280px;
+  background: #f4f6ee;
+  border: 2px solid #4a4a58;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.loadout-count {
+  font-size: 0.8em;
+  color: #3b4a77;
+}
+
+.inventory-hint {
+  font-size: 0.85em;
+  color: #555;
+  margin: 4px 0 8px;
+}
+
+.skill-select-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+}
+.skill-select-list li {
+  border: 1px solid #cfd0c8;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #fff;
+}
+.skill-select-list li.skill-selected {
+  border-color: #3b4a77;
+  background: #eef1fb;
+}
+.skill-select-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #222;
+}
+.skill-select-list .skill-name {
+  font-weight: bold;
+}
+.skill-select-list .skill-meta {
+  margin-left: auto;
+  font-size: 0.78em;
+  color: #666;
+  text-align: right;
+}
+
 /* ---------------- 그리드 전투 화면 ---------------- */
 
 .battle-log-panel {
@@ -171,6 +319,17 @@ button:disabled {
 
 .tile-cell {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.terrain-icon {
+  font-size: 26px;
+  line-height: 1;
+  pointer-events: none;
+  opacity: 0.9;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
 }
 
 /* 전장의 안개: 시야 밖 타일 */
@@ -221,16 +380,36 @@ button:disabled {
   background: #b5451f;
 }
 
+/* 이동 가능한 칸: 파란 오버레이 + 링으로 뚜렷하게 표시 */
 .tile-highlight-move {
-  outline: 2px solid rgba(255, 255, 255, 0.7);
-  outline-offset: -2px;
   cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgba(120, 190, 255, 0.95);
+}
+.tile-highlight-move::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(70, 150, 255, 0.4);
+  animation: tile-pulse 1.2s ease-in-out infinite;
 }
 
+/* 공격 대상 지정 가능한 칸: 붉은 오버레이 + 링 */
 .tile-highlight-target {
-  outline: 2px solid rgba(255, 60, 60, 0.85);
-  outline-offset: -2px;
   cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgba(255, 80, 80, 0.95);
+}
+.tile-highlight-target::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(255, 60, 60, 0.35);
+}
+
+@keyframes tile-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
 }
 
 .unit-token {

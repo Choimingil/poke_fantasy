@@ -3,6 +3,7 @@ import { SKILLS } from './skills';
 
 export const PROMOTION_LEVEL_INTERVAL = 5;
 export const MAX_TIER = 6;
+export const MAX_LOADOUT = 4;
 
 interface Tier1Bonus {
   powerBonusPercent?: number;
@@ -52,6 +53,17 @@ export function getUsableSkillIds(c: Character, equippedKind: WeaponKind): strin
   return SKILLS.filter((s) => s.weaponKind === 'common' || s.weaponKind === equippedKind)
     .filter((s) => !s.requiredTier || s.requiredTier <= tier)
     .map((s) => s.id);
+}
+
+/**
+ * 실제 전투에 들고 갈 스킬 id 목록: 사용 가능한 스킬 중 캐릭터의 로드아웃(최대 4개)에 포함된 것만.
+ * 로드아웃이 비어있으면(미설정) 사용 가능한 스킬의 앞 4개를 기본으로 사용한다.
+ * 플레이어와 AI 모두 이 목록을 통해 스킬을 사용하므로 대칭 적용된다.
+ */
+export function getLoadoutSkillIds(c: Character, equippedKind: WeaponKind): string[] {
+  const pool = getUsableSkillIds(c, equippedKind);
+  if (!c.skillLoadout || c.skillLoadout.length === 0) return pool.slice(0, MAX_LOADOUT);
+  return pool.filter((id) => c.skillLoadout.includes(id)).slice(0, MAX_LOADOUT);
 }
 
 export function initSkillUses(c: Character, equippedKind: WeaponKind): Record<string, number> {

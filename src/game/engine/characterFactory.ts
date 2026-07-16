@@ -1,5 +1,5 @@
 import type { Character, Element, GridPos, SpriteGender, StatBlock } from '../types';
-import { initSkillUses } from '../data/promotions';
+import { getUsableSkillIds, initSkillUses, MAX_LOADOUT } from '../data/promotions';
 import { getWeapon } from '../data/weapons';
 import type { Side } from './battle';
 
@@ -35,7 +35,7 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     inventory.push({ instanceId: `${opts.id}-extra${i}`, templateId, element: undefined });
   }
 
-  return {
+  const character: Character = {
     id: opts.id,
     name: opts.name,
     spriteJob: opts.spriteJob ?? 'east_duelist',
@@ -55,7 +55,11 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     statusEffects: [],
     skillUses: {},
     bonusActionPending: false,
+    skillLoadout: [],
   };
+  // 기본 로드아웃: 장착 무기로 사용 가능한 스킬의 앞 4개(공통 공격/버프 위주).
+  character.skillLoadout = getUsableSkillIds(character, getWeapon(weaponInstance.templateId).kind).slice(0, MAX_LOADOUT);
+  return character;
 }
 
 /** 전투 시작 시 배틀-스코프 상태만 초기화한다(레벨/인벤토리/숙련도는 유지) */

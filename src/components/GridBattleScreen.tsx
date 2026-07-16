@@ -5,7 +5,7 @@ import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/map
 import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
-import { getUsableSkillIds } from '../game/data/promotions';
+import { getLoadoutSkillIds } from '../game/data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
@@ -130,7 +130,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const reachable = pendingMoveTile ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
   const reachableTiles = new Set(reachable.map(posKey));
 
-  const usableSkillIds = getUsableSkillIds(currentUnit, weapon.kind).filter((id) => {
+  const usableSkillIds = getLoadoutSkillIds(currentUnit, weapon.kind).filter((id) => {
     const skill = getSkill(id);
     return skill.maxUses === undefined || (currentUnit.skillUses[id] ?? 0) > 0;
   });

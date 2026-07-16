@@ -14,12 +14,14 @@ export function TeamSetupScreen({
   onChangeTeamA,
   onChangeTeamB,
   onStart,
+  onOpenInventory,
 }: {
   teamAIds: string[];
   teamBIds: string[];
   onChangeTeamA: (ids: string[]) => void;
   onChangeTeamB: (ids: string[]) => void;
   onStart: () => void;
+  onOpenInventory: () => void;
 }) {
   const canStart = teamAIds.length > 0 && teamBIds.length > 0;
 
@@ -55,9 +57,14 @@ export function TeamSetupScreen({
           </ul>
         </div>
       </div>
-      <button type="button" disabled={!canStart} onClick={onStart}>
-        인벤토리 확인 →
-      </button>
+      <div className="home-actions">
+        <button type="button" className="secondary-button" onClick={onOpenInventory}>
+          🎒 인벤토리 (능력치·기술·무기)
+        </button>
+        <button type="button" disabled={!canStart} onClick={onStart}>
+          ⚔️ 전투 시작 →
+        </button>
+      </div>
     </div>
   );
 }

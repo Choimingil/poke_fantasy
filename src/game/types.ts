@@ -131,4 +131,5 @@ export interface Character {
   elementOverride?: Element; // set by 지팡이 약화; persists until overwritten again
   skillUses: Record<string, number>; // battle-scoped remaining uses, keyed by skill id
   bonusActionPending?: boolean; // 재행동: acts again at the end of the round regardless of speed
+  skillLoadout: string[]; // 전투에 들고 갈 스킬(최대 4). 비어있으면 사용 가능한 스킬 앞 4개를 자동 사용.
 }

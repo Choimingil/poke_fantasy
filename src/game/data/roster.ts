@@ -14,10 +14,19 @@ const ROSTER_DEFS: CreateCharacterOptions[] = [
   { id: 'tome_b', name: '현자', spriteJob: 'east_strategist', gender: 'male', baseStats: { hp: 95, attack: 10, magicAttack: 34, defense: 18, speed: 18 }, rawMove: 3, sight: 4, starterWeaponTemplateId: 'tome_west', extraWeaponTemplateIds: ['staff_west'] },
 ];
 
+// 세션 동안 유지되는 편집 가능한 캐릭터 인스턴스(인벤토리에서 무기/스킬 등을 여기서 직접 수정).
 export const ROSTER: Character[] = ROSTER_DEFS.map((entry) => createCharacter(entry));
 
-export function cloneRosterCharacter(id: string): Character {
-  const entry = ROSTER_DEFS.find((e) => e.id === id);
-  if (!entry) throw new Error(`Unknown roster entry: ${id}`);
-  return createCharacter(entry);
+export function getRosterCharacter(id: string): Character {
+  const c = ROSTER.find((e) => e.id === id);
+  if (!c) throw new Error(`Unknown roster entry: ${id}`);
+  return c;
+}
+
+/** 인벤토리에서 편집된 로스터 인스턴스를 전투용으로 복제한다(고유 id 부여로 양 팀 중복 선택 대비). */
+export function cloneForBattle(id: string, uniqueId: string): Character {
+  const src = getRosterCharacter(id);
+  const clone = structuredClone(src);
+  clone.id = uniqueId;
+  return clone;
 }

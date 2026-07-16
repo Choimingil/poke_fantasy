@@ -3,11 +3,12 @@ import type { BattleMap, TerrainType } from '../types';
 const WIDTH = 10;
 const HEIGHT = 10;
 
+// 상하 대결 구도(위=적 B팀, 아래=아군 A팀)에 맞춰 지형을 가로 방향으로 배치한다.
 function terrainAt(x: number, y: number): TerrainType {
-  if (y === 4 && x >= 3 && x <= 6) return 'water';
-  if (x >= 1 && x <= 2 && y >= 1 && y <= 2) return 'forest';
-  if (x >= 7 && x <= 8 && y >= 7 && y <= 8) return 'forest';
-  if (x >= 4 && x <= 5 && y >= 7 && y <= 8) return 'hill';
+  if (y >= 4 && y <= 5 && x >= 2 && x <= 4) return 'water'; // 중앙 좌측 연못
+  if (y >= 2 && y <= 3 && x >= 6 && x <= 7) return 'forest'; // 상단(적측) 숲
+  if (y >= 6 && y <= 7 && x >= 2 && x <= 3) return 'forest'; // 하단(아군측) 숲
+  if (y >= 4 && y <= 5 && x >= 7 && x <= 8) return 'hill'; // 중앙 우측 언덕
   return 'plain';
 }
 
@@ -21,16 +22,17 @@ export function createDefaultMap(): BattleMap {
   return { width: WIDTH, height: HEIGHT, tiles };
 }
 
+// 아군(A팀)은 화면 아래쪽, 적(B팀)은 위쪽에 상하로 배치한다.
 export const TEAM_A_SPAWNS = [
-  { x: 0, y: 1 },
-  { x: 0, y: 3 },
-  { x: 0, y: 6 },
-  { x: 0, y: 8 },
+  { x: 2, y: 9 },
+  { x: 4, y: 9 },
+  { x: 5, y: 9 },
+  { x: 7, y: 9 },
 ];
 
 export const TEAM_B_SPAWNS = [
-  { x: 9, y: 1 },
-  { x: 9, y: 3 },
-  { x: 9, y: 6 },
-  { x: 9, y: 8 },
+  { x: 2, y: 0 },
+  { x: 4, y: 0 },
+  { x: 5, y: 0 },
+  { x: 7, y: 0 },
 ];

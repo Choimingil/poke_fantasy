@@ -1,55 +1,126 @@
-import type { Character } from '../game/types';
+import { useState } from 'react';
+import { ROSTER, getRosterCharacter } from '../game/data/roster';
 import { getWeapon } from '../game/data/weapons';
+import { getSkill } from '../game/data/skills';
+import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
 import { equipShield, equipWeapon, unequipShield } from '../game/engine/inventory';
+import { TrainerSprite } from './TrainerSprite';
 
-export function InventoryScreen({ party, onChange, onContinue, onBack }: {
-  party: Character[];
-  onChange: () => void;
-  onContinue: () => void;
-  onBack: () => void;
-}) {
+const STAT_ROWS: { key: 'hp' | 'attack' | 'magicAttack' | 'defense' | 'speed'; label: string }[] = [
+  { key: 'hp', label: '체력' },
+  { key: 'attack', label: '근력' },
+  { key: 'magicAttack', label: '지력' },
+  { key: 'defense', label: '방어' },
+  { key: 'speed', label: '스피드' },
+];
+
+export function InventoryScreen({ onChange, onBack }: { onChange: () => void; onBack: () => void }) {
+  const [selectedId, setSelectedId] = useState(ROSTER[0].id);
+  const c = getRosterCharacter(selectedId);
+
+  const equippedWeapon = getWeapon(c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!.templateId);
+  const weaponPool = getUsableSkillIds(c, equippedWeapon.kind);
+
+  const setWeapon = (instanceId: string) => {
+    equipWeapon(c, instanceId);
+    // 새 무기로 사용할 수 없게 된 스킬은 로드아웃에서 제거한다.
+    const nextKind = getWeapon(c.inventory.find((w) => w.instanceId === instanceId)!.templateId).kind;
+    const nextPool = getUsableSkillIds(c, nextKind);
+    c.skillLoadout = c.skillLoadout.filter((id) => nextPool.includes(id));
+    onChange();
+  };
+
+  const toggleSkill = (id: string) => {
+    if (c.skillLoadout.includes(id)) {
+      c.skillLoadout = c.skillLoadout.filter((s) => s !== id);
+    } else if (c.skillLoadout.length < MAX_LOADOUT) {
+      c.skillLoadout = [...c.skillLoadout, id];
+    }
+    onChange();
+  };
+
+  const selectedCount = c.skillLoadout.filter((id) => weaponPool.includes(id)).length;
+
   return (
-    <div className="app-shell setup-screen">
-      <h1>인벤토리 - 장비 교체</h1>
-      <div className="inventory-panel">
-        {party.map((c) => {
-          const equippedWeapon = getWeapon(c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!.templateId);
-          const equippedShield = c.equippedShieldId
-            ? getWeapon(c.inventory.find((w) => w.instanceId === c.equippedShieldId)!.templateId)
-            : null;
-          return (
-            <div key={c.id} className="inventory-character-card">
-              <h3>{c.name} <span className="inventory-equipped-label">장착: {equippedWeapon.name}{equippedShield ? ` + ${equippedShield.name}` : ''}</span></h3>
-              <ul className="inventory-weapon-list">
-                {c.inventory.map((instance) => {
-                  const template = getWeapon(instance.templateId);
-                  const isEquippedWeapon = instance.instanceId === c.equippedWeaponId;
-                  const isEquippedShield = instance.instanceId === c.equippedShieldId;
-                  return (
-                    <li key={instance.instanceId} className={isEquippedWeapon || isEquippedShield ? 'inventory-item-equipped' : ''}>
-                      <span>{template.name} ({template.kind}{template.kind === 'staff' && instance.element ? `/${instance.element}` : ''})</span>
-                      {template.kind === 'shield' ? (
-                        isEquippedShield ? (
-                          <button type="button" onClick={() => { unequipShield(c); onChange(); }}>해제</button>
-                        ) : (
-                          <button type="button" disabled={getWeapon(c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!.templateId).handedness === 'twoHanded'} onClick={() => { equipShield(c, instance.instanceId); onChange(); }}>장착</button>
-                        )
-                      ) : isEquippedWeapon ? (
-                        <span className="inventory-equipped-badge">장착 중</span>
-                      ) : (
-                        <button type="button" onClick={() => { equipWeapon(c, instance.instanceId); onChange(); }}>장착</button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
+    <div className="app-shell inventory-screen">
+      <div className="inventory-header">
+        <button type="button" className="link-button" onClick={onBack}>← 홈으로</button>
+        <h1>인벤토리 · 캐릭터 세팅</h1>
       </div>
-      <div className="inventory-actions">
-        <button type="button" onClick={onBack}>← 팀 선택으로</button>
-        <button type="button" onClick={onContinue}>전투 시작 →</button>
+
+      <label className="inventory-select">
+        캐릭터
+        <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+          {ROSTER.map((r) => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="inventory-body">
+        <aside className="inventory-side">
+          <div className="inventory-preview">
+            <TrainerSprite jobId={c.spriteJob} gender={c.gender} facing="front" className="inventory-sprite" />
+            <p><strong>{c.name}</strong> · Lv.{c.level}</p>
+          </div>
+          <div className="inventory-stats">
+            <h3>능력치</h3>
+            {STAT_ROWS.map(({ key, label }) => (
+              <p key={key} className="stat-row"><span>{label}</span><strong>{c.baseStats[key]}</strong></p>
+            ))}
+            <p className="stat-row"><span>이동력</span><strong>{c.rawMove}</strong></p>
+            <p className="stat-row"><span>시야</span><strong>{c.sight}</strong></p>
+          </div>
+        </aside>
+
+        <section className="inventory-main">
+          <h3>무기 · 보조장비</h3>
+          <ul className="inventory-weapon-list">
+            {c.inventory.map((instance) => {
+              const template = getWeapon(instance.templateId);
+              const isEquippedWeapon = instance.instanceId === c.equippedWeaponId;
+              const isEquippedShield = instance.instanceId === c.equippedShieldId;
+              return (
+                <li key={instance.instanceId} className={isEquippedWeapon || isEquippedShield ? 'inventory-item-equipped' : ''}>
+                  <span>{template.name} <em>({template.kind}{template.kind === 'staff' && instance.element ? `/${instance.element}` : ''})</em></span>
+                  {template.kind === 'shield' ? (
+                    isEquippedShield ? (
+                      <button type="button" onClick={() => { unequipShield(c); onChange(); }}>해제</button>
+                    ) : (
+                      <button type="button" disabled={equippedWeapon.handedness === 'twoHanded'} onClick={() => { equipShield(c, instance.instanceId); onChange(); }}>장착</button>
+                    )
+                  ) : isEquippedWeapon ? (
+                    <span className="inventory-equipped-badge">장착 중</span>
+                  ) : (
+                    <button type="button" onClick={() => setWeapon(instance.instanceId)}>장착</button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <h3>기술 로드아웃 <span className="loadout-count">{selectedCount} / {MAX_LOADOUT}</span></h3>
+          <p className="inventory-hint">전투에 들고 갈 기술을 최대 {MAX_LOADOUT}개까지 선택하세요. (장착 무기 기준)</p>
+          <ul className="skill-select-list">
+            {weaponPool.map((id) => {
+              const skill = getSkill(id);
+              const on = c.skillLoadout.includes(id);
+              const full = !on && selectedCount >= MAX_LOADOUT;
+              return (
+                <li key={id} className={on ? 'skill-selected' : ''}>
+                  <label>
+                    <input type="checkbox" checked={on} disabled={full} onChange={() => toggleSkill(id)} />
+                    <span className="skill-name">{skill.name}</span>
+                    <span className="skill-meta">
+                      {skill.category === 'attack' ? `위력 ${skill.power}%` : skill.category} · 명중 {skill.accuracy}
+                      {skill.maxUses !== undefined ? ` · ${skill.maxUses}회` : ' · ∞'}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       </div>
     </div>
   );

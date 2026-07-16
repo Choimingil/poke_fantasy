@@ -6,6 +6,13 @@ import { UnitToken } from './UnitToken';
 
 const CELL = 64; // px, 카메라 스크롤이 의미를 갖도록 고정 픽셀 크기 사용
 
+const TERRAIN_ICON: Record<string, string> = {
+  plain: '',
+  forest: '🌲',
+  hill: '⛰️',
+  water: '🌊',
+};
+
 export function BoardGrid({
   map,
   teamA,
@@ -64,8 +71,11 @@ export function BoardGrid({
       ]
         .filter(Boolean)
         .join(' ');
+      const icon = tile.status?.type === 'burning' ? '🔥' : (revealed ? TERRAIN_ICON[tile.terrain] : '');
       cells.push(
-        <div key={key} className={classes} style={{ gridColumn: x + 1, gridRow: y + 1 }} onClick={() => onTileClick({ x, y })} />,
+        <div key={key} className={classes} style={{ gridColumn: x + 1, gridRow: y + 1 }} onClick={() => onTileClick({ x, y })}>
+          {icon && <span className="terrain-icon">{icon}</span>}
+        </div>,
       );
     }
   }
