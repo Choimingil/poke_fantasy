@@ -1,112 +1,75 @@
-import type { Skill, WeaponTemplate } from '../types';
+import type { Element, Skill } from '../types';
 
-/** 공격 기술 초기 위력 범위(이 범위를 위력 80~200%로 리스케일). */
-const SKILL_POWER_MIN = 18;
-const SKILL_POWER_MAX = 95;
-/** 기술위력(%): 초기 위력값을 [80, 200]%로 선형 리스케일(범위 밖은 클램프). 데미지 공식에 사용. */
-export function skillPowerPercent(power: number): number {
-  const t = (power - SKILL_POWER_MIN) / (SKILL_POWER_MAX - SKILL_POWER_MIN);
-  return Math.round(Math.max(80, Math.min(200, 80 + t * 120)));
-}
+const ENCHANT_ELEMENTS: { element: Exclude<Element, 'none'>; name: string }[] = [
+  { element: 'fire', name: '불' },
+  { element: 'water', name: '물' },
+  { element: 'wood', name: '나무' },
+  { element: 'steel', name: '강철' },
+  { element: 'earth', name: '땅' },
+];
 
-const SKILLS: Skill[] = [
-  // ============================ 공통 기술 (4) ============================
-  // 모든 직업이 배울 수 있는 변화(유틸) 기술. 무기 타입과 무관하게 사용 가능.
-  {
-    id: 'guard', name: '방어', type: 'melee', category: 'defense', power: 0, accuracy: 100, priority: 1, target: 'self',
-    description: '상대 공격에 대한 피해 0', typeLabel: '변화', accuracyLabel: '100% (연속 사용 시 33%)',
-    fullGuard: true, consecutivePenaltyAccuracy: 33, learnableBy: 'common',
-  },
-  {
-    id: 'war_cry', name: '기합', type: 'melee', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self',
-    description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: 'common',
-  },
-  {
-    id: 'weaken', name: '약화', type: 'magic', category: 'debuff', power: 0, accuracy: 90, priority: 0, target: 'enemy',
-    description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: 'common',
-  },
-  {
-    id: 'first_aid', name: '응급처치', type: 'magic', category: 'heal', power: 0, accuracy: 100, priority: 0, target: 'self',
-    description: '체력 25% 회복', typeLabel: '변화', healPercent: 0.25, learnableBy: 'common',
-  },
+const COMMON_SKILLS: Skill[] = [
+  { id: 'power_strike', name: '강타', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon' },
+  { id: 'incantation', name: '주술', weaponKind: 'common', category: 'attack', damageType: 'magic', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', element: 'weaponElement' },
+  { id: 'protect', name: '보호', weaponKind: 'common', category: 'guard', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', areaRadius: 1 },
+  { id: 'taunt', name: '도발', weaponKind: 'common', category: 'debuff', damageType: 'none', power: 0, accuracy: 90, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+  { id: 'rockfall', name: '낙석', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 200, accuracy: 100, targetMode: 'tile', maxUses: 2, requiresTerrain: 'hill' },
+  ...ENCHANT_ELEMENTS.map(({ element, name }): Skill => ({
+    id: `enchant_${element}`,
+    name: `마법부여-${name}`,
+    weaponKind: 'common',
+    category: 'buff',
+    damageType: 'none',
+    power: 0,
+    accuracy: 100,
+    targetMode: 'self',
+    maxUses: 3,
+    element,
+  })),
+  { id: 'river_surge', name: '급류', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
+  { id: 'climb', name: '등반', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
+  { id: 'far_sight', name: '천리안', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
+  { id: 'forest_vision', name: '투시', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
+];
 
-  // ======================= 동양 근거리 =======================
-  // 장군(east_general)
-  { id: 'power_strike', name: '강타', type: 'melee', category: 'attack', power: 60, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 60', typeLabel: '근거리', learnableBy: ['east_general'] },
-  { id: 'general_sweep', name: '횡소천군', type: 'melee', category: 'attack', power: 45, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 45', typeLabel: '근거리', learnableBy: ['east_general'] },
-  { id: 'general_charge', name: '돌격', type: 'melee', category: 'attack', power: 80, accuracy: 80, priority: 0, target: 'enemy', description: '위력 : 80', typeLabel: '근거리', learnableBy: ['east_general'] },
-  { id: 'general_roar', name: '위압', type: 'melee', category: 'debuff', power: 0, accuracy: 90, priority: 0, target: 'enemy', description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: ['east_general'] },
+const SWORD_SKILLS: Skill[] = [
+  { id: 'sword_draw', name: '발도', weaponKind: 'sword', requiredTier: 2, category: 'attack', damageType: 'physical', power: 80, accuracy: 100, targetMode: 'selfRadius', areaRadius: 1, maxUses: 3 },
+  { id: 'sword_awaken', name: '각성', weaponKind: 'sword', requiredTier: 4, category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'ally', areaRadius: 2, maxUses: 3 },
+  { id: 'sword_flurry', name: '고속연타', weaponKind: 'sword', requiredTier: 6, category: 'attack', damageType: 'physical', power: 80, hits: 3, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+];
 
-  // 협객(east_duelist)
-  { id: 'slash', name: '베기', type: 'melee', category: 'attack', power: 40, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 40', typeLabel: '근거리', learnableBy: ['east_duelist'] },
-  { id: 'duelist_flurry', name: '연격', type: 'melee', category: 'attack', power: 25, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 25 로 2~3회 공격', typeLabel: '근거리', hits: { min: 2, max: 3 }, learnableBy: ['east_duelist'] },
-  { id: 'duelist_final', name: '필살일섬', type: 'melee', category: 'attack', power: 90, accuracy: 80, priority: 0, target: 'enemy', description: '위력 : 90', typeLabel: '근거리', learnableBy: ['east_duelist'] },
-  { id: 'duelist_focus', name: '심안', type: 'melee', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['east_duelist'] },
+const BLUNT_SKILLS: Skill[] = [
+  { id: 'blunt_leghit', name: '다리 타격', weaponKind: 'blunt', requiredTier: 2, category: 'attack', damageType: 'physical', power: 120, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+  { id: 'blunt_unity', name: '단결', weaponKind: 'blunt', requiredTier: 4, category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'ally', areaRadius: 2, maxUses: 3 },
+  { id: 'blunt_crush', name: '분쇄', weaponKind: 'blunt', requiredTier: 6, category: 'attack', damageType: 'physical', power: 240, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+];
 
-  // ======================= 동양 마법 =======================
-  // 참모(east_strategist)
-  { id: 'strat_fire', name: '화계', type: 'magic', category: 'attack', power: 50, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 50', typeLabel: '마법', learnableBy: ['east_strategist'] },
-  { id: 'strat_heal', name: '치료술', type: 'magic', category: 'heal', power: 0, accuracy: 100, priority: 0, target: 'self', description: '체력 40% 회복', typeLabel: '마법', healPercent: 0.4, learnableBy: ['east_strategist'] },
-  { id: 'strat_weaken', name: '허실계', type: 'magic', category: 'debuff', power: 0, accuracy: 95, priority: 0, target: 'enemy', description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: ['east_strategist'] },
-  { id: 'strat_scheme', name: '신산', type: 'magic', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['east_strategist'] },
+const BOW_SKILLS: Skill[] = [
+  { id: 'bow_flame', name: '화공', weaponKind: 'bow', requiredTier: 2, category: 'attack', damageType: 'physical', power: 120, accuracy: 90, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+  { id: 'bow_pinpoint', name: '급소', weaponKind: 'bow', requiredTier: 4, category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', maxUses: 3 },
+  { id: 'bow_snipe', name: '저격', weaponKind: 'bow', requiredTier: 6, category: 'attack', damageType: 'physical', power: 180, accuracy: 100, targetMode: 'anyInSight', ignoresRange: true, maxUses: 3 },
+];
 
-  // 주술사(east_shaman)
-  { id: 'fire_bolt', name: '화염구', type: 'magic', category: 'attack', power: 55, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 55, 사거리 2, 십자 범위(선택 칸 + 상하좌우 1칸) 광역', typeLabel: '마법', aoeRadius: 1, range: 2, learnableBy: ['east_shaman'] },
-  { id: 'shaman_frost', name: '빙결술', type: 'magic', category: 'attack', power: 50, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 50, 15% 확률로 수면', typeLabel: '마법', statusEffect: { effect: 'sleep', chance: 0.15 }, learnableBy: ['east_shaman'] },
-  { id: 'shaman_curse', name: '저주', type: 'magic', category: 'attack', power: 45, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 45, 35% 확률로 중독', typeLabel: '마법', statusEffect: { effect: 'poison', chance: 0.35 }, learnableBy: ['east_shaman'] },
-  { id: 'shaman_thunder', name: '뇌격', type: 'magic', category: 'attack', power: 60, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 60, 25% 확률로 마비', typeLabel: '마법', statusEffect: { effect: 'paralysis', chance: 0.25 }, learnableBy: ['east_shaman'] },
+/** 지팡이 초급/고급 스킬은 이름/속성이 장착 지팡이의 element에 따라 자동으로 정해지므로 스킬 id는 하나씩만 존재한다. */
+const STAFF_SKILLS: Skill[] = [
+  { id: 'staff_bolt', name: '원소탄', weaponKind: 'staff', requiredTier: 2, category: 'attack', damageType: 'magic', power: 120, accuracy: 90, targetMode: 'enemy', range: 'weapon', element: 'weaponElement', maxUses: 3 },
+  { id: 'staff_weaken', name: '약화', weaponKind: 'staff', requiredTier: 4, category: 'debuff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+  { id: 'staff_burst', name: '원소폭풍', weaponKind: 'staff', requiredTier: 6, category: 'attack', damageType: 'magic', power: 120, accuracy: 90, targetMode: 'tile', range: 'weapon', areaRadius: 1, element: 'weaponElement', maxUses: 3 },
+];
 
-  // ======================= 동양 원거리 =======================
-  // 궁수(east_archer)
-  { id: 'rapid_shot', name: '연사', type: 'ranged', category: 'attack', power: 20, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 20 으로 1~5회 중 랜덤으로 공격', typeLabel: '원거리', hits: { min: 1, max: 5 }, learnableBy: ['east_archer'] },
-  { id: 'aimed_shot', name: '조준사격', type: 'ranged', category: 'attack', power: 65, accuracy: 85, priority: 0, target: 'enemy', description: '위력 : 65', typeLabel: '원거리', learnableBy: ['east_archer'] },
-  { id: 'archer_pin', name: '견제사격', type: 'ranged', category: 'attack', power: 40, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 40, 20% 확률로 마비', typeLabel: '원거리', statusEffect: { effect: 'paralysis', chance: 0.2 }, learnableBy: ['east_archer'] },
-  { id: 'archer_focus', name: '정조준', type: 'ranged', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['east_archer'] },
+const TOME_SKILLS: Skill[] = [
+  { id: 'tome_heal', name: '치료', weaponKind: 'tome', requiredTier: 2, category: 'heal', damageType: 'none', power: 0, accuracy: 100, targetMode: 'ally', areaRadius: 2, maxUses: 5 },
+  { id: 'tome_refresh', name: '원기회복', weaponKind: 'tome', requiredTier: 4, category: 'utility', damageType: 'none', power: 0, accuracy: 100, targetMode: 'ally', areaRadius: 2, maxUses: 3 },
+  { id: 'tome_recast', name: '재행동', weaponKind: 'tome', requiredTier: 6, category: 'utility', damageType: 'none', power: 0, accuracy: 100, targetMode: 'ally', areaRadius: 2, maxUses: 2 },
+];
 
-  // 닌자(east_ninja)
-  { id: 'quick_shot', name: '속사', type: 'ranged', category: 'attack', power: 35, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 35', typeLabel: '원거리', learnableBy: ['east_ninja'] },
-  { id: 'ninja_shuriken', name: '표창난무', type: 'ranged', category: 'attack', power: 18, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 18 로 2~4회 공격', typeLabel: '원거리', hits: { min: 2, max: 4 }, learnableBy: ['east_ninja'] },
-  { id: 'ninja_poison', name: '독침', type: 'ranged', category: 'attack', power: 40, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 40, 35% 확률로 중독', typeLabel: '원거리', statusEffect: { effect: 'poison', chance: 0.35 }, learnableBy: ['east_ninja'] },
-  { id: 'ninja_smoke', name: '연막', type: 'ranged', category: 'debuff', power: 0, accuracy: 90, priority: 0, target: 'enemy', description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: ['east_ninja'] },
-
-  // ======================= 서양 근거리 =======================
-  // 기사(west_knight)
-  { id: 'knight_smite', name: '성스러운 일격', type: 'melee', category: 'attack', power: 55, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 55', typeLabel: '근거리', learnableBy: ['west_knight'] },
-  { id: 'knight_bash', name: '방패치기', type: 'melee', category: 'attack', power: 40, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 40, 30% 확률로 마비', typeLabel: '근거리', statusEffect: { effect: 'paralysis', chance: 0.3 }, learnableBy: ['west_knight'] },
-  { id: 'knight_crusade', name: '심판', type: 'melee', category: 'attack', power: 75, accuracy: 85, priority: 0, target: 'enemy', description: '위력 : 75', typeLabel: '근거리', learnableBy: ['west_knight'] },
-  { id: 'knight_taunt', name: '도발', type: 'melee', category: 'debuff', power: 0, accuracy: 90, priority: 0, target: 'enemy', description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: ['west_knight'] },
-
-  // 광전사(west_berserker)
-  { id: 'berserker_cleave', name: '광폭베기', type: 'melee', category: 'attack', power: 70, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 70', typeLabel: '근거리', learnableBy: ['west_berserker'] },
-  { id: 'berserker_rampage', name: '난격', type: 'melee', category: 'attack', power: 30, accuracy: 85, priority: 0, target: 'enemy', description: '위력 : 30 로 2~4회 공격', typeLabel: '근거리', hits: { min: 2, max: 4 }, learnableBy: ['west_berserker'] },
-  { id: 'berserker_reckless', name: '결사', type: 'melee', category: 'attack', power: 95, accuracy: 75, priority: 0, target: 'enemy', description: '위력 : 95', typeLabel: '근거리', learnableBy: ['west_berserker'] },
-  { id: 'berserker_bloodlust', name: '피의 갈증', type: 'melee', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['west_berserker'] },
-
-  // ======================= 서양 마법 =======================
-  // 프리스트(west_priest)
-  { id: 'priest_heal', name: '회복', type: 'magic', category: 'heal', power: 0, accuracy: 100, priority: 0, target: 'self', description: '체력 50% 회복', typeLabel: '마법', healPercent: 0.5, learnableBy: ['west_priest'] },
-  { id: 'priest_smite', name: '심판의 빛', type: 'magic', category: 'attack', power: 50, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 50', typeLabel: '마법', learnableBy: ['west_priest'] },
-  { id: 'priest_bless', name: '축복', type: 'magic', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['west_priest'] },
-  { id: 'priest_barrier', name: '성역', type: 'magic', category: 'defense', power: 0, accuracy: 100, priority: 1, target: 'self', description: '상대 공격에 대한 피해 0', typeLabel: '변화', accuracyLabel: '100% (연속 사용 시 33%)', fullGuard: true, consecutivePenaltyAccuracy: 33, learnableBy: ['west_priest'] },
-
-  // 마녀(west_witch)
-  { id: 'witch_fireball', name: '화염 폭발', type: 'magic', category: 'attack', power: 65, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 65', typeLabel: '마법', learnableBy: ['west_witch'] },
-  { id: 'witch_frost', name: '서리 사슬', type: 'magic', category: 'attack', power: 45, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 45, 20% 확률로 수면', typeLabel: '마법', statusEffect: { effect: 'sleep', chance: 0.2 }, learnableBy: ['west_witch'] },
-  { id: 'witch_hex', name: '저주술', type: 'magic', category: 'debuff', power: 0, accuracy: 90, priority: 0, target: 'enemy', description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: ['west_witch'] },
-  { id: 'witch_venom', name: '맹독 안개', type: 'magic', category: 'attack', power: 40, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 40, 40% 확률로 중독', typeLabel: '마법', statusEffect: { effect: 'poison', chance: 0.4 }, learnableBy: ['west_witch'] },
-
-  // ======================= 서양 원거리 =======================
-  // 궁수(west_archer)
-  { id: 'warcher_rapid', name: '속사연발', type: 'ranged', category: 'attack', power: 20, accuracy: 90, priority: 0, target: 'enemy', description: '위력 : 20 으로 1~5회 중 랜덤으로 공격', typeLabel: '원거리', hits: { min: 1, max: 5 }, learnableBy: ['west_archer'] },
-  { id: 'warcher_precise', name: '정밀사격', type: 'ranged', category: 'attack', power: 70, accuracy: 85, priority: 0, target: 'enemy', description: '위력 : 70', typeLabel: '원거리', learnableBy: ['west_archer'] },
-  { id: 'warcher_volley', name: '견제', type: 'ranged', category: 'attack', power: 45, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 45', typeLabel: '원거리', learnableBy: ['west_archer'] },
-  { id: 'warcher_mark', name: '표식', type: 'ranged', category: 'debuff', power: 0, accuracy: 90, priority: 0, target: 'enemy', description: '상대의 방어력 하락', typeLabel: '변화', learnableBy: ['west_archer'] },
-
-  // 레인저(west_ranger)
-  { id: 'ranger_twinshot', name: '쌍연사', type: 'ranged', category: 'attack', power: 30, accuracy: 95, priority: 0, target: 'enemy', description: '위력 : 30 로 2회 공격', typeLabel: '원거리', hits: { min: 2, max: 2 }, learnableBy: ['west_ranger'] },
-  { id: 'ranger_snipe', name: '저격', type: 'ranged', category: 'attack', power: 85, accuracy: 80, priority: 0, target: 'enemy', description: '위력 : 85', typeLabel: '원거리', learnableBy: ['west_ranger'] },
-  { id: 'ranger_poison', name: '독화살', type: 'ranged', category: 'attack', power: 40, accuracy: 100, priority: 0, target: 'enemy', description: '위력 : 40, 35% 확률로 중독', typeLabel: '원거리', statusEffect: { effect: 'poison', chance: 0.35 }, learnableBy: ['west_ranger'] },
-  { id: 'ranger_dash', name: '질주', type: 'ranged', category: 'buff', power: 0, accuracy: 100, priority: 0, target: 'self', description: '자신의 공격력 1.2배 상승', typeLabel: '변화', learnableBy: ['west_ranger'] },
+export const SKILLS: Skill[] = [
+  ...COMMON_SKILLS,
+  ...SWORD_SKILLS,
+  ...BLUNT_SKILLS,
+  ...BOW_SKILLS,
+  ...STAFF_SKILLS,
+  ...TOME_SKILLS,
 ];
 
 export function getSkill(id: string): Skill {

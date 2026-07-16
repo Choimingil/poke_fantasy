@@ -1,60 +1,66 @@
-import type { Character, JobDef, Skill, WeaponTemplate } from '../types';
-import { stabMultiplier, typeAdvantageMultiplier } from './typeChart';
-import { rollWeaponProc, type WeaponProcResult } from './weaponEffects';
+import type { Character, Element, Skill, WeaponTemplate } from '../types';
+import { TIER1_BONUS, hasTier5Passive, masteryTier } from '../data/promotions';
+import { elementMultiplier } from './elements';
+import { getStatus } from './status';
 
 export interface DamageContext {
   attacker: Character;
-  attackerJob: JobDef;
   defender: Character;
-  defenderJob: JobDef;
   skill: Skill;
   weapon: WeaponTemplate;
-  /** 방어측 진영에 등장 중인 딜반감 특성(장군/기사) 보유자가 있는지 여부 */
-  defendingTeamHasFieldGuard: boolean;
+  attackerElement: Element;
+  defenderElement: Element;
+  /** 'combined' == 마법부여 사용 중(근력+지력 합산) */
+  statSource: 'attack' | 'magic' | 'combined';
+  /** 방패 보너스 방어력(무력화된 경우 0) */
+  defenderExtraDefense?: number;
   rng?: () => number;
 }
 
 export interface DamageResult {
   damage: number;
-  extraHitDamage: number;
   crit: boolean;
-  proc: WeaponProcResult;
 }
 
-function berserkerMultiplier(attacker: Character, attackerJob: JobDef): number {
-  if (!attackerJob.traits.includes('berserkerRage')) return 1;
-  const bonus = Math.min(1, attacker.hitsTakenThisBattle * 0.2);
-  return 1 + bonus;
+const POWER_BASELINE = 40;
+const DEFENSE_BASELINE = 50;
+
+function bluntUnityMultiplier(defender: Character): number {
+  const status = getStatus(defender, 'bluntUnity');
+  return status ? (status.magnitude ?? 1.2) : 1;
 }
 
 export function calculateDamage(ctx: DamageContext): DamageResult {
   const rng = ctx.rng ?? Math.random;
-  const { attacker, attackerJob, defender, defenderJob, skill, weapon } = ctx;
+  const { attacker, defender, skill, weapon } = ctx;
 
-  const proc = rollWeaponProc(weapon, ctx.attacker.equippedWeapon.enhancementLevel, rng);
+  const stat =
+    ctx.statSource === 'combined'
+      ? attacker.baseStats.attack + attacker.baseStats.magicAttack
+      : ctx.statSource === 'magic'
+        ? attacker.baseStats.magicAttack
+        : attacker.baseStats.attack;
 
-  const effectiveAttack =
-    attacker.baseStats.attack * berserkerMultiplier(attacker, attackerJob) * attacker.statMultipliers.attack;
-  const effectivePower = skill.power + weapon.basePower * 0.5;
-  const effectiveDefense =
-    defender.baseStats.defense * (proc.pierce ? 0.5 : 1) * defender.statMultipliers.defense;
+  const tier1PowerBonus = masteryTier(attacker, weapon.kind) >= 1 ? (TIER1_BONUS[weapon.kind]?.powerBonusPercent ?? 0) : 0;
+  const effectivePower = (skill.power / 100) * (1 + tier1PowerBonus / 100) * (weapon.basePower + POWER_BASELINE);
 
-  const raw = (effectiveAttack * effectivePower) / (effectiveDefense + 50);
-  const stab = stabMultiplier(attackerJob, skill);
-  const typeAdv = typeAdvantageMultiplier(skill.type, defenderJob.type);
+  const defenderDefense = defender.baseStats.defense * bluntUnityMultiplier(defender) + (ctx.defenderExtraDefense ?? 0);
 
-  const critChance = Math.max(0, 0.0625 - defender.armorEnhancementLevel * 0.01);
-  const crit = rng() < critChance;
+  const raw = (stat * effectivePower) / (defenderDefense + DEFENSE_BASELINE);
 
-  const varianceWidth = 0.1 * Math.max(0, 1 - attacker.equippedWeapon.enhancementLevel * 0.1);
-  const variance = 1 - varianceWidth + rng() * varianceWidth * 2;
+  let elementMult = elementMultiplier(ctx.attackerElement, ctx.defenderElement);
+  if (elementMult === 0.7 && hasTier5Passive(defender, 'staff', 'elementalWard')) elementMult = 1;
 
-  const fieldGuard = ctx.defendingTeamHasFieldGuard ? 0.75 : 1;
-  const guardStance = defender.guarding ? 0.5 : 1;
+  const critStatus = getStatus(attacker, 'bowCrit');
+  const crit = !!critStatus && rng() < (critStatus.magnitude ?? 0.3);
 
-  const total = raw * stab * typeAdv * (crit ? 1.5 : 1) * variance * fieldGuard * guardStance;
-  const damage = Math.max(1, Math.round(total));
-  const extraHitDamage = proc.extraHit ? Math.max(1, Math.round(damage * 0.3)) : 0;
+  let lowHpBonus = 1;
+  if (weapon.kind === 'sword' && hasTier5Passive(attacker, 'sword', 'lowHpPowerSurge') && attacker.currentHp / attacker.baseStats.hp <= 0.3) {
+    lowHpBonus = 1.2;
+  }
 
-  return { damage, extraHitDamage, crit, proc };
+  const variance = 0.95 + rng() * 0.1;
+
+  const total = raw * elementMult * (crit ? 1.5 : 1) * lowHpBonus * variance;
+  return { damage: Math.max(1, Math.round(total)), crit };
 }

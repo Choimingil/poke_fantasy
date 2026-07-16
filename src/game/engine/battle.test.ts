@@ -1,118 +1,136 @@
 import { describe, expect, it } from 'vitest';
-import { createCharacter } from './characterFactory';
-import { Battle } from './battle';
+import type { BattleMap, Character } from '../types';
+import { createCharacter, prepareForBattle } from './characterFactory';
+import { GridBattle } from './battle';
 
-function make(id: string, jobId: string, overrides: Partial<Parameters<typeof createCharacter>[0]> = {}) {
-  return createCharacter({
-    id,
-    name: id,
-    jobId,
-    faction: jobId.startsWith('east') ? 'east' : 'west',
-    stats: { attack: 40, defense: 20, hp: 100, speed: 20 },
-    weapon: { templateId: 'sword_1h_east', enhancementLevel: 0 },
-    skills: ['slash'],
-    ...overrides,
-  });
+function makeMap(): BattleMap {
+  const tiles = [];
+  for (let y = 0; y < 5; y++) {
+    const row = [];
+    for (let x = 0; x < 5; x++) row.push({ terrain: 'plain' as const });
+    tiles.push(row);
+  }
+  return { width: 5, height: 5, tiles };
 }
 
-describe('Battle', () => {
-  it('무기 타입이 스킬 타입과 다르면 스킬을 사용할 수 없다', () => {
-    const a = make('a', 'east_general', { skills: ['fire_bolt'] }); // 검(근거리) 장착 + 마법 스킬
-    const b = make('b', 'east_general');
-    const battle = new Battle([a], [b], () => 0.01);
-    const lines = battle.runTurn({ skillId: 'fire_bolt' }, { skillId: 'slash' });
-    expect(lines.some((l) => l.includes('무기 타입 불일치'))).toBe(true);
-    expect(a.currentHp).toBeLessThan(100); // a는 스킬을 못 쓰고, b의 공격은 정상적으로 a에게 적중
+function makeUnit(id: string, speed: number, overrides: Partial<Character> = {}): Character {
+  const c = createCharacter({
+    id,
+    name: id,
+    baseStats: { hp: 100, attack: 50, magicAttack: 10, defense: 10, speed },
+    rawMove: 2,
+    sight: 5,
+    starterWeaponTemplateId: 'sword_short',
+  });
+  return { ...c, ...overrides };
+}
+
+describe('GridBattle', () => {
+  it('사거리 내 적에게 공격 스킬을 사용하면 데미지를 입힌다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20);
+    const b = makeUnit('b', 10);
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 1, y: 0 }, 'B');
+    const battle = new GridBattle(map, [a], [b], () => 0.5);
+
+    expect(battle.currentUnit()?.id).toBe('a');
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'b' });
+    expect(b.currentHp).toBeLessThan(100);
   });
 
-  it('무기 교체는 턴을 소모하며, 그 사이 상대는 정상적으로 공격한다', () => {
-    const a = make('a', 'east_general');
-    const b = make('b', 'east_general');
-    const battle = new Battle([a], [b], () => 0.99);
-    battle.runTurn({ switchWeaponTo: 'blunt_1h_east' }, { skillId: 'slash' });
-    expect(a.equippedWeapon.templateId).toBe('blunt_1h_east');
-    expect(a.currentHp).toBeLessThan(100); // 무기교체로 턴을 소모해 공격을 못했고 b의 공격을 받음
-    expect(b.currentHp).toBe(100); // a는 이번 턴에 공격하지 않음
+  it('사거리 밖의 적은 공격할 수 없다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20);
+    const b = makeUnit('b', 10);
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 4, y: 4 }, 'B');
+    const battle = new GridBattle(map, [a], [b], () => 0.5);
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'b' });
+    expect(b.currentHp).toBe(100);
   });
 
-  it('닌자/레인저 등 자유교체 특성 보유 시 무기 교체와 스킬 사용을 같은 턴에 할 수 있다', () => {
-    const ninja = make('ninja', 'east_ninja', { skills: ['fire_bolt'] });
-    const opponent = make('opp', 'east_general');
-    const battle = new Battle([ninja], [opponent], () => 0.01);
-    battle.runTurn({ switchWeaponTo: 'tome_1h_east', skillId: 'fire_bolt' }, { skillId: 'slash' });
-    expect(ninja.equippedWeapon.templateId).toBe('tome_1h_east');
-    expect(opponent.currentHp).toBeLessThan(100); // 같은 턴에 스킬까지 적중
+  it('이동 예산을 벗어난 타일로는 이동할 수 없다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20, { rawMove: 2 });
+    const b = makeUnit('b', 10);
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 4, y: 4 }, 'B');
+    const battle = new GridBattle(map, [a], [b], () => 0.5);
+    battle.takeTurn({ moveTo: { x: 4, y: 0 } }); // 거리 4 > 이동력 2
+    expect(a.position).toEqual({ x: 0, y: 0 });
   });
 
-  it('완전방어(방어) 사용 시 그 턴 받는 공격의 피해가 0이 된다', () => {
-    const defender = make('def', 'east_general', { skills: ['guard'] });
-    const attacker = make('atk', 'east_general', { skills: ['slash'], stats: { attack: 200, defense: 20, hp: 100, speed: 5 } });
-    const battle = new Battle([defender], [attacker], () => 0.5);
-    battle.runTurn({ skillId: 'guard' }, { skillId: 'slash' });
-    expect(defender.currentHp).toBe(100); // 방어(priority 1)가 먼저 발동해 공격 피해 0
-    expect(battle.log.some((l) => l.includes('완전히 막았다'))).toBe(true);
+  it('무기 교체는 티어3 미만이면 턴을 소모한다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20);
+    const b = makeUnit('b', 5);
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 1, y: 0 }, 'B');
+    const bowInstance = a.inventory.find((w) => w.templateId === 'bow_short');
+    expect(bowInstance).toBeUndefined(); // sword_short 캐릭터는 활을 갖고 있지 않음 - 인벤토리에 추가로 넣어 테스트
+    a.inventory.push({ instanceId: 'a-bow', templateId: 'bow_short' });
+
+    const battle = new GridBattle(map, [a], [b], () => 0.5);
+    battle.takeTurn({ switchWeaponTo: 'a-bow' });
+    expect(a.equippedWeaponId).toBe('a-bow');
+    // 턴을 소모했으므로 다음 차례는 b여야 한다
+    expect(battle.currentUnit()?.id).toBe('b');
   });
 
-  it('같은 방어를 연속으로 쓰면 명중률이 낮아져 방어에 실패할 수 있다', () => {
-    const defender = make('def', 'east_general', { skills: ['guard'] });
-    defender.lastSkillId = 'guard'; // 직전 턴에도 방어를 썼다고 가정
-    const attacker = make('atk', 'east_general', { skills: ['slash'], stats: { attack: 200, defense: 20, hp: 100, speed: 5 } });
-    // 명중 판정 rng=0.9 -> 90 >= 33(연속 페널티) 이므로 방어 실패
-    const battle = new Battle([defender], [attacker], () => 0.9);
-    battle.runTurn({ skillId: 'guard' }, { skillId: 'slash' });
-    expect(defender.currentHp).toBeLessThan(100); // 방어 실패로 피해를 받음
+  it('무기 교체는 티어3 이상이면 턴을 소모하지 않고 같은 턴에 스킬도 쓸 수 있다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20);
+    const b = makeUnit('b', 5);
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 1, y: 0 }, 'B');
+    a.inventory.push({ instanceId: 'a-bow', templateId: 'bow_short' });
+    a.weaponMastery.bow = 3;
+
+    const battle = new GridBattle(map, [a], [b], () => 0.5);
+    battle.takeTurn({ switchWeaponTo: 'a-bow', skillId: 'power_strike', targetId: 'b' });
+    expect(a.equippedWeaponId).toBe('a-bow');
+    expect(b.currentHp).toBeLessThan(100); // 같은 턴에 공격까지 적중
   });
 
-  it('한쪽 팀의 체력이 모두 0이 되면 전투가 종료되고 승자가 기록된다', () => {
-    const strong = make('strong', 'east_general', { stats: { attack: 500, defense: 10, hp: 100, speed: 50 } });
-    const weak = make('weak', 'east_general', { stats: { attack: 5, defense: 5, hp: 10, speed: 1 } });
-    const battle = new Battle([strong], [weak], () => 0.01);
-    battle.runTurn({ skillId: 'slash' }, { skillId: 'slash' });
+  it('처치 시 처치한 캐릭터만 경험치를 얻는다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, defense: 10, speed: 20 } });
+    const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, defense: 1, speed: 5 } });
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 1, y: 0 }, 'B');
+    const battle = new GridBattle(map, [a], [b], () => 0.01);
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'b' });
+    expect(b.currentHp).toBe(0);
+    expect(battle.killEvents).toEqual([{ killerId: 'a', victimId: 'b' }]);
+    expect(a.xp).toBeGreaterThan(0);
+  });
+
+  it('한 팀의 유닛이 모두 쓰러지면 전투가 종료되고 승자가 기록된다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, defense: 10, speed: 20 } });
+    const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, defense: 1, speed: 5 } });
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 1, y: 0 }, 'B');
+    const battle = new GridBattle(map, [a], [b], () => 0.01);
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'b' });
     expect(battle.finished).toBe(true);
     expect(battle.winner).toBe('A');
   });
 
-  it('프리스트가 등장하면 아군 중 최저체력 인원의 체력을 25% 회복시킨다', () => {
-    const priest = make('priest', 'west_priest');
-    const hurtAlly = make('ally', 'west_warrior', { stats: { attack: 10, defense: 10, hp: 100, speed: 5 } });
-    hurtAlly.currentHp = 20;
-    const enemy = make('enemy', 'east_general');
-    const battle = new Battle([priest, hurtAlly], [enemy], () => 0.5);
-    expect(hurtAlly.currentHp).toBe(45); // 20 + 100*0.25
-    expect(battle.log.some((l) => l.includes('회복'))).toBe(true);
-  });
+  it('보호 상태의 아군이 근처에 있으면 공격이 그 아군에게 대신 향한다', () => {
+    const map = makeMap();
+    const a = makeUnit('a', 30);
+    const guardian = makeUnit('guardian', 25);
+    const target = makeUnit('target', 20);
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(guardian, { x: 2, y: 0 }, 'B');
+    prepareForBattle(target, { x: 1, y: 0 }, 'B');
+    guardian.statusEffects.push({ type: 'guarding', turnsRemaining: 2, magnitude: 1 });
 
-  it('beginTurn/resolveNextStep으로 스피드가 빠른 쪽부터 한 명씩 순차적으로 처리할 수 있다', () => {
-    const fast = make('fast', 'east_general', { stats: { attack: 40, defense: 20, hp: 100, speed: 50 } });
-    const slow = make('slow', 'east_general', { stats: { attack: 40, defense: 20, hp: 100, speed: 5 } });
-    const battle = new Battle([fast], [slow], () => 0.01);
-
-    battle.beginTurn({ skillId: 'slash' }, { skillId: 'slash' });
-    expect(battle.hasPendingStep()).toBe(true);
-
-    const first = battle.resolveNextStep();
-    expect(first.actorId).toBe('fast'); // 스피드가 더 빠른 쪽이 먼저 행동
-    expect(first.isAttack).toBe(true);
-    expect(slow.currentHp).toBeLessThan(100); // 첫 스텝에서 이미 데미지 계산이 끝나 있어야 함
-    expect(fast.currentHp).toBe(100); // 아직 두 번째 스텝 전이라 반격은 받지 않음
-
-    expect(battle.hasPendingStep()).toBe(true);
-    const second = battle.resolveNextStep();
-    expect(second.actorId).toBe('slow');
-    expect(fast.currentHp).toBeLessThan(100); // 두 번째 스텝에서야 반격 데미지가 반영됨
-
-    expect(battle.hasPendingStep()).toBe(false);
-  });
-
-  it('resolveNextStep은 행동 도중 상대가 쓰러지면 이후 스텝을 비운다', () => {
-    const strong = make('strong', 'east_general', { stats: { attack: 500, defense: 10, hp: 100, speed: 50 } });
-    const weak = make('weak', 'east_general', { stats: { attack: 5, defense: 5, hp: 10, speed: 1 } });
-    const battle = new Battle([strong], [weak], () => 0.01);
-
-    battle.beginTurn({ skillId: 'slash' }, { skillId: 'slash' });
-    const first = battle.resolveNextStep();
-    expect(first.targetFainted).toBe(true);
-    expect(battle.finished).toBe(true);
-    expect(battle.hasPendingStep()).toBe(false); // weak의 남은 행동은 취소됨
+    const battle = new GridBattle(map, [a], [guardian, target], () => 0.5);
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'target' });
+    expect(target.currentHp).toBe(100);
+    expect(guardian.currentHp).toBeLessThan(100);
   });
 });

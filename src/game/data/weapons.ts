@@ -1,53 +1,29 @@
 import type { WeaponTemplate } from '../types';
 
-export const WEAPONS: WeaponTemplate[] = [
-  // 근거리 - 한손
-  { id: 'sword_1h_east', name: '환도', type: 'melee', kind: 'sword', handedness: 'oneHanded', culture: 'east', basePower: 40, baseSpeed: 20 },
-  { id: 'sword_1h_west', name: '롱소드', type: 'melee', kind: 'sword', handedness: 'oneHanded', culture: 'west', basePower: 40, baseSpeed: 20 },
-  { id: 'blunt_1h_east', name: '철퇴', type: 'melee', kind: 'blunt', handedness: 'oneHanded', culture: 'east', basePower: 42, baseSpeed: 16 },
-  { id: 'blunt_1h_west', name: '메이스', type: 'melee', kind: 'blunt', handedness: 'oneHanded', culture: 'west', basePower: 42, baseSpeed: 16 },
-  { id: 'shield_1h_east', name: '방패(동)', type: 'melee', kind: 'shield', handedness: 'oneHanded', culture: 'east', basePower: 20, baseSpeed: 12 },
-  { id: 'shield_1h_west', name: '방패(서)', type: 'melee', kind: 'shield', handedness: 'oneHanded', culture: 'west', basePower: 20, baseSpeed: 12 },
+const WEAPONS: WeaponTemplate[] = [
+  // 검 (range 1)
+  { id: 'sword_short', name: '환도', kind: 'sword', range: 1, basePower: 40, baseSpeed: 20, handedness: 'oneHanded' },
+  { id: 'sword_great', name: '대검', kind: 'sword', range: 1, basePower: 58, baseSpeed: 12, handedness: 'twoHanded' },
 
-  // 근거리 - 두손
-  { id: 'sword_2h_east', name: '대검(동)', type: 'melee', kind: 'sword', handedness: 'twoHanded', culture: 'east', basePower: 62, baseSpeed: 10 },
-  { id: 'sword_2h_west', name: '그레이트소드', type: 'melee', kind: 'sword', handedness: 'twoHanded', culture: 'west', basePower: 62, baseSpeed: 10 },
-  { id: 'blunt_2h_east', name: '대곤', type: 'melee', kind: 'blunt', handedness: 'twoHanded', culture: 'east', basePower: 64, baseSpeed: 8 },
-  { id: 'blunt_2h_west', name: '워해머', type: 'melee', kind: 'blunt', handedness: 'twoHanded', culture: 'west', basePower: 64, baseSpeed: 8 },
-  { id: 'spear_2h_east', name: '창(동)', type: 'melee', kind: 'spear', handedness: 'twoHanded', culture: 'east', basePower: 58, baseSpeed: 12 },
-  { id: 'spear_2h_west', name: '랜스', type: 'melee', kind: 'spear', handedness: 'twoHanded', culture: 'west', basePower: 58, baseSpeed: 12 },
+  // 둔기 (range 1)
+  { id: 'blunt_mace', name: '철퇴', kind: 'blunt', range: 1, basePower: 42, baseSpeed: 16, handedness: 'oneHanded' },
+  { id: 'blunt_maul', name: '대곤', kind: 'blunt', range: 1, basePower: 60, baseSpeed: 10, handedness: 'twoHanded' },
 
-  // 원거리 - 한손
-  { id: 'thrown_1h_east', name: '표창', type: 'ranged', kind: 'thrown', handedness: 'oneHanded', culture: 'east', basePower: 36, baseSpeed: 22 },
-  { id: 'thrown_1h_west', name: '투척단검', type: 'ranged', kind: 'thrown', handedness: 'oneHanded', culture: 'west', basePower: 36, baseSpeed: 22 },
+  // 활 (range 2, 항상 양손)
+  { id: 'bow_short', name: '각궁', kind: 'bow', range: 2, basePower: 50, baseSpeed: 16, handedness: 'twoHanded' },
+  { id: 'bow_long', name: '장궁', kind: 'bow', range: 2, basePower: 54, baseSpeed: 14, handedness: 'twoHanded' },
 
-  // 원거리 - 두손
-  { id: 'bow_2h_east', name: '각궁', type: 'ranged', kind: 'bow', handedness: 'twoHanded', culture: 'east', basePower: 56, baseSpeed: 14 },
-  { id: 'bow_2h_west', name: '롱보우', type: 'ranged', kind: 'bow', handedness: 'twoHanded', culture: 'west', basePower: 56, baseSpeed: 14 },
-  { id: 'crossbow_2h_east', name: '연노', type: 'ranged', kind: 'crossbow', handedness: 'twoHanded', culture: 'east', basePower: 60, baseSpeed: 10 },
-  { id: 'crossbow_2h_west', name: '크로스보우', type: 'ranged', kind: 'crossbow', handedness: 'twoHanded', culture: 'west', basePower: 60, baseSpeed: 10 },
+  // 지팡이 (range 2, 항상 양손) — element는 WeaponInstance에서 지정
+  { id: 'staff_east', name: '법장', kind: 'staff', range: 2, basePower: 50, baseSpeed: 13, handedness: 'twoHanded' },
+  { id: 'staff_west', name: '스태프', kind: 'staff', range: 2, basePower: 50, baseSpeed: 13, handedness: 'twoHanded' },
 
-  // 마법 - 한손
-  { id: 'tome_1h_east', name: '주술서', type: 'magic', kind: 'tome', handedness: 'oneHanded', culture: 'east', basePower: 38, baseSpeed: 20 },
-  { id: 'tome_1h_west', name: '마법서', type: 'magic', kind: 'tome', handedness: 'oneHanded', culture: 'west', basePower: 38, baseSpeed: 20 },
+  // 마법서 (range 1, 한손)
+  { id: 'tome_east', name: '주술서', kind: 'tome', range: 1, basePower: 40, baseSpeed: 18, handedness: 'oneHanded' },
+  { id: 'tome_west', name: '마법서', kind: 'tome', range: 1, basePower: 40, baseSpeed: 18, handedness: 'oneHanded' },
 
-  // 마법 - 두손
-  { id: 'staff_2h_east', name: '법장', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'east', basePower: 60, baseSpeed: 11 },
-  { id: 'staff_2h_west', name: '스태프', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'west', basePower: 60, baseSpeed: 11 },
-
-  // ---- TRPG 전용 3종 (근거리=검, 원거리=활, 마법=지팡이) ----
-  // 근접(물리)
-  { id: 'trpg_sword', name: '검', type: 'melee', kind: 'sword', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 18, range: 1, requirement: {} },
-  { id: 'trpg_mace', name: '둔기', type: 'melee', kind: 'blunt', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 16, range: 1, requirement: {} },
-  { id: 'trpg_spear', name: '창', type: 'melee', kind: 'spear', handedness: 'twoHanded', culture: 'east', basePower: 45, baseSpeed: 15, range: 1, requirement: {} },
-  { id: 'trpg_dagger', name: '단검', type: 'melee', kind: 'dagger', handedness: 'oneHanded', culture: 'east', basePower: 45, baseSpeed: 22, range: 1, requirement: {} },
-  // 원거리(물리)
-  { id: 'trpg_bow', name: '활', type: 'ranged', kind: 'bow', handedness: 'twoHanded', culture: 'east', basePower: 42, baseSpeed: 16, range: 2, requirement: {} },
-  { id: 'trpg_crossbow', name: '석궁', type: 'ranged', kind: 'crossbow', handedness: 'twoHanded', culture: 'east', basePower: 42, baseSpeed: 12, range: 2, requirement: {} },
-  { id: 'trpg_thrown', name: '투척무기', type: 'ranged', kind: 'thrown', handedness: 'oneHanded', culture: 'east', basePower: 42, baseSpeed: 20, range: 2, requirement: {} },
-  // 마법
-  { id: 'trpg_staff', name: '지팡이', type: 'magic', kind: 'staff', handedness: 'twoHanded', culture: 'east', basePower: 44, baseSpeed: 14, range: 1, requirement: {} },
-  { id: 'trpg_tome', name: '마법서', type: 'magic', kind: 'tome', handedness: 'oneHanded', culture: 'east', basePower: 44, baseSpeed: 18, range: 1, requirement: {} },
+  // 방패 — 스킬 없는 순수 스탯 아이템 (한손 무기와 병용 가능), 부가효과 없음
+  { id: 'shield_round', name: '원형 방패', kind: 'shield', range: 1, basePower: 0, baseSpeed: 12, handedness: 'oneHanded', defenseBonus: 15 },
+  { id: 'shield_tower', name: '타워 방패', kind: 'shield', range: 1, basePower: 0, baseSpeed: 8, handedness: 'oneHanded', defenseBonus: 25 },
 ];
 
 /** TRPG 무기 사거리(칸). 명시값이 없으면 원거리 2, 그 외 1. */
