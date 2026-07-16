@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createCharacter } from '../engine/characterFactory';
-import { getUsableSkillIds, masteryTier, spendPromotion, MAX_TIER } from './promotions';
+import { getBattleSkillIds, getUsableSkillIds, masteryTier, spendPromotion, MAX_TIER } from './promotions';
 
 function makeSwordCharacter() {
   return createCharacter({
@@ -41,6 +41,31 @@ describe('getUsableSkillIds', () => {
     c.weaponMastery.sword = 6;
     ids = getUsableSkillIds(c, 'sword');
     expect(ids).toContain('sword_flurry');
+  });
+});
+
+describe('getUsableSkillIds - 주먹(폴백)', () => {
+  it('선택 목록에는 주먹이 노출되지 않는다', () => {
+    const c = makeSwordCharacter();
+    expect(getUsableSkillIds(c, 'sword')).not.toContain('fist');
+  });
+});
+
+describe('getBattleSkillIds', () => {
+  it('사용 가능한 로드아웃 스킬이 있으면 그대로 반환한다', () => {
+    const c = makeSwordCharacter();
+    c.skillLoadout = ['power_strike', 'protect'];
+    const ids = getBattleSkillIds(c, 'sword', () => true);
+    expect(ids).toEqual(['power_strike', 'protect']);
+    expect(ids).not.toContain('fist');
+  });
+
+  it('사용 가능한 스킬이 하나도 없으면 주먹으로 대체된다', () => {
+    const c = makeSwordCharacter();
+    c.skillLoadout = ['power_strike'];
+    // 모든 스킬이 사용 불가(횟수 소진 등)인 상황을 흉내
+    const ids = getBattleSkillIds(c, 'sword', () => false);
+    expect(ids).toEqual(['fist']);
   });
 });
 

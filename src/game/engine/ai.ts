@@ -2,7 +2,7 @@ import type { BattleMap, Character } from '../types';
 import type { UnitAction } from './battle';
 import { getSkill } from '../data/skills';
 import { getWeapon } from '../data/weapons';
-import { getLoadoutSkillIds } from '../data/promotions';
+import { FALLBACK_SKILL_ID, getLoadoutSkillIds } from '../data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
@@ -34,6 +34,8 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
   const attackSkills = usableIds
     .map((id) => getSkill(id))
     .filter((s) => s.category === 'attack' && (s.targetMode === 'enemy' || s.targetMode === 'anyInSight'));
+  // 사용 가능한 공격 스킬이 없으면 기본 공격(주먹)으로 대체.
+  if (attackSkills.length === 0) attackSkills.push(getSkill(FALLBACK_SKILL_ID));
 
   const action: UnitAction = {};
   if (bestTile.x !== unit.position.x || bestTile.y !== unit.position.y) action.moveTo = bestTile;

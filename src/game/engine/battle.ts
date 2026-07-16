@@ -1,7 +1,7 @@
 import type { BattleMap, Character, GridPos, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
 import { getWeapon } from '../data/weapons';
-import { getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
+import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
 import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
@@ -172,7 +172,7 @@ export class GridBattle {
     const weaponKind = this.weaponKindOf(unit);
     const weapon = getWeapon(unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!.templateId);
 
-    if (!getUsableSkillIds(unit, weaponKind).includes(skill.id)) {
+    if (skill.id !== FALLBACK_SKILL_ID && !getUsableSkillIds(unit, weaponKind).includes(skill.id)) {
       this.log.push(`${unit.name}는 ${skill.name}을(를) 사용할 수 없다.`);
       return;
     }

@@ -364,12 +364,28 @@ button:disabled {
   font-size: 0.9em;
 }
 
+.battle-screen {
+  overflow: hidden;
+}
+
+/* 정사각형 전투 무대: 남은 공간에서 최대 정사각형으로 잡고 가운데 정렬. 기술 패널은 이 위에 플로팅. */
+.battle-stage {
+  position: relative;
+  width: min(94vw, 68vh);
+  height: min(94vw, 68vh);
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  min-height: 0;
+}
+
 /* 카메라 뷰포트: 보드가 커지면 스크롤되고, 현재 유닛을 중앙으로 추적한다. */
 .board-viewport {
-  flex: 1;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
   overflow: auto;
   position: relative;
+  border-radius: 8px;
   background: #1c1c26;
 }
 
@@ -521,6 +537,107 @@ button:disabled {
 
 .unit-token-targetable {
   outline: 2px solid #ff3c3c;
+}
+
+/* 공격 모션: 아군(아래쪽)은 위로, 적(위쪽)은 아래로 돌진. 피격 대상은 흔들림 + 붉은 섬광. */
+.unit-token-attacking {
+  z-index: 12;
+}
+.unit-token-teamA.unit-token-attacking {
+  animation: lunge-up 0.42s ease;
+}
+.unit-token-teamB.unit-token-attacking {
+  animation: lunge-down 0.42s ease;
+}
+.unit-token-hit {
+  z-index: 11;
+  animation: hit-shake 0.42s ease;
+}
+.unit-token-hit .unit-token-sprite {
+  filter: brightness(1.7) drop-shadow(0 0 7px #ff5050);
+}
+
+@keyframes lunge-up {
+  0% { transform: translateY(0); }
+  45% { transform: translateY(-16px) scale(1.08); }
+  100% { transform: translateY(0); }
+}
+@keyframes lunge-down {
+  0% { transform: translateY(0); }
+  45% { transform: translateY(16px) scale(1.08); }
+  100% { transform: translateY(0); }
+}
+@keyframes hit-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* 좌측 하단 플로팅 기술 패널 */
+.action-float {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 30;
+  width: min(320px, 60%);
+  background: rgba(22, 24, 36, 0.94);
+  color: #f4f6ee;
+  border: 1px solid #3a3f52;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+.action-float.collapsed {
+  width: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.action-float-toggle {
+  width: 100%;
+  padding: 6px 10px;
+  background: #3b4a77;
+  border-radius: 8px;
+  font-size: 0.9em;
+}
+.action-float.collapsed .action-float-toggle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-size: 1.3em;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.action-float-body {
+  margin-top: 8px;
+}
+.action-float-body .turn-status {
+  color: #f4f6ee;
+  margin: 0 0 4px;
+}
+.action-float-body .battle-log-line {
+  color: #cfd3e0;
+  margin: 0 0 8px;
+}
+.action-float-body .skill-buttons {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 6px;
+}
+.action-float-body .skill-buttons button {
+  padding: 8px 6px;
+  font-size: 0.85em;
+}
+.action-float-body .confirm-buttons {
+  margin-top: 6px;
+}
+.action-float-body .confirm-buttons button {
+  flex: 1;
+  padding: 8px 6px;
+  font-size: 0.85em;
 }
 
 .unit-token .hp-bar {

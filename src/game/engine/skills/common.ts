@@ -15,6 +15,11 @@ const powerStrike: SkillHandler = (ctx) => {
   if (target) dealDamageTo(ctx, target);
 };
 
+const fist: SkillHandler = (ctx) => {
+  const target = findTarget(ctx);
+  if (target) dealDamageTo(ctx, target);
+};
+
 const incantation: SkillHandler = (ctx) => {
   const target = findTarget(ctx);
   if (target) dealDamageTo(ctx, target);
@@ -67,6 +72,7 @@ const forestVision: SkillHandler = (ctx) => {
 };
 
 export const COMMON_HANDLERS: Record<string, SkillHandler> = {
+  fist,
   power_strike: powerStrike,
   incantation,
   protect,

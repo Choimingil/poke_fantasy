@@ -9,6 +9,8 @@ const ENCHANT_ELEMENTS: { element: Exclude<Element, 'none'>; name: string }[] = 
 ];
 
 const COMMON_SKILLS: Skill[] = [
+  // 주먹: 사용 가능한 기술이 없을 때 자동으로 쓰이는 기본 공격(선택 목록에는 노출되지 않음).
+  { id: 'fist', name: '주먹', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 50, accuracy: 100, targetMode: 'enemy', range: 1 },
   { id: 'power_strike', name: '강타', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon' },
   { id: 'incantation', name: '주술', weaponKind: 'common', category: 'attack', damageType: 'magic', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', element: 'weaponElement' },
   { id: 'protect', name: '보호', weaponKind: 'common', category: 'guard', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', areaRadius: 1 },

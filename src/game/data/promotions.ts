@@ -4,6 +4,8 @@ import { SKILLS } from './skills';
 export const PROMOTION_LEVEL_INTERVAL = 5;
 export const MAX_TIER = 6;
 export const MAX_LOADOUT = 4;
+/** 사용 가능한 기술이 하나도 없을 때 자동으로 쓰이는 기본 공격 id */
+export const FALLBACK_SKILL_ID = 'fist';
 
 interface Tier1Bonus {
   powerBonusPercent?: number;
@@ -51,8 +53,18 @@ export function spendPromotion(c: Character, kind: WeaponKind): boolean {
 export function getUsableSkillIds(c: Character, equippedKind: WeaponKind): string[] {
   const tier = masteryTier(c, equippedKind);
   return SKILLS.filter((s) => s.weaponKind === 'common' || s.weaponKind === equippedKind)
+    .filter((s) => s.id !== FALLBACK_SKILL_ID) // 주먹은 선택 목록/기본 로드아웃에서 제외(폴백 전용)
     .filter((s) => !s.requiredTier || s.requiredTier <= tier)
     .map((s) => s.id);
+}
+
+/**
+ * 전투에서 실제로 선택 가능한 스킬 목록. 로드아웃 스킬 중 사용 가능한 것이 하나도 없으면
+ * 기본 공격(주먹) 하나로 대체된다.
+ */
+export function getBattleSkillIds(c: Character, equippedKind: WeaponKind, hasUses: (id: string) => boolean): string[] {
+  const ids = getLoadoutSkillIds(c, equippedKind).filter(hasUses);
+  return ids.length > 0 ? ids : [FALLBACK_SKILL_ID];
 }
 
 /**

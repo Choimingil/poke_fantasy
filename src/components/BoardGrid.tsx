@@ -28,6 +28,8 @@ export function BoardGrid({
   time,
   previewUnitId,
   previewPos,
+  motionAttackerId,
+  motionTargetIds,
   onTileClick,
 }: {
   map: BattleMap;
@@ -44,6 +46,8 @@ export function BoardGrid({
   time: string;
   previewUnitId?: string | null;
   previewPos?: GridPos | null;
+  motionAttackerId?: string | null;
+  motionTargetIds?: Set<string>;
   onTileClick: (pos: GridPos) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -104,11 +108,21 @@ export function BoardGrid({
             isCurrentTurn={c.id === currentUnitId}
             isSelectedTarget={targetableUnitIds.has(c.id)}
             posOverride={c.id === previewUnitId ? previewPos : null}
+            isAttacking={c.id === motionAttackerId}
+            isHit={motionTargetIds?.has(c.id) ?? false}
           />
         ))}
         {/* 적 유닛은 플레이어 시야에 들어온 경우에만 표시(안개/숲 은폐) */}
         {teamB.map((c) => c.currentHp > 0 && visibleEnemyIds.has(c.id) && (
-          <UnitToken key={c.id} character={c} side={'B' as Side} isCurrentTurn={c.id === currentUnitId} isSelectedTarget={targetableUnitIds.has(c.id)} />
+          <UnitToken
+            key={c.id}
+            character={c}
+            side={'B' as Side}
+            isCurrentTurn={c.id === currentUnitId}
+            isSelectedTarget={targetableUnitIds.has(c.id)}
+            isAttacking={c.id === motionAttackerId}
+            isHit={motionTargetIds?.has(c.id) ?? false}
+          />
         ))}
       </div>
     </div>

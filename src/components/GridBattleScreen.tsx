@@ -5,7 +5,7 @@ import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/map
 import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
-import { getLoadoutSkillIds } from '../game/data/promotions';
+import { getBattleSkillIds } from '../game/data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
@@ -28,7 +28,15 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
   const [pendingTargetPos, setPendingTargetPos] = useState<GridPos | null>(null);
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
+  const motionKeyRef = useRef(0);
+
+  const triggerMotion = (attackerId: string, targetIds: string[]) => {
+    motionKeyRef.current += 1;
+    setMotion({ attackerId, targetIds, key: motionKeyRef.current });
+  };
 
   if (!battleRef.current) {
     const map = createDefaultMap();
@@ -66,6 +74,13 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         ? currentUnit.position
         : null;
 
+  // 공격 모션은 잠깐 재생 후 해제한다.
+  useEffect(() => {
+    if (!motion) return;
+    const t = setTimeout(() => setMotion(null), 480);
+    return () => clearTimeout(t);
+  }, [motion]);
+
   useEffect(() => {
     if (battle.finished) {
       onFinished(battle);
@@ -79,6 +94,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
       const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather);
       battle.takeTurn(action);
+      if (action.skillId && action.targetId) triggerMotion(unit.id, [action.targetId]);
       aiBusyRef.current = false;
       forceRerender();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,6 +114,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
   const submitAction = () => {
     if (!currentUnit) return;
+    const actorId = currentUnit.id;
     const action: UnitAction = {};
     if (pendingMoveTile) action.moveTo = pendingMoveTile;
     if (selectedSkillId) {
@@ -105,34 +122,40 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       if (pendingTargetId) action.targetId = pendingTargetId;
       if (pendingTargetPos) action.targetPos = pendingTargetPos;
     }
+    const isAttack = selectedSkillId ? getSkill(selectedSkillId).category === 'attack' : false;
     battle.takeTurn(action);
+    if (isAttack) triggerMotion(actorId, pendingTargetId ? [pendingTargetId] : []);
     resetPending();
     forceRerender();
   };
 
   if (!isPlayerTurn || !currentUnit) {
     return (
-      <div className="app-shell">
+      <div className="app-shell battle-screen">
         <div className="battle-log-panel">
           <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
           <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit?.id ?? null} visibleEnemyIds={visibleEnemyIds} />
           <p className="turn-status">{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
         </div>
-        <BoardGrid
-          map={battle.map}
-          teamA={battle.teamA}
-          teamB={battle.teamB}
-          currentUnitId={currentUnit?.id ?? null}
-          reachableTiles={new Set()}
-          targetableUnitIds={new Set()}
-          targetableTiles={new Set()}
-          revealedTiles={revealedTiles}
-          visibleEnemyIds={visibleEnemyIds}
-          focusPos={focusPos}
-          weather={battle.weather}
-          time={battle.time}
-          onTileClick={() => {}}
-        />
+        <div className="battle-stage">
+          <BoardGrid
+            map={battle.map}
+            teamA={battle.teamA}
+            teamB={battle.teamB}
+            currentUnitId={currentUnit?.id ?? null}
+            reachableTiles={new Set()}
+            targetableUnitIds={new Set()}
+            targetableTiles={new Set()}
+            revealedTiles={revealedTiles}
+            visibleEnemyIds={visibleEnemyIds}
+            focusPos={focusPos}
+            weather={battle.weather}
+            time={battle.time}
+            motionAttackerId={motion?.attackerId ?? null}
+            motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
+            onTileClick={() => {}}
+          />
+        </div>
       </div>
     );
   }
@@ -143,10 +166,14 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const reachable = pendingMoveTile ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
   const reachableTiles = new Set(reachable.map(posKey));
 
-  const usableSkillIds = getLoadoutSkillIds(currentUnit, weapon.kind).filter((id) => {
-    const skill = getSkill(id);
-    return skill.maxUses === undefined || (currentUnit.skillUses[id] ?? 0) > 0;
-  });
+  const usableSkillIds = getBattleSkillIds(
+    currentUnit,
+    weapon.kind,
+    (id) => {
+      const skill = getSkill(id);
+      return skill.maxUses === undefined || (currentUnit.skillUses[id] ?? 0) > 0;
+    },
+  );
 
   const fromPos = pendingMoveTile ?? currentUnit.position;
   const selectedSkill = selectedSkillId ? getSkill(selectedSkillId) : null;
@@ -177,69 +204,79 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       (selectedSkill?.targetMode === 'self' || selectedSkill?.targetMode === 'selfRadius' || selectedSkill?.targetMode === 'ally' || !!pendingTargetId || !!pendingTargetPos));
 
   return (
-    <div className="app-shell">
+    <div className="app-shell battle-screen">
       <div className="battle-log-panel">
         <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
       </div>
-      <BoardGrid
-        map={battle.map}
-        teamA={battle.teamA}
-        teamB={battle.teamB}
-        currentUnitId={currentUnit.id}
-        reachableTiles={reachableTiles}
-        targetableUnitIds={targetableUnitIds}
-        targetableTiles={targetableTiles}
-        revealedTiles={revealedTiles}
-        visibleEnemyIds={visibleEnemyIds}
-        focusPos={focusPos}
-        weather={battle.weather}
-        time={battle.time}
-        previewUnitId={currentUnit.id}
-        previewPos={pendingMoveTile}
-        onTileClick={(pos) => {
-          if (selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
-            setPendingTargetPos(pos);
-            return;
-          }
-          const enemyAtTile = battle.teamB.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
-          if (enemyAtTile && targetableUnitIds.has(enemyAtTile.id)) {
-            setPendingTargetId(enemyAtTile.id);
-            return;
-          }
-          if (reachableTiles.has(posKey(pos))) {
-            setPendingMoveTile(pos);
-          }
-        }}
-      />
-      <div className="action-panel">
-        <p className="turn-status">
-          <strong>{currentUnit.name}</strong>의 턴 (Lv.{currentUnit.level}, {weapon.name})
-        </p>
-        <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
-        <div className="skill-buttons">
-          <button type="button" className={!selectedSkillId ? 'skill-button-active' : ''} onClick={() => { setSelectedSkillId(null); setPendingTargetId(null); setPendingTargetPos(null); }}>
-            (스킬 없음)
+      <div className="battle-stage">
+        <BoardGrid
+          map={battle.map}
+          teamA={battle.teamA}
+          teamB={battle.teamB}
+          currentUnitId={currentUnit.id}
+          reachableTiles={reachableTiles}
+          targetableUnitIds={targetableUnitIds}
+          targetableTiles={targetableTiles}
+          revealedTiles={revealedTiles}
+          visibleEnemyIds={visibleEnemyIds}
+          focusPos={focusPos}
+          weather={battle.weather}
+          time={battle.time}
+          previewUnitId={currentUnit.id}
+          previewPos={pendingMoveTile}
+          motionAttackerId={motion?.attackerId ?? null}
+          motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
+          onTileClick={(pos) => {
+            if (selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
+              setPendingTargetPos(pos);
+              return;
+            }
+            const enemyAtTile = battle.teamB.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
+            if (enemyAtTile && targetableUnitIds.has(enemyAtTile.id)) {
+              setPendingTargetId(enemyAtTile.id);
+              return;
+            }
+            if (reachableTiles.has(posKey(pos))) {
+              setPendingMoveTile(pos);
+            }
+          }}
+        />
+
+        {/* 좌측 하단 플로팅 기술 패널 */}
+        <div className={`action-float${panelOpen ? '' : ' collapsed'}`}>
+          <button type="button" className="action-float-toggle" onClick={() => setPanelOpen((o) => !o)}>
+            {panelOpen ? '⚔ 행동 ▾' : '⚔'}
           </button>
-          {usableSkillIds.map((id) => {
-            const skill = getSkill(id);
-            const uses = skill.maxUses !== undefined ? `${currentUnit.skillUses[id] ?? 0}/${skill.maxUses}` : '∞';
-            return (
-              <button
-                key={id}
-                type="button"
-                className={selectedSkillId === id ? 'skill-button-active' : ''}
-                onClick={() => { setSelectedSkillId(id); setPendingTargetId(null); setPendingTargetPos(null); }}
-              >
-                {skill.name} ({uses})
-              </button>
-            );
-          })}
-        </div>
-        <div className="confirm-buttons">
-          <button type="button" onClick={resetPending}>취소</button>
-          <button type="button" disabled={!canConfirm} onClick={submitAction}>확인</button>
-          <button type="button" onClick={() => { resetPending(); battle.takeTurn({}); forceRerender(); }}>턴 넘기기</button>
+          {panelOpen && (
+            <div className="action-float-body">
+              <p className="turn-status">
+                <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
+              </p>
+              <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
+              <div className="skill-buttons">
+                {usableSkillIds.map((id) => {
+                  const skill = getSkill(id);
+                  const uses = skill.maxUses !== undefined ? `${currentUnit.skillUses[id] ?? 0}/${skill.maxUses}` : '∞';
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={selectedSkillId === id ? 'skill-button-active' : ''}
+                      onClick={() => { setSelectedSkillId(selectedSkillId === id ? null : id); setPendingTargetId(null); setPendingTargetPos(null); }}
+                    >
+                      {skill.name} ({uses})
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="confirm-buttons">
+                <button type="button" onClick={resetPending}>취소</button>
+                <button type="button" disabled={!canConfirm} onClick={submitAction}>확인</button>
+                <button type="button" onClick={() => { resetPending(); battle.takeTurn({}); forceRerender(); }}>턴 넘기기</button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

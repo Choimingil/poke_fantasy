@@ -9,15 +9,26 @@ export function UnitToken({
   isCurrentTurn,
   isSelectedTarget,
   posOverride,
+  isAttacking = false,
+  isHit = false,
 }: {
   character: Character;
   side: Side;
   isCurrentTurn: boolean;
   isSelectedTarget: boolean;
   posOverride?: GridPos | null;
+  isAttacking?: boolean;
+  isHit?: boolean;
 }) {
   const pos = posOverride ?? character.position;
-  const classes = ['unit-token', `unit-token-team${side}`, isCurrentTurn ? 'unit-token-current' : '', isSelectedTarget ? 'unit-token-targetable' : '']
+  const classes = [
+    'unit-token',
+    `unit-token-team${side}`,
+    isCurrentTurn ? 'unit-token-current' : '',
+    isSelectedTarget ? 'unit-token-targetable' : '',
+    isAttacking ? 'unit-token-attacking' : '',
+    isHit ? 'unit-token-hit' : '',
+  ]
     .filter(Boolean)
     .join(' ');
   return (
