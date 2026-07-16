@@ -586,7 +586,7 @@ button:disabled {
   gap: 8px;
 }
 .action-bar-tall {
-  min-height: 148px; /* 기존 대비 약 2배 두께 */
+  min-height: 168px; /* 기존 대비 약 2배 두께 */
 }
 .action-bar-waiting {
   justify-content: center;
@@ -603,6 +603,15 @@ button:disabled {
 }
 .action-bar-log {
   color: #a9b0c2;
+}
+/* 전투 텍스트: 유닛 정보 바로 밑 줄 */
+.action-bar-log-line {
+  margin: 0;
+  font-size: 0.85em;
+  color: #a9b0c2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .action-bar-row {

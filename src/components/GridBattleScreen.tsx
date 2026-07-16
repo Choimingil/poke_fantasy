@@ -280,8 +280,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       <div className="action-bar action-bar-tall">
         <p className="action-bar-status">
           <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
-          <span className="action-bar-log"> — {battle.log[battle.log.length - 1]}</span>
         </p>
+        <p className="action-bar-log-line">{battle.log[battle.log.length - 1]}</p>
         <div className="action-bar-row">
           <div className="skill-grid">
             {usableSkillIds.map((id) => {
