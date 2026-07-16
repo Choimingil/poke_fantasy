@@ -8,6 +8,7 @@ import { isVisibleTo } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
+import { weatherTurnStartDamage, type Weather } from './weather';
 
 export type Side = 'A' | 'B';
 
@@ -30,6 +31,7 @@ export class GridBattle {
   map: BattleMap;
   teamA: Character[];
   teamB: Character[];
+  weather: Weather;
   round = 0;
   roundQueue: Character[] = [];
   bonusQueue: Character[] = [];
@@ -41,11 +43,12 @@ export class GridBattle {
   negatedShields = new Set<string>();
   private rng: () => number;
 
-  constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random) {
+  constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random, weather: Weather = 'clear') {
     this.map = map;
     this.teamA = teamA;
     this.teamB = teamB;
     this.rng = rng;
+    this.weather = weather;
     for (const c of teamA) c.side = 'A';
     for (const c of teamB) c.side = 'B';
     this.beginRound();
@@ -120,6 +123,8 @@ export class GridBattle {
       for (const expired of tick.expired) this.log.push(`${unit.name}의 ${expired} 상태가 해제되었다.`);
       const burn = applyTileBurnDamage(unit, this.map);
       if (burn > 0) this.log.push(`${unit.name}는 화염 피해로 ${burn}의 데미지를 입었다.`);
+      const heat = weatherTurnStartDamage(unit, this.weather, this.rng);
+      if (heat > 0) this.log.push(`${unit.name}는 폭염으로 ${heat}의 데미지를 입었다.`);
       if (unit.currentHp <= 0) {
         this.log.push(`${unit.name}가 쓰러졌다.`);
         this.checkBattleEnd();
@@ -143,7 +148,7 @@ export class GridBattle {
     }
 
     if (action.moveTo) {
-      const budget = effectiveMove(unit, this.map);
+      const budget = effectiveMove(unit, this.map, this.weather);
       const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget);
       if (reachable.some((p) => p.x === action.moveTo!.x && p.y === action.moveTo!.y)) {
         unit.position = action.moveTo;

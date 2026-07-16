@@ -152,20 +152,54 @@ button:disabled {
   margin: 2px 0 0;
 }
 
+/* 카메라 뷰포트: 보드가 커지면 스크롤되고, 현재 유닛을 중앙으로 추적한다. */
+.board-viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+  background: #1c1c26;
+}
+
 .grid-board {
   display: grid;
   gap: 1px;
   background: #333;
-  flex: 1;
-  min-height: 0;
-  aspect-ratio: 1 / 1;
-  max-height: 70vh;
-  margin: 0 auto;
+  position: relative;
+  margin: auto;
 }
 
 .tile-cell {
   position: relative;
 }
+
+/* 전장의 안개: 시야 밖 타일 */
+.tile-fog {
+  filter: brightness(0.28) saturate(0.4);
+}
+.tile-fog::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(6, 8, 18, 0.55);
+}
+
+/* 날씨 오버레이 (뷰포트 전체에 옅은 톤) */
+.board-viewport.weather-rain { background: #171b26; }
+.board-viewport.weather-rain::after,
+.board-viewport.weather-snow::after,
+.board-viewport.weather-heatwave::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+.board-viewport.weather-rain::after { background: linear-gradient(180deg, rgba(60, 90, 140, 0.18), rgba(40, 60, 100, 0.10)); }
+.board-viewport.weather-snow { background: #202430; }
+.board-viewport.weather-snow::after { background: rgba(220, 230, 245, 0.12); }
+.board-viewport.weather-heatwave::after { background: linear-gradient(180deg, rgba(200, 90, 30, 0.14), rgba(150, 40, 10, 0.10)); }
 
 .tile-plain {
   background: #c8b273;
@@ -209,8 +243,10 @@ button:disabled {
 }
 
 .unit-token-sprite {
-  width: 70%;
-  height: auto;
+  width: 92%;
+  max-height: 82%;
+  object-fit: contain;
+  image-rendering: auto;
 }
 
 .unit-token-teamA .unit-token-sprite {

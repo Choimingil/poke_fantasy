@@ -7,8 +7,9 @@ import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { getUsableSkillIds } from '../game/data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
-import { isVisibleTo } from '../game/engine/vision';
+import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
+import { pickRandomWeather, WEATHER_LABEL } from '../game/engine/weather';
 import { BoardGrid } from './BoardGrid';
 
 const AI_DELAY_MS = 500;
@@ -30,13 +31,30 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const map = createDefaultMap();
     teamA.forEach((c, i) => prepareForBattle(c, TEAM_A_SPAWNS[i % TEAM_A_SPAWNS.length], 'A'));
     teamB.forEach((c, i) => prepareForBattle(c, TEAM_B_SPAWNS[i % TEAM_B_SPAWNS.length], 'B'));
-    battleRef.current = new GridBattle(map, teamA, teamB);
+    battleRef.current = new GridBattle(map, teamA, teamB, Math.random, pickRandomWeather(Math.random));
   }
   const battle = battleRef.current;
   const forceRerender = () => setTick((t) => t + 1);
 
   const currentUnit = battle.currentUnit();
   const isPlayerTurn = !battle.finished && currentUnit?.side === 'A';
+
+  // 전장의 안개: 플레이어(A팀) 시야 기준으로 밝혀진 타일과 보이는 적을 계산한다.
+  const alivePlayers = battle.teamA.filter((u) => u.currentHp > 0);
+  const revealedTiles = new Set<string>();
+  for (let y = 0; y < battle.map.height; y++) {
+    for (let x = 0; x < battle.map.width; x++) {
+      if (isTileRevealed({ x, y }, alivePlayers)) revealedTiles.add(posKey({ x, y }));
+    }
+  }
+  const visibleEnemyIds = new Set(
+    battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map)).map((e) => e.id),
+  );
+  // 카메라: 현재 유닛이 아군이거나 플레이어에게 보이는 적일 때만 그 위치로 이동(숨은 적은 추적 안 함).
+  const focusPos =
+    currentUnit && (currentUnit.side === 'A' || visibleEnemyIds.has(currentUnit.id))
+      ? currentUnit.position
+      : null;
 
   useEffect(() => {
     if (battle.finished) {
@@ -49,7 +67,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const timer = setTimeout(() => {
       const ownTeam = unit.side === 'A' ? battle.teamA : battle.teamB;
       const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
-      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map);
+      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather);
       battle.takeTurn(action);
       aiBusyRef.current = false;
       forceRerender();
@@ -86,7 +104,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     return (
       <div className="app-shell">
         <div className="battle-log-panel">
-          <p>{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
+          <p>{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
         </div>
         <BoardGrid
           map={battle.map}
@@ -96,6 +114,10 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           reachableTiles={new Set()}
           targetableUnitIds={new Set()}
           targetableTiles={new Set()}
+          revealedTiles={revealedTiles}
+          visibleEnemyIds={visibleEnemyIds}
+          focusPos={focusPos}
+          weather={battle.weather}
           onTileClick={() => {}}
         />
       </div>
@@ -104,7 +126,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
   const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
-  const budget = effectiveMove(currentUnit, battle.map);
+  const budget = effectiveMove(currentUnit, battle.map, battle.weather);
   const reachable = pendingMoveTile ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
   const reachableTiles = new Set(reachable.map(posKey));
 
@@ -122,7 +144,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       for (const enemy of battle.teamB.filter((u) => u.currentHp > 0)) {
         const inRange = selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
           ? isVisibleTo(currentUnit, enemy, battle.map)
-          : chebyshev(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range));
+          : chebyshev(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range)) &&
+            isVisibleTo(currentUnit, enemy, battle.map);
         if (inRange) targetableUnitIds.add(enemy.id);
       }
     } else if (selectedSkill.targetMode === 'tile') {
@@ -143,7 +166,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   return (
     <div className="app-shell">
       <div className="battle-log-panel">
-        <p>{currentUnit.name}의 턴 (Lv.{currentUnit.level}, {weapon.name})</p>
+        <p>{currentUnit.name}의 턴 (Lv.{currentUnit.level}, {weapon.name}) · 날씨: {WEATHER_LABEL[battle.weather]}</p>
         <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
       </div>
       <BoardGrid
@@ -154,6 +177,10 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         reachableTiles={reachableTiles}
         targetableUnitIds={targetableUnitIds}
         targetableTiles={targetableTiles}
+        revealedTiles={revealedTiles}
+        visibleEnemyIds={visibleEnemyIds}
+        focusPos={focusPos}
+        weather={battle.weather}
         onTileClick={(pos) => {
           if (selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
             setPendingTargetPos(pos);

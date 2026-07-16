@@ -102,9 +102,13 @@ interface WeaponInstance {
   element?: Element; // staff only, chosen when the instance is created
 }
 
+export type SpriteGender = 'male' | 'female';
+
 export interface Character {
   id: string;
   name: string;
+  spriteJob: string; // 원화(스프라이트) 매핑용 직업 키 (assets/jobs/{spriteJob}-{gender}-...)
+  gender: SpriteGender;
 
   level: number;
   xp: number;

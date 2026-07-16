@@ -1,4 +1,5 @@
 import type { BattleMap, Character, GridPos } from '../types';
+import { weatherMoveModifier, type Weather } from './weather';
 
 export function chebyshev(a: GridPos, b: GridPos): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -16,12 +17,13 @@ function tileAt(map: BattleMap, p: GridPos): { terrain: BattleMap['tiles'][numbe
   return map.tiles[p.y][p.x];
 }
 
-export function effectiveMove(c: Character, map: BattleMap): number {
+export function effectiveMove(c: Character, map: BattleMap, weather: Weather = 'clear'): number {
   let move = c.rawMove;
   const legHit = c.statusEffects.find((s) => s.type === 'legHit');
   if (legHit) move += legHit.magnitude ?? -0.5;
   const onWater = map.tiles[c.position.y][c.position.x].terrain === 'water';
   if (onWater && c.statusEffects.some((s) => s.type === 'riverSurge')) move += 1;
+  move += weatherMoveModifier(c, weather);
   return Math.max(0, move);
 }
 

@@ -5,9 +5,10 @@ import { getWeapon } from '../data/weapons';
 import { getUsableSkillIds } from '../data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
+import type { Weather } from './weather';
 
 /** 간단한 그리드 AI: 도발 대상 우선 → 가장 가까운 보이는 적 추적 → 사거리 내면 공격 스킬 사용 */
-export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: Character[], map: BattleMap): UnitAction {
+export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: Character[], map: BattleMap, weather: Weather = 'clear'): UnitAction {
   const allUnits = [...ownTeam, ...enemyTeam];
 
   const tauntStatus = unit.statusEffects.find((s) => s.type === 'taunted');
@@ -18,7 +19,7 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
   }
   if (!target) return {};
 
-  const budget = effectiveMove(unit, map);
+  const budget = effectiveMove(unit, map, weather);
   const reachable = [unit.position, ...computeReachableTiles(map, unit, allUnits, budget)];
   const bestTile = reachable.reduce((best, pos) =>
     chebyshev(pos, target!.position) < chebyshev(best, target!.position) ? pos : best);

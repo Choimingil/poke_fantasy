@@ -23,7 +23,12 @@ export function UnitToken({
       style={{ gridColumn: character.position.x + 1, gridRow: character.position.y + 1 }}
       title={`${character.name} Lv.${character.level} (${character.currentHp}/${character.baseStats.hp})`}
     >
-      <TrainerSprite facing="front" className="unit-token-sprite" />
+      <TrainerSprite
+        jobId={character.spriteJob}
+        gender={character.gender}
+        facing={side === 'A' ? 'back' : 'front'}
+        className="unit-token-sprite"
+      />
       <HpBar character={character} />
     </div>
   );

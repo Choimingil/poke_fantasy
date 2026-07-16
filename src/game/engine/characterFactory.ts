@@ -1,4 +1,4 @@
-import type { Character, Element, GridPos, StatBlock } from '../types';
+import type { Character, Element, GridPos, SpriteGender, StatBlock } from '../types';
 import { initSkillUses } from '../data/promotions';
 import { getWeapon } from '../data/weapons';
 import type { Side } from './battle';
@@ -6,6 +6,8 @@ import type { Side } from './battle';
 export interface CreateCharacterOptions {
   id: string;
   name: string;
+  spriteJob?: string;
+  gender?: SpriteGender;
   baseStats: StatBlock;
   rawMove: number;
   sight: number;
@@ -36,6 +38,8 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
   return {
     id: opts.id,
     name: opts.name,
+    spriteJob: opts.spriteJob ?? 'east_duelist',
+    gender: opts.gender ?? 'male',
     level: 1,
     xp: 0,
     unspentPromotions: 0,
