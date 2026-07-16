@@ -95,8 +95,8 @@ export function BoardGrid({
       <div
         className="grid-board"
         style={{
-          gridTemplateColumns: `repeat(${map.width}, ${CELL}px)`,
-          gridTemplateRows: `repeat(${map.height}, ${CELL}px)`,
+          gridTemplateColumns: `repeat(${map.width}, 1fr)`,
+          gridTemplateRows: `repeat(${map.height}, 1fr)`,
         }}
       >
         {cells}

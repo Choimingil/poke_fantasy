@@ -368,22 +368,28 @@ button:disabled {
   overflow: hidden;
 }
 
-/* 정사각형 전투 무대: 남은 공간에서 최대 정사각형으로 잡고 가운데 정렬. 기술 패널은 이 위에 플로팅. */
+/* 전투 무대: 상단 바를 제외한 남은 공간을 전부 차지한다. */
 .battle-stage {
   position: relative;
-  width: min(94vw, 68vh);
-  height: min(94vw, 68vh);
-  max-width: 100%;
-  max-height: 100%;
-  margin: auto;
+  flex: 1;
   min-height: 0;
+  display: grid;
+  place-items: center;
+  container-type: size;
 }
 
-/* 카메라 뷰포트: 보드가 커지면 스크롤되고, 현재 유닛을 중앙으로 추적한다. */
+/* 보드 정사각형: 남은 공간의 더 짧은 변에 맞춰 최대 정사각형으로 채운다. */
+.board-square {
+  position: relative;
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  container-type: size;
+}
+
 .board-viewport {
   width: 100%;
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
   position: relative;
   border-radius: 8px;
   background: #1c1c26;
@@ -394,7 +400,8 @@ button:disabled {
   gap: 1px;
   background: #333;
   position: relative;
-  margin: auto;
+  width: 100%;
+  height: 100%;
 }
 
 .tile-cell {
@@ -405,7 +412,7 @@ button:disabled {
 }
 
 .terrain-icon {
-  font-size: 26px;
+  font-size: min(30px, 6cqmin);
   line-height: 1;
   pointer-events: none;
   opacity: 0.9;

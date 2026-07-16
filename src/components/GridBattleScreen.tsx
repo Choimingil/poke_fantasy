@@ -138,23 +138,25 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           <p className="turn-status">{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
         </div>
         <div className="battle-stage">
-          <BoardGrid
-            map={battle.map}
-            teamA={battle.teamA}
-            teamB={battle.teamB}
-            currentUnitId={currentUnit?.id ?? null}
-            reachableTiles={new Set()}
-            targetableUnitIds={new Set()}
-            targetableTiles={new Set()}
-            revealedTiles={revealedTiles}
-            visibleEnemyIds={visibleEnemyIds}
-            focusPos={focusPos}
-            weather={battle.weather}
-            time={battle.time}
-            motionAttackerId={motion?.attackerId ?? null}
-            motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
-            onTileClick={() => {}}
-          />
+          <div className="board-square">
+            <BoardGrid
+              map={battle.map}
+              teamA={battle.teamA}
+              teamB={battle.teamB}
+              currentUnitId={currentUnit?.id ?? null}
+              reachableTiles={new Set()}
+              targetableUnitIds={new Set()}
+              targetableTiles={new Set()}
+              revealedTiles={revealedTiles}
+              visibleEnemyIds={visibleEnemyIds}
+              focusPos={focusPos}
+              weather={battle.weather}
+              time={battle.time}
+              motionAttackerId={motion?.attackerId ?? null}
+              motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
+              onTileClick={() => {}}
+            />
+          </div>
         </div>
       </div>
     );
@@ -210,6 +212,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
       </div>
       <div className="battle-stage">
+        <div className="board-square">
         <BoardGrid
           map={battle.map}
           teamA={battle.teamA}
@@ -277,6 +280,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
