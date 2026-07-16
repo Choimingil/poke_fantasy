@@ -373,35 +373,34 @@ button:disabled {
   position: relative;
   flex: 1;
   min-height: 0;
-  display: grid;
-  place-items: center;
-  container-type: size;
 }
 
-/* 보드 정사각형: 남은 공간의 더 짧은 변에 맞춰 최대 정사각형으로 채운다. */
 .board-square {
   position: relative;
-  width: min(100cqw, 100cqh);
-  height: min(100cqw, 100cqh);
-  container-type: size;
+  width: 100%;
+  height: 100%;
 }
 
+/* 카메라 뷰포트: 화면을 가득 채우고, 큰 보드를 담아 현재 유닛을 따라 스크롤한다(스크롤바 숨김). */
 .board-viewport {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
   position: relative;
-  border-radius: 8px;
   background: #1c1c26;
+  scrollbar-width: none; /* Firefox */
+}
+.board-viewport::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 
+/* 큰 고정 크기 보드: 뷰포트보다 작으면 가운데 정렬, 크면 카메라가 스크롤. */
 .grid-board {
   display: grid;
   gap: 1px;
   background: #333;
   position: relative;
-  width: 100%;
-  height: 100%;
+  margin: auto;
 }
 
 .tile-cell {
@@ -412,7 +411,7 @@ button:disabled {
 }
 
 .terrain-icon {
-  font-size: min(30px, 6cqmin);
+  font-size: 40px;
   line-height: 1;
   pointer-events: none;
   opacity: 0.9;
