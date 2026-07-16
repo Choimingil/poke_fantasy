@@ -375,12 +375,6 @@ button:disabled {
   min-height: 0;
 }
 
-.board-square {
-  position: relative;
-  width: 100%;
-  height: 100%;
-}
-
 /* 카메라 뷰포트: 화면을 가득 채우고, 큰 보드를 담아 현재 유닛을 따라 스크롤한다(스크롤바 숨김). */
 .board-viewport {
   width: 100%;
@@ -411,7 +405,7 @@ button:disabled {
 }
 
 .terrain-icon {
-  font-size: 40px;
+  font-size: 36px;
   line-height: 1;
   pointer-events: none;
   opacity: 0.9;
@@ -581,69 +575,58 @@ button:disabled {
   80% { transform: translateX(4px); }
 }
 
-/* 좌측 하단 플로팅 기술 패널 */
-.action-float {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
-  z-index: 30;
-  width: min(320px, 60%);
-  background: rgba(22, 24, 36, 0.94);
+/* 맵 하단 행동 일자바 */
+.action-bar {
+  flex: 0 0 auto;
+  background: #23252f;
   color: #f4f6ee;
-  border: 1px solid #3a3f52;
-  border-radius: 12px;
-  padding: 8px;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
-}
-.action-float.collapsed {
-  width: auto;
-  padding: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-.action-float-toggle {
-  width: 100%;
-  padding: 6px 10px;
-  background: #3b4a77;
-  border-radius: 8px;
-  font-size: 0.9em;
-}
-.action-float.collapsed .action-float-toggle {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  font-size: 1.3em;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
-}
-
-.action-float-body {
-  margin-top: 8px;
-}
-.action-float-body .turn-status {
-  color: #f4f6ee;
-  margin: 0 0 4px;
-}
-.action-float-body .battle-log-line {
-  color: #cfd3e0;
-  margin: 0 0 8px;
-}
-.action-float-body .skill-buttons {
-  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
 }
-.action-float-body .skill-buttons button {
-  padding: 8px 6px;
-  font-size: 0.85em;
+
+.action-bar-status {
+  margin: 0;
+  font-size: 0.9em;
+  color: #dfe3ee;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.action-float-body .confirm-buttons {
-  margin-top: 6px;
+.action-bar-log {
+  color: #a9b0c2;
 }
-.action-float-body .confirm-buttons button {
+
+.action-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.action-bar-row .skill-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
   flex: 1;
-  padding: 8px 6px;
-  font-size: 0.85em;
+  min-width: 0;
+  scrollbar-width: thin;
+}
+.action-bar-row .skill-buttons button {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.action-bar-row .confirm-buttons {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+.action-bar-row .confirm-buttons button {
+  padding: 8px 12px;
+  font-size: 0.9em;
 }
 
 .unit-token .hp-bar {

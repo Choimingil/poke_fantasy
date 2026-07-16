@@ -4,7 +4,7 @@ import type { Side } from '../game/engine/battle';
 import { posKey } from '../game/engine/grid';
 import { UnitToken } from './UnitToken';
 
-const CELL = 96; // px, 타일을 크게 고정하고 카메라가 캐릭터를 따라 스크롤한다(스타크래프트식)
+const CELL = 86; // px, 타일을 크게 고정하고 카메라가 캐릭터를 따라 스크롤한다(스타크래프트식)
 
 const TERRAIN_ICON: Record<string, string> = {
   plain: '',

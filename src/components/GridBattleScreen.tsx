@@ -28,7 +28,6 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
   const [pendingTargetPos, setPendingTargetPos] = useState<GridPos | null>(null);
-  const [panelOpen, setPanelOpen] = useState(true);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
@@ -135,28 +134,30 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         <div className="battle-log-panel">
           <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
           <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit?.id ?? null} visibleEnemyIds={visibleEnemyIds} />
-          <p className="turn-status">{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
         </div>
         <div className="battle-stage">
-          <div className="board-square">
-            <BoardGrid
-              map={battle.map}
-              teamA={battle.teamA}
-              teamB={battle.teamB}
-              currentUnitId={currentUnit?.id ?? null}
-              reachableTiles={new Set()}
-              targetableUnitIds={new Set()}
-              targetableTiles={new Set()}
-              revealedTiles={revealedTiles}
-              visibleEnemyIds={visibleEnemyIds}
-              focusPos={focusPos}
-              weather={battle.weather}
-              time={battle.time}
-              motionAttackerId={motion?.attackerId ?? null}
-              motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
-              onTileClick={() => {}}
-            />
-          </div>
+          <BoardGrid
+            map={battle.map}
+            teamA={battle.teamA}
+            teamB={battle.teamB}
+            currentUnitId={currentUnit?.id ?? null}
+            reachableTiles={new Set()}
+            targetableUnitIds={new Set()}
+            targetableTiles={new Set()}
+            revealedTiles={revealedTiles}
+            visibleEnemyIds={visibleEnemyIds}
+            focusPos={focusPos}
+            weather={battle.weather}
+            time={battle.time}
+            motionAttackerId={motion?.attackerId ?? null}
+            motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
+            onTileClick={() => {}}
+          />
+        </div>
+        <div className="action-bar">
+          <p className="action-bar-status">
+            {battle.finished ? '전투 종료' : `${currentUnit?.name ?? '상대'}의 행동을 기다리는 중...`}
+          </p>
         </div>
       </div>
     );
@@ -212,7 +213,6 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
       </div>
       <div className="battle-stage">
-        <div className="board-square">
         <BoardGrid
           map={battle.map}
           teamA={battle.teamA}
@@ -245,42 +245,36 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             }
           }}
         />
+      </div>
 
-        {/* 좌측 하단 플로팅 기술 패널 */}
-        <div className={`action-float${panelOpen ? '' : ' collapsed'}`}>
-          <button type="button" className="action-float-toggle" onClick={() => setPanelOpen((o) => !o)}>
-            {panelOpen ? '⚔ 행동 ▾' : '⚔'}
-          </button>
-          {panelOpen && (
-            <div className="action-float-body">
-              <p className="turn-status">
-                <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
-              </p>
-              <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
-              <div className="skill-buttons">
-                {usableSkillIds.map((id) => {
-                  const skill = getSkill(id);
-                  const uses = skill.maxUses !== undefined ? `${currentUnit.skillUses[id] ?? 0}/${skill.maxUses}` : '∞';
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      className={selectedSkillId === id ? 'skill-button-active' : ''}
-                      onClick={() => { setSelectedSkillId(selectedSkillId === id ? null : id); setPendingTargetId(null); setPendingTargetPos(null); }}
-                    >
-                      {skill.name} ({uses})
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="confirm-buttons">
-                <button type="button" onClick={resetPending}>취소</button>
-                <button type="button" disabled={!canConfirm} onClick={submitAction}>확인</button>
-                <button type="button" onClick={() => { resetPending(); battle.takeTurn({}); forceRerender(); }}>턴 넘기기</button>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* 맵 하단 행동 일자바 */}
+      <div className="action-bar">
+        <p className="action-bar-status">
+          <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
+          <span className="action-bar-log"> — {battle.log[battle.log.length - 1]}</span>
+        </p>
+        <div className="action-bar-row">
+          <div className="skill-buttons">
+            {usableSkillIds.map((id) => {
+              const skill = getSkill(id);
+              const uses = skill.maxUses !== undefined ? `${currentUnit.skillUses[id] ?? 0}/${skill.maxUses}` : '∞';
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  className={selectedSkillId === id ? 'skill-button-active' : ''}
+                  onClick={() => { setSelectedSkillId(selectedSkillId === id ? null : id); setPendingTargetId(null); setPendingTargetPos(null); }}
+                >
+                  {skill.name} ({uses})
+                </button>
+              );
+            })}
+          </div>
+          <div className="confirm-buttons">
+            <button type="button" onClick={resetPending}>취소</button>
+            <button type="button" disabled={!canConfirm} onClick={submitAction}>확인</button>
+            <button type="button" onClick={() => { resetPending(); battle.takeTurn({}); forceRerender(); }}>턴 넘기기</button>
+          </div>
         </div>
       </div>
     </div>
