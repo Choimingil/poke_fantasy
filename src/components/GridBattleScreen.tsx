@@ -28,6 +28,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
   const [pendingTargetPos, setPendingTargetPos] = useState<GridPos | null>(null);
+  const [pendingSwapTo, setPendingSwapTo] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
@@ -109,12 +110,21 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     setSelectedSkillId(null);
     setPendingTargetId(null);
     setPendingTargetPos(null);
+    setPendingSwapTo(null);
   };
 
   const submitAction = () => {
     if (!currentUnit) return;
     const actorId = currentUnit.id;
     const action: UnitAction = {};
+    if (pendingSwapTo) {
+      // 무기 교체는 단독 행동으로 처리(티어<3이면 교체가 턴을 소모).
+      action.switchWeaponTo = pendingSwapTo;
+      battle.takeTurn(action);
+      resetPending();
+      forceRerender();
+      return;
+    }
     if (pendingMoveTile) action.moveTo = pendingMoveTile;
     if (selectedSkillId) {
       action.skillId = selectedSkillId;
@@ -154,7 +164,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             onTileClick={() => {}}
           />
         </div>
-        <div className="action-bar">
+        <div className="action-bar action-bar-tall action-bar-waiting">
           <p className="action-bar-status">
             {battle.finished ? '전투 종료' : `${currentUnit?.name ?? '상대'}의 행동을 기다리는 중...`}
           </p>
@@ -202,9 +212,27 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   }
 
   const canConfirm =
+    !!pendingSwapTo ||
     !!pendingMoveTile ||
     (!!selectedSkillId &&
       (selectedSkill?.targetMode === 'self' || selectedSkill?.targetMode === 'selfRadius' || selectedSkill?.targetMode === 'ally' || !!pendingTargetId || !!pendingTargetPos));
+
+  // 무기 교체 후보(방패/현재 장착 무기 제외). 버튼 클릭 시 순환 선택.
+  const swapCandidates = currentUnit.inventory
+    .filter((w) => getWeapon(w.templateId).kind !== 'shield' && w.instanceId !== currentUnit.equippedWeaponId)
+    .map((w) => w.instanceId);
+  const cycleSwap = () => {
+    if (swapCandidates.length === 0) return;
+    setPendingMoveTile(null);
+    setSelectedSkillId(null);
+    setPendingTargetId(null);
+    setPendingTargetPos(null);
+    const idx = pendingSwapTo ? swapCandidates.indexOf(pendingSwapTo) : -1;
+    setPendingSwapTo(idx + 1 >= swapCandidates.length ? null : swapCandidates[idx + 1]);
+  };
+  const swapLabel = pendingSwapTo
+    ? `⇄ ${getWeapon(currentUnit.inventory.find((w) => w.instanceId === pendingSwapTo)!.templateId).name}`
+    : '⇄ 무기교체';
 
   return (
     <div className="app-shell battle-screen">
@@ -241,20 +269,21 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
               return;
             }
             if (reachableTiles.has(posKey(pos))) {
+              setPendingSwapTo(null);
               setPendingMoveTile(pos);
             }
           }}
         />
       </div>
 
-      {/* 맵 하단 행동 일자바 */}
-      <div className="action-bar">
+      {/* 맵 하단 행동 일자바 (2배 두께) */}
+      <div className="action-bar action-bar-tall">
         <p className="action-bar-status">
           <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
           <span className="action-bar-log"> — {battle.log[battle.log.length - 1]}</span>
         </p>
         <div className="action-bar-row">
-          <div className="skill-buttons">
+          <div className="skill-grid">
             {usableSkillIds.map((id) => {
               const skill = getSkill(id);
               const uses = skill.maxUses !== undefined ? `${currentUnit.skillUses[id] ?? 0}/${skill.maxUses}` : '∞';
@@ -263,17 +292,22 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
                   key={id}
                   type="button"
                   className={selectedSkillId === id ? 'skill-button-active' : ''}
-                  onClick={() => { setSelectedSkillId(selectedSkillId === id ? null : id); setPendingTargetId(null); setPendingTargetPos(null); }}
+                  onClick={() => { setPendingSwapTo(null); setSelectedSkillId(selectedSkillId === id ? null : id); setPendingTargetId(null); setPendingTargetPos(null); }}
                 >
                   {skill.name} ({uses})
                 </button>
               );
             })}
           </div>
-          <div className="confirm-buttons">
-            <button type="button" onClick={resetPending}>취소</button>
-            <button type="button" disabled={!canConfirm} onClick={submitAction}>확인</button>
-            <button type="button" onClick={() => { resetPending(); battle.takeTurn({}); forceRerender(); }}>턴 넘기기</button>
+          <div className="action-side">
+            <button type="button" className="swap-button" disabled={swapCandidates.length === 0} onClick={cycleSwap}>
+              {swapLabel}
+            </button>
+            <div className="confirm-buttons">
+              <button type="button" onClick={resetPending}>취소</button>
+              {/* 대기 중인 행동이 없으면 확인은 그대로 턴 종료(대기) 역할 */}
+              <button type="button" onClick={submitAction}>{canConfirm ? '확인' : '대기'}</button>
+            </div>
           </div>
         </div>
       </div>
