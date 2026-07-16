@@ -119,10 +119,18 @@ const TEST_BUILD: Record<'melee' | 'ranged' | 'magic', StatBuild> = {
 const WILLPOWER_CAP = 0.7;
 
 // ── 데미지 공식 상수 ───────────────────────────────────────────────
-/** 기술 위력 기준값. 최종공격력에 (기술위력/이 값)을 곱해 기술별 차이를 반영. */
-const POWER_REF = 50;
+/** 주스탯 기여 = 주스탯 / 이 값. */
+const STAT_ATK_DIVISOR = 6;
 /** 숙련도 하한(현재 강화 없음). 데미지 랜덤 계수 = [PROFICIENCY_BASE, 1]. */
 const PROFICIENCY_BASE = 0.8;
+/** 공격 기술 초기 위력 범위(이 범위를 위력 80~200%로 리스케일). */
+const SKILL_POWER_MIN = 18;
+const SKILL_POWER_MAX = 95;
+/** 기술위력(%) = 초기 위력을 [80, 200]%로 선형 리스케일(범위 밖은 클램프). */
+function skillPowerPercent(power: number): number {
+  const t = (power - SKILL_POWER_MIN) / (SKILL_POWER_MAX - SKILL_POWER_MIN);
+  return Math.max(80, Math.min(200, 80 + t * 120));
+}
 
 export interface TrpgUnit {
   id: string;
@@ -578,13 +586,13 @@ export class TrpgGame {
   }
 
   private computeHit(attacker: TrpgUnit, target: TrpgUnit, skill: Skill): { damage: number; crit: boolean } {
-    // 최종공격력 = (주스탯/3 + 무기공격력) × (기술위력/기준) × (숙련도~100% 랜덤).
-    // 주스탯: 마법 기술=지력(magic), 그 외=근력(attack).
+    // 최종공격력 = (주스탯/6 + 무기공격력) × (숙련도~100% 랜덤) × 기술위력(%).
+    // 주스탯: 마법 기술=지력(magic), 그 외=근력(attack). 기술위력%는 초기 위력을 80~200%로 리스케일.
     const mainStat = skill.type === 'magic' ? attacker.magic : attacker.attack;
     const weaponAtk = this.weaponAttackValue(attacker);
-    const powerFactor = skill.power / POWER_REF;
     const prof = PROFICIENCY_BASE + this.rng() * (1 - PROFICIENCY_BASE);
-    const atkPower = (mainStat / 3 + weaponAtk) * powerFactor * prof * attacker.attackMult;
+    const powerPct = skillPowerPercent(skill.power) / 100;
+    const atkPower = (mainStat / STAT_ATK_DIVISOR + weaponAtk) * prof * powerPct * attacker.attackMult;
 
     // 최종데미지 = 최종공격력 − 방어력 (뺄셈). 방어 태세면 guardFactor(0/0.5) 적용.
     let dmg = (atkPower - this.effectiveDefense(target)) * target.guardFactor;
