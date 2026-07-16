@@ -11,7 +11,9 @@ import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vis
 import { pickAiAction } from '../game/engine/ai';
 import { pickRandomWeather, WEATHER_LABEL } from '../game/engine/weather';
 import { pickRandomTime, TIME_LABEL } from '../game/engine/daytime';
+import { effectiveSpeed } from '../game/engine/turnOrder';
 import { BoardGrid } from './BoardGrid';
+import { InitiativeBar } from './InitiativeBar';
 
 const AI_DELAY_MS = 500;
 
@@ -51,6 +53,10 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const visibleEnemyIds = new Set(
     battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map)).map((e) => e.id),
   );
+  // 행동 순서 표시용: 살아있는 모든 유닛을 스피드 내림차순으로 정렬.
+  const initiativeUnits = [...battle.teamA, ...battle.teamB]
+    .filter((u) => u.currentHp > 0)
+    .sort((a, b) => effectiveSpeed(b) - effectiveSpeed(a));
   // 카메라: 현재 유닛이 아군이거나 플레이어에게 보이는 적일 때만 그 위치로 이동(숨은 적은 추적 안 함).
   // 아군이 이동 위치를 지정해 대기 중이면 그 예정 칸을 따라간다.
   const focusPos =
@@ -108,7 +114,9 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     return (
       <div className="app-shell">
         <div className="battle-log-panel">
-          <p>🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
+          <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
+          <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit?.id ?? null} visibleEnemyIds={visibleEnemyIds} />
+          <p className="turn-status">{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
         </div>
         <BoardGrid
           map={battle.map}
@@ -171,8 +179,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   return (
     <div className="app-shell">
       <div className="battle-log-panel">
-        <p>🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {currentUnit.name}의 턴 (Lv.{currentUnit.level}, {weapon.name})</p>
-        <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
+        <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
+        <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
       </div>
       <BoardGrid
         map={battle.map}
@@ -205,6 +213,10 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         }}
       />
       <div className="action-panel">
+        <p className="turn-status">
+          <strong>{currentUnit.name}</strong>의 턴 (Lv.{currentUnit.level}, {weapon.name})
+        </p>
+        <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
         <div className="skill-buttons">
           <button type="button" className={!selectedSkillId ? 'skill-button-active' : ''} onClick={() => { setSelectedSkillId(null); setPendingTargetId(null); setPendingTargetPos(null); }}>
             (스킬 없음)

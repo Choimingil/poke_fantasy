@@ -294,10 +294,74 @@ button:disabled {
   color: #f4f6ee;
 }
 
+.battle-meta {
+  margin: 0 0 6px;
+  font-size: 0.85em;
+  color: #cfd3e0;
+}
+
 .battle-log-line {
   font-size: 0.9em;
+  color: #555;
+  margin: 2px 0 6px;
+}
+
+.turn-status {
+  margin: 0 0 4px;
+  font-size: 0.95em;
+  color: #222;
+}
+
+/* 어두운 상단 패널 위(적 턴 진행 중)에서는 밝은 색으로 */
+.battle-log-panel .turn-status {
   color: #cfd3e0;
-  margin: 2px 0 0;
+  margin: 6px 0 0;
+}
+
+/* 상단 행동 순서 바 (스피드 순, 현재 차례 강조, 암흑은 ???) */
+.initiative-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.init-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.init-chip-ally {
+  background: #2f3f6b;
+  color: #dfe6ff;
+}
+
+.init-chip-enemy {
+  background: #6b2f2f;
+  color: #ffdede;
+}
+
+.init-chip-hidden {
+  background: #3a3a44;
+  color: #9aa0ad;
+  font-style: italic;
+}
+
+.init-chip-current {
+  border-color: #ffd34d;
+  box-shadow: 0 0 0 2px rgba(255, 211, 77, 0.5);
+  font-weight: bold;
+}
+
+.init-chip-marker {
+  color: #ffd34d;
+  font-size: 0.9em;
 }
 
 /* 카메라 뷰포트: 보드가 커지면 스크롤되고, 현재 유닛을 중앙으로 추적한다. */

@@ -2,7 +2,7 @@ import type { Character } from '../types';
 import { getWeapon } from '../data/weapons';
 import { getStatus } from './status';
 
-function effectiveSpeed(c: Character): number {
+export function effectiveSpeed(c: Character): number {
   const instance = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
   const weapon = getWeapon(instance!.templateId);
   const awaken = getStatus(c, 'swordAwaken');
