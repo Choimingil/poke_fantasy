@@ -1,64 +1,78 @@
-import type { ActiveStatus, Character, StatusEffectType } from '../types';
+import type { ActiveStatus, BattleMap, Character, StatusEffectType } from '../types';
 
-const STATUS_DURATION: Record<StatusEffectType, number> = {
-  poison: 4,
-  bleed: 3,
-  sleep: 1,
-  stun: 1,
-  paralysis: 3,
-};
+export interface StatusApplyOptions {
+  turnsRemaining: number;
+  magnitude?: number;
+  sourceId?: string;
+  element?: import('../types').Element;
+  /** true면 이미 걸려있어도 갱신하지 않음(중복 적용 불가 버프) */
+  noStack?: boolean;
+}
 
-const DOT_RATIO: Partial<Record<StatusEffectType, number>> = {
-  poison: 1 / 16,
-  bleed: 1 / 12,
-};
-
-const SKIP_TURN_EFFECTS: StatusEffectType[] = ['sleep', 'stun'];
-
-/** 방어구 강화도가 높을수록 상태이상에 걸릴 확률이 줄어든다(억까 방지) */
-export function tryApplyStatus(
-  character: Character,
-  effect: StatusEffectType,
-  baseChance: number,
-  rng: () => number = Math.random,
-): boolean {
-  const resistedChance = Math.max(0, baseChance * (1 - character.armorEnhancementLevel * 0.05));
-  if (rng() >= resistedChance) return false;
-  if (character.statusEffects.some((s) => s.effect === effect)) return true;
-  const status: ActiveStatus = { effect, turnsRemaining: STATUS_DURATION[effect] };
+export function applyStatus(character: Character, type: StatusEffectType, options: StatusApplyOptions): boolean {
+  const existing = character.statusEffects.find((s) => s.type === type);
+  if (existing) {
+    if (options.noStack) return false;
+    existing.turnsRemaining = options.turnsRemaining;
+    existing.magnitude = options.magnitude;
+    existing.sourceId = options.sourceId;
+    existing.element = options.element;
+    return true;
+  }
+  const status: ActiveStatus = {
+    type,
+    turnsRemaining: options.turnsRemaining,
+    magnitude: options.magnitude,
+    sourceId: options.sourceId,
+    element: options.element,
+  };
   character.statusEffects.push(status);
   return true;
 }
 
+export function getStatus(character: Character, type: StatusEffectType): ActiveStatus | undefined {
+  return character.statusEffects.find((s) => s.type === type);
+}
+
 export interface StatusTickResult {
-  skipTurn: boolean;
   dotDamage: number;
   expired: StatusEffectType[];
 }
 
-/** 턴 시작 시 상태이상을 처리한다: 도트 데미지 적용, 행동불가 여부 판정, 지속시간 감소 */
+/** 턴 시작 시 상태이상 지속시간을 감소시키고 만료된 상태를 제거한다. 도트 데미지원은 타일 화염뿐이므로 여기선 만료 처리만 담당. */
 export function tickStatusAtTurnStart(character: Character): StatusTickResult {
-  let skipTurn = false;
-  let dotDamage = 0;
   const expired: StatusEffectType[] = [];
-
-  for (const status of character.statusEffects) {
-    if (SKIP_TURN_EFFECTS.includes(status.effect)) skipTurn = true;
-    const dotRatio = DOT_RATIO[status.effect];
-    if (dotRatio) dotDamage += Math.max(1, Math.round(character.baseStats.hp * dotRatio));
-  }
-
   character.statusEffects = character.statusEffects
     .map((s) => ({ ...s, turnsRemaining: s.turnsRemaining - 1 }))
     .filter((s) => {
       if (s.turnsRemaining <= 0) {
-        expired.push(s.effect);
+        expired.push(s.type);
         return false;
       }
       return true;
     });
+  return { dotDamage: 0, expired };
+}
 
-  if (dotDamage > 0) character.currentHp = Math.max(0, character.currentHp - dotDamage);
+/** 화염 타일 위에 있는 캐릭터는 매 턴 최대체력 1/4을 잃는다 */
+export function applyTileBurnDamage(character: Character, map: BattleMap): number {
+  const tile = map.tiles[character.position.y][character.position.x];
+  if (!tile.status || tile.status.type !== 'burning') return 0;
+  const damage = Math.max(1, Math.round(character.baseStats.hp / 4));
+  character.currentHp = Math.max(0, character.currentHp - damage);
+  return damage;
+}
 
-  return { skipTurn, dotDamage, expired };
+/** 타일 상태(화염) 지속시간을 감소시키고, 만료된 화염 타일이 숲이었다면 평지로 되돌린다 */
+export function tickMapStatus(map: BattleMap): void {
+  for (const row of map.tiles) {
+    for (const tile of row) {
+      if (!tile.status) continue;
+      tile.status.turnsRemaining -= 1;
+      if (tile.status.turnsRemaining <= 0) {
+        tile.status = undefined;
+        if (tile.terrain === 'forest') tile.terrain = 'plain';
+      }
+    }
+  }
 }

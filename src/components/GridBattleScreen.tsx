@@ -1,0 +1,200 @@
+import { useEffect, useRef, useState } from 'react';
+import type { Character, GridPos } from '../game/types';
+import { GridBattle, type UnitAction } from '../game/engine/battle';
+import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/maps';
+import { prepareForBattle } from '../game/engine/characterFactory';
+import { getSkill } from '../game/data/skills';
+import { getWeapon } from '../game/data/weapons';
+import { getUsableSkillIds } from '../game/data/promotions';
+import { chebyshev, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
+import { isVisibleTo } from '../game/engine/vision';
+import { pickAiAction } from '../game/engine/ai';
+import { BoardGrid } from './BoardGrid';
+
+const AI_DELAY_MS = 500;
+
+export function GridBattleScreen({ teamA, teamB, onFinished }: {
+  teamA: Character[];
+  teamB: Character[];
+  onFinished: (battle: GridBattle) => void;
+}) {
+  const battleRef = useRef<GridBattle | null>(null);
+  const [, setTick] = useState(0);
+  const [pendingMoveTile, setPendingMoveTile] = useState<GridPos | null>(null);
+  const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
+  const [pendingTargetPos, setPendingTargetPos] = useState<GridPos | null>(null);
+  const aiBusyRef = useRef(false);
+
+  if (!battleRef.current) {
+    const map = createDefaultMap();
+    teamA.forEach((c, i) => prepareForBattle(c, TEAM_A_SPAWNS[i % TEAM_A_SPAWNS.length], 'A'));
+    teamB.forEach((c, i) => prepareForBattle(c, TEAM_B_SPAWNS[i % TEAM_B_SPAWNS.length], 'B'));
+    battleRef.current = new GridBattle(map, teamA, teamB);
+  }
+  const battle = battleRef.current;
+  const forceRerender = () => setTick((t) => t + 1);
+
+  const currentUnit = battle.currentUnit();
+  const isPlayerTurn = !battle.finished && currentUnit?.side === 'A';
+
+  useEffect(() => {
+    if (battle.finished) {
+      onFinished(battle);
+      return;
+    }
+    const unit = battle.currentUnit();
+    if (!unit || unit.side !== 'B' || aiBusyRef.current) return;
+    aiBusyRef.current = true;
+    const timer = setTimeout(() => {
+      const ownTeam = unit.side === 'A' ? battle.teamA : battle.teamB;
+      const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
+      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map);
+      battle.takeTurn(action);
+      aiBusyRef.current = false;
+      forceRerender();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, AI_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+      aiBusyRef.current = false;
+    };
+  });
+
+  const resetPending = () => {
+    setPendingMoveTile(null);
+    setSelectedSkillId(null);
+    setPendingTargetId(null);
+    setPendingTargetPos(null);
+  };
+
+  const submitAction = () => {
+    if (!currentUnit) return;
+    const action: UnitAction = {};
+    if (pendingMoveTile) action.moveTo = pendingMoveTile;
+    if (selectedSkillId) {
+      action.skillId = selectedSkillId;
+      if (pendingTargetId) action.targetId = pendingTargetId;
+      if (pendingTargetPos) action.targetPos = pendingTargetPos;
+    }
+    battle.takeTurn(action);
+    resetPending();
+    forceRerender();
+  };
+
+  if (!isPlayerTurn || !currentUnit) {
+    return (
+      <div className="app-shell">
+        <div className="battle-log-panel">
+          <p>{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
+        </div>
+        <BoardGrid
+          map={battle.map}
+          teamA={battle.teamA}
+          teamB={battle.teamB}
+          currentUnitId={currentUnit?.id ?? null}
+          reachableTiles={new Set()}
+          targetableUnitIds={new Set()}
+          targetableTiles={new Set()}
+          onTileClick={() => {}}
+        />
+      </div>
+    );
+  }
+
+  const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
+  const weapon = getWeapon(weaponInstance.templateId);
+  const budget = effectiveMove(currentUnit, battle.map);
+  const reachable = pendingMoveTile ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
+  const reachableTiles = new Set(reachable.map(posKey));
+
+  const usableSkillIds = getUsableSkillIds(currentUnit, weapon.kind).filter((id) => {
+    const skill = getSkill(id);
+    return skill.maxUses === undefined || (currentUnit.skillUses[id] ?? 0) > 0;
+  });
+
+  const fromPos = pendingMoveTile ?? currentUnit.position;
+  const selectedSkill = selectedSkillId ? getSkill(selectedSkillId) : null;
+  const targetableUnitIds = new Set<string>();
+  const targetableTiles = new Set<string>();
+  if (selectedSkill) {
+    if (selectedSkill.targetMode === 'enemy' || selectedSkill.targetMode === 'anyInSight') {
+      for (const enemy of battle.teamB.filter((u) => u.currentHp > 0)) {
+        const inRange = selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
+          ? isVisibleTo(currentUnit, enemy, battle.map)
+          : chebyshev(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range));
+        if (inRange) targetableUnitIds.add(enemy.id);
+      }
+    } else if (selectedSkill.targetMode === 'tile') {
+      const range = selectedSkill.range ? (selectedSkill.range === 'weapon' ? weapon.range : selectedSkill.range) : Math.max(battle.map.width, battle.map.height);
+      for (let y = 0; y < battle.map.height; y++) {
+        for (let x = 0; x < battle.map.width; x++) {
+          if (chebyshev(fromPos, { x, y }) <= range) targetableTiles.add(posKey({ x, y }));
+        }
+      }
+    }
+  }
+
+  const canConfirm =
+    !!pendingMoveTile ||
+    (!!selectedSkillId &&
+      (selectedSkill?.targetMode === 'self' || selectedSkill?.targetMode === 'selfRadius' || selectedSkill?.targetMode === 'ally' || !!pendingTargetId || !!pendingTargetPos));
+
+  return (
+    <div className="app-shell">
+      <div className="battle-log-panel">
+        <p>{currentUnit.name}의 턴 (Lv.{currentUnit.level}, {weapon.name})</p>
+        <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
+      </div>
+      <BoardGrid
+        map={battle.map}
+        teamA={battle.teamA}
+        teamB={battle.teamB}
+        currentUnitId={currentUnit.id}
+        reachableTiles={reachableTiles}
+        targetableUnitIds={targetableUnitIds}
+        targetableTiles={targetableTiles}
+        onTileClick={(pos) => {
+          if (selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
+            setPendingTargetPos(pos);
+            return;
+          }
+          const enemyAtTile = battle.teamB.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
+          if (enemyAtTile && targetableUnitIds.has(enemyAtTile.id)) {
+            setPendingTargetId(enemyAtTile.id);
+            return;
+          }
+          if (reachableTiles.has(posKey(pos))) {
+            setPendingMoveTile(pos);
+          }
+        }}
+      />
+      <div className="action-panel">
+        <div className="skill-buttons">
+          <button type="button" className={!selectedSkillId ? 'skill-button-active' : ''} onClick={() => { setSelectedSkillId(null); setPendingTargetId(null); setPendingTargetPos(null); }}>
+            (스킬 없음)
+          </button>
+          {usableSkillIds.map((id) => {
+            const skill = getSkill(id);
+            const uses = skill.maxUses !== undefined ? `${currentUnit.skillUses[id] ?? 0}/${skill.maxUses}` : '∞';
+            return (
+              <button
+                key={id}
+                type="button"
+                className={selectedSkillId === id ? 'skill-button-active' : ''}
+                onClick={() => { setSelectedSkillId(id); setPendingTargetId(null); setPendingTargetPos(null); }}
+              >
+                {skill.name} ({uses})
+              </button>
+            );
+          })}
+        </div>
+        <div className="confirm-buttons">
+          <button type="button" onClick={resetPending}>취소</button>
+          <button type="button" disabled={!canConfirm} onClick={submitAction}>확인</button>
+          <button type="button" onClick={() => { resetPending(); battle.takeTurn({}); forceRerender(); }}>턴 넘기기</button>
+        </div>
+      </div>
+    </div>
+  );
+}

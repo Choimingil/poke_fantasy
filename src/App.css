@@ -38,8 +38,7 @@
   padding: 6px 8px;
 }
 
-.setup-panel button,
-.message-box button {
+button {
   color: #fff;
   background: #3b4a77;
   border: none;
@@ -49,224 +48,246 @@
   cursor: pointer;
 }
 
-.setup-panel button:hover,
-.message-box button:hover {
+button:hover {
   background: #2c3a63;
 }
 
-/* ---------------- 전투 화면 (HeartGold 스타일, 전체화면) ---------------- */
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
-.battle-scene {
-  flex: 1;
+/* ---------------- 팀 선택 / 인벤토리 ---------------- */
+
+.team-setup-columns {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.team-setup-column {
+  text-align: left;
+}
+
+.roster-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  min-height: 0;
+  gap: 6px;
 }
 
-.battle-field {
+.roster-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #222;
+}
+
+.inventory-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(600px, 92vw);
+  text-align: left;
+}
+
+.inventory-character-card {
+  background: #f4f6ee;
+  border: 2px solid #4a4a58;
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.inventory-equipped-label {
+  font-weight: normal;
+  font-size: 0.75em;
+  color: #555;
+}
+
+.inventory-weapon-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inventory-weapon-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.inventory-item-equipped {
+  font-weight: bold;
+}
+
+.inventory-equipped-badge {
+  font-size: 0.8em;
+  color: #3b4a77;
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 12px;
+}
+
+/* ---------------- 그리드 전투 화면 ---------------- */
+
+.battle-log-panel {
+  padding: 8px 16px;
+  background: #2a2a3a;
+  color: #f4f6ee;
+}
+
+.battle-log-line {
+  font-size: 0.9em;
+  color: #cfd3e0;
+  margin: 2px 0 0;
+}
+
+.grid-board {
+  display: grid;
+  gap: 1px;
+  background: #333;
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+  max-height: 70vh;
+  margin: 0 auto;
+}
+
+.tile-cell {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
 }
 
-.battle-sky {
-  position: absolute;
-  inset: 0 0 50% 0;
-  background: linear-gradient(155deg, #3d6b6a 0%, #547f78 30%, #93a888 48%, #ada87f 55%, #a89a68 70%, #8f8156 100%);
-  overflow: hidden;
+.tile-plain {
+  background: #c8b273;
 }
 
-.battle-sky::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    100deg,
-    rgba(255, 255, 255, 0.08) 0,
-    rgba(255, 255, 255, 0.08) 22px,
-    rgba(255, 255, 255, 0) 22px,
-    rgba(255, 255, 255, 0) 60px
-  );
+.tile-forest {
+  background: #3f6b3f;
 }
 
-.battle-horizon-glow {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 46%;
-  height: 14%;
-  background: linear-gradient(to bottom, transparent, rgba(255, 255, 250, 0.85), transparent);
-  pointer-events: none;
+.tile-hill {
+  background: #8a7048;
 }
 
-.battle-cloud {
-  position: absolute;
-  background: rgba(255, 255, 255, 0.85);
-  border-radius: 50%;
-  filter: blur(1px);
+.tile-water {
+  background: #4a7fb5;
 }
 
-.cloud-a {
-  top: 10%;
-  left: 8%;
-  width: clamp(60px, 12vw, 140px);
-  height: clamp(20px, 4vw, 46px);
+.tile-status-burning {
+  background: #b5451f;
 }
 
-.cloud-b {
-  top: 18%;
-  left: 48%;
-  width: clamp(70px, 14vw, 170px);
-  height: clamp(22px, 4.5vw, 52px);
-  opacity: 0.7;
+.tile-highlight-move {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: -2px;
+  cursor: pointer;
 }
 
-.cloud-c {
-  top: 5%;
-  left: 74%;
-  width: clamp(50px, 10vw, 110px);
-  height: clamp(16px, 3vw, 36px);
-  opacity: 0.65;
+.tile-highlight-target {
+  outline: 2px solid rgba(255, 60, 60, 0.85);
+  outline-offset: -2px;
+  cursor: pointer;
 }
 
-.battle-hills {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 44%;
-  height: 12%;
-  background-repeat: no-repeat;
-  background-image: radial-gradient(circle at 8% 100%, #8a7a4f 0%, #8a7a4f 55%, transparent 58%),
-    radial-gradient(circle at 32% 100%, #7c6d46 0%, #7c6d46 60%, transparent 63%),
-    radial-gradient(circle at 60% 100%, #8a7a4f 0%, #8a7a4f 58%, transparent 61%),
-    radial-gradient(circle at 88% 100%, #7c6d46 0%, #7c6d46 55%, transparent 58%);
-}
-
-.battle-ground {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 50%;
-  background-color: #b99a6b;
-  background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 56px),
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 56px),
-    radial-gradient(circle at 26% 30%, rgba(255, 255, 255, 0.18) 0 13px, transparent 14px),
-    radial-gradient(circle at 74% 74%, rgba(0, 0, 0, 0.16) 0 13px, transparent 14px),
-    radial-gradient(circle at 74% 28%, rgba(0, 0, 0, 0.1) 0 9px, transparent 10px),
-    radial-gradient(circle at 26% 76%, rgba(255, 255, 255, 0.12) 0 9px, transparent 10px);
-  background-size: 56px 56px;
-}
-
-.battle-ground-glow {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 50%;
-  background: radial-gradient(ellipse at 50% 12%, rgba(255, 255, 240, 0.25), transparent 60%);
-}
-
-.opponent-stand,
-.player-stand {
-  position: absolute;
+.unit-token {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
 }
 
-.opponent-stand {
-  top: 14%;
-  right: 15%;
-  width: clamp(92px, 13vw, 190px);
-}
-
-.player-stand {
-  bottom: 10%;
-  left: 9%;
-  width: clamp(170px, 22vw, 350px);
-}
-
-.opponent-platform,
-.player-platform {
-  width: 100%;
-  aspect-ratio: 3.2 / 1;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, #ecd9ab 0%, #dcbf85 55%, #c8a465 100%);
-  border: 3px solid #a9814a;
-  box-shadow: inset 0 -4px 6px rgba(0, 0, 0, 0.18);
-}
-
-.opponent-sprite-wrap,
-.player-sprite-wrap {
-  width: 76%;
-  transform-origin: 50% 95%;
-  z-index: 1;
-}
-
-.opponent-sprite-wrap {
-  margin-bottom: -20%;
-}
-
-.player-sprite-wrap {
-  margin-bottom: -18%;
-}
-
-.opponent-sprite,
-.player-sprite {
-  width: 100%;
+.unit-token-sprite {
+  width: 70%;
   height: auto;
-  display: block;
-  overflow: visible;
-  filter: drop-shadow(1.4px 0 0 #241a10) drop-shadow(-1.4px 0 0 #241a10) drop-shadow(0 1.4px 0 #241a10)
-    drop-shadow(0 -1.4px 0 #241a10) drop-shadow(1px 1px 0 #241a10) drop-shadow(-1px 1px 0 #241a10)
-    drop-shadow(1px -1px 0 #241a10) drop-shadow(-1px -1px 0 #241a10);
 }
 
-.status-box {
-  position: absolute;
-  background: #fdfdf5;
-  color: #222;
-  border: 3px solid #4a4a58;
-  border-radius: 10px;
-  padding: clamp(6px, 0.8vw, 12px) clamp(10px, 1.4vw, 18px);
-  min-width: clamp(160px, 20vw, 260px);
-  box-shadow: 2px 3px 0 rgba(0, 0, 0, 0.25);
+.unit-token-teamA .unit-token-sprite {
+  filter: drop-shadow(0 0 3px #3b7bff);
 }
 
-.status-box-opponent {
-  top: 4%;
-  right: 8%;
+.unit-token-teamB .unit-token-sprite {
+  filter: drop-shadow(0 0 3px #ff4b4b);
 }
 
-.status-box-player {
-  top: 15%;
-  left: 6%;
+.unit-token-current {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
 }
 
-.status-box-name-row {
+.unit-token-targetable {
+  outline: 2px solid #ff3c3c;
+}
+
+.unit-token .hp-bar {
+  width: 90%;
+}
+
+/* ---------------- 액션 패널 ---------------- */
+
+.action-panel {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  background: #f4f6ee;
+}
+
+.skill-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
-  font-size: clamp(0.85em, 1.1vw, 1.1em);
-  font-weight: bold;
+}
+
+.skill-buttons button {
+  padding: clamp(8px, 1.2vh, 14px) 10px;
+  border-radius: 6px;
+  border: 2px solid #4a4a58;
+  background: #fff;
   color: #222;
+  cursor: pointer;
+  font-size: clamp(0.85em, 1.2vw, 1.05em);
 }
 
-.status-box-job {
-  font-weight: normal;
-  color: #666;
-  font-size: 0.85em;
+.skill-button-active {
+  background: #3b4a77 !important;
+  color: #fff !important;
 }
 
-.status-box-hp-text {
-  text-align: right;
-  font-size: clamp(0.7em, 0.9vw, 0.9em);
-  color: #444;
+.confirm-buttons {
+  display: flex;
+  gap: 8px;
 }
+
+/* ---------------- 결과 화면 ---------------- */
+
+.result-panel {
+  text-align: left;
+  background: #f4f6ee;
+  border: 2px solid #4a4a58;
+  border-radius: 8px;
+  padding: 16px 24px;
+  width: min(480px, 90vw);
+}
+
+.result-winner {
+  font-size: 1.4em;
+  font-weight: bold;
+}
+
+/* ---------------- 공통 HP 바 ---------------- */
 
 .hp-bar {
   height: clamp(7px, 0.9vw, 11px);
@@ -292,198 +313,4 @@
 
 .hp-bar-fill.low {
   background: #e53935;
-}
-
-.status-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-}
-
-.status-badge {
-  font-size: 0.65em;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: #ffe0b2;
-  color: #222;
-}
-
-.status-badge.guard {
-  background: #b3e5fc;
-}
-
-/* ---------------- 메시지 / 액션 박스 ---------------- */
-
-.message-box {
-  background: #f4f6ee;
-  color: #222;
-  border-top: 4px solid #2a2a3a;
-  flex: 0 0 auto;
-  min-height: clamp(120px, 20vh, 190px);
-  padding: clamp(14px, 2vh, 24px) clamp(16px, 3vw, 32px);
-  display: flex;
-  align-items: center;
-}
-
-.message-text {
-  font-size: clamp(1em, 1.6vw, 1.3em);
-  line-height: 1.5;
-  color: #222;
-  margin: 0;
-}
-
-.action-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-}
-
-.skill-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.skill-buttons button {
-  padding: clamp(8px, 1.2vh, 14px) 10px;
-  border-radius: 6px;
-  border: 2px solid #4a4a58;
-  background: #fff;
-  color: #222;
-  cursor: pointer;
-  font-size: clamp(0.9em, 1.3vw, 1.1em);
-}
-
-.skill-buttons button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.skill-buttons p {
-  color: #222;
-}
-
-.weapon-switch {
-  display: flex;
-  gap: 8px;
-}
-
-.weapon-switch select {
-  color: #222;
-  background: #fff;
-  border: 1px solid #999;
-  border-radius: 6px;
-  padding: 4px 8px;
-  flex: 1;
-}
-
-.weapon-switch button {
-  color: #222;
-  background: #eee;
-  border: 1px solid #999;
-  border-radius: 6px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-
-.weapon-switch button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.result-panel {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-weight: bold;
-  color: #222;
-}
-
-/* ---------------- 애니메이션 ---------------- */
-
-@keyframes attack-lunge-front {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(-18px, 10px) scale(1.05);
-  }
-}
-
-@keyframes attack-lunge-back {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(18px, -10px) scale(1.05);
-  }
-}
-
-@keyframes hit-flash {
-  0%,
-  100% {
-    filter: none;
-    transform: translateX(0);
-  }
-  20% {
-    filter: brightness(3) saturate(0);
-    transform: translateX(-4px);
-  }
-  40% {
-    filter: brightness(0.3) saturate(0);
-    transform: translateX(4px);
-  }
-  60% {
-    filter: brightness(3) saturate(0);
-    transform: translateX(-3px);
-  }
-  80% {
-    filter: none;
-    transform: translateX(2px);
-  }
-}
-
-@keyframes faint-drop {
-  0% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(48px);
-    opacity: 0;
-  }
-}
-
-@keyframes heal-glow {
-  0%,
-  100% {
-    filter: none;
-  }
-  50% {
-    filter: drop-shadow(0 0 6px #7cfc00) brightness(1.25);
-  }
-}
-
-.sprite-attack-front {
-  animation: attack-lunge-front 0.4s ease-in-out;
-}
-
-.sprite-attack-back {
-  animation: attack-lunge-back 0.4s ease-in-out;
-}
-
-.sprite-hit {
-  animation: hit-flash 0.45s ease-in-out;
-}
-
-.sprite-faint {
-  animation: faint-drop 0.6s ease-in forwards;
-}
-
-.sprite-heal {
-  animation: heal-glow 0.6s ease-in-out;
 }

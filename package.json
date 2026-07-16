@@ -11,7 +11,6 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "unused": "knip",
-    "docs:classes": "tsx scripts/generate-classes-doc.ts",
     "verify": "npm run typecheck && npm run test && npm run lint && npm run unused"
   },
   "dependencies": {

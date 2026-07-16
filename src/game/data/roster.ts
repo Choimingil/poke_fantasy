@@ -1,54 +1,23 @@
-import { createCharacter } from '../engine/characterFactory';
-import type { Character, StatBlock } from '../types';
+import { createCharacter, type CreateCharacterOptions } from '../engine/characterFactory';
+import type { Character } from '../types';
 
-interface RosterEntry {
-  jobId: string;
-  name: string;
-  stats: StatBlock;
-  weaponTemplateId: string;
-  skills: string[];
-}
-
-const ROSTER_DEFS: RosterEntry[] = [
-  // 동양
-  { jobId: 'east_general', name: '관우', stats: { attack: 32, defense: 40, hp: 130, speed: 14 }, weaponTemplateId: 'spear_2h_east', skills: ['slash', 'power_strike', 'guard', 'war_cry'] },
-  { jobId: 'east_duelist', name: '단화', stats: { attack: 44, defense: 22, hp: 95, speed: 26 }, weaponTemplateId: 'sword_1h_east', skills: ['slash', 'power_strike', 'venom_strike', 'war_cry'] },
-  { jobId: 'east_strategist', name: '제갈', stats: { attack: 30, defense: 26, hp: 100, speed: 20 }, weaponTemplateId: 'tome_1h_east', skills: ['fire_bolt', 'frost_bolt', 'heal_light', 'weaken', 'war_cry'] },
-  { jobId: 'east_shaman', name: '무당', stats: { attack: 42, defense: 22, hp: 95, speed: 20 }, weaponTemplateId: 'staff_2h_east', skills: ['fire_bolt', 'frost_bolt', 'lightning_bolt', 'weaken'] },
-  { jobId: 'east_archer', name: '이서', stats: { attack: 40, defense: 22, hp: 100, speed: 24 }, weaponTemplateId: 'bow_2h_east', skills: ['quick_shot', 'aimed_shot', 'poison_dart', 'guard'] },
-  { jobId: 'east_ninja', name: '하야', stats: { attack: 36, defense: 24, hp: 100, speed: 28 }, weaponTemplateId: 'thrown_1h_east', skills: ['quick_shot', 'venom_strike', 'poison_dart', 'heal_light'] },
-
-  // 서양
-  { jobId: 'west_knight', name: '레온', stats: { attack: 32, defense: 42, hp: 130, speed: 13 }, weaponTemplateId: 'sword_1h_west', skills: ['slash', 'power_strike', 'guard', 'war_cry'] },
-  { jobId: 'west_berserker', name: '그림', stats: { attack: 46, defense: 18, hp: 100, speed: 18 }, weaponTemplateId: 'sword_2h_west', skills: ['slash', 'power_strike', 'numbing_blow', 'war_cry'] },
-  { jobId: 'west_priest', name: '셀리아', stats: { attack: 26, defense: 26, hp: 105, speed: 18 }, weaponTemplateId: 'tome_1h_west', skills: ['fire_bolt', 'heal_light', 'weaken', 'guard'] },
-  { jobId: 'west_witch', name: '모르가나', stats: { attack: 42, defense: 20, hp: 95, speed: 22 }, weaponTemplateId: 'staff_2h_west', skills: ['fire_bolt', 'frost_bolt', 'lightning_bolt', 'weaken'] },
-  { jobId: 'west_archer', name: '로빈', stats: { attack: 40, defense: 22, hp: 100, speed: 24 }, weaponTemplateId: 'bow_2h_west', skills: ['quick_shot', 'aimed_shot', 'poison_dart', 'guard'] },
-  { jobId: 'west_ranger', name: '실바', stats: { attack: 36, defense: 24, hp: 100, speed: 28 }, weaponTemplateId: 'thrown_1h_west', skills: ['quick_shot', 'venom_strike', 'poison_dart', 'heal_light'] },
+const ROSTER_DEFS: CreateCharacterOptions[] = [
+  { id: 'sword_a', name: '환도무사', baseStats: { hp: 130, attack: 34, magicAttack: 10, defense: 26, speed: 18 }, rawMove: 3, sight: 3, starterWeaponTemplateId: 'sword_short', starterShieldTemplateId: 'shield_round', extraWeaponTemplateIds: ['blunt_mace', 'bow_short'] },
+  { id: 'sword_b', name: '대검전사', baseStats: { hp: 150, attack: 40, magicAttack: 8, defense: 22, speed: 14 }, rawMove: 3, sight: 3, starterWeaponTemplateId: 'sword_great', extraWeaponTemplateIds: ['blunt_maul'] },
+  { id: 'blunt_a', name: '철퇴호위', baseStats: { hp: 140, attack: 30, magicAttack: 8, defense: 34, speed: 14 }, rawMove: 2, sight: 3, starterWeaponTemplateId: 'blunt_mace', starterShieldTemplateId: 'shield_tower', extraWeaponTemplateIds: ['sword_short'] },
+  { id: 'blunt_b', name: '대곤파괴자', baseStats: { hp: 150, attack: 38, magicAttack: 8, defense: 26, speed: 10 }, rawMove: 2, sight: 3, starterWeaponTemplateId: 'blunt_maul', extraWeaponTemplateIds: ['sword_great'] },
+  { id: 'bow_a', name: '각궁사수', baseStats: { hp: 100, attack: 32, magicAttack: 10, defense: 18, speed: 22 }, rawMove: 3, sight: 4, starterWeaponTemplateId: 'bow_short', extraWeaponTemplateIds: ['bow_long', 'sword_short'] },
+  { id: 'bow_b', name: '장궁저격수', baseStats: { hp: 95, attack: 34, magicAttack: 10, defense: 16, speed: 24 }, rawMove: 3, sight: 5, starterWeaponTemplateId: 'bow_long', extraWeaponTemplateIds: ['bow_short'] },
+  { id: 'staff_a', name: '화염술사', baseStats: { hp: 95, attack: 10, magicAttack: 36, defense: 16, speed: 16 }, rawMove: 2, sight: 4, starterWeaponTemplateId: 'staff_east', starterWeaponElement: 'fire', extraWeaponTemplateIds: ['tome_east'] },
+  { id: 'staff_b', name: '대지술사', baseStats: { hp: 100, attack: 10, magicAttack: 34, defense: 18, speed: 14 }, rawMove: 2, sight: 4, starterWeaponTemplateId: 'staff_west', starterWeaponElement: 'earth', extraWeaponTemplateIds: ['tome_west'] },
+  { id: 'tome_a', name: '사제', baseStats: { hp: 100, attack: 10, magicAttack: 32, defense: 20, speed: 18 }, rawMove: 3, sight: 4, starterWeaponTemplateId: 'tome_east', extraWeaponTemplateIds: ['staff_east'] },
+  { id: 'tome_b', name: '현자', baseStats: { hp: 95, attack: 10, magicAttack: 34, defense: 18, speed: 18 }, rawMove: 3, sight: 4, starterWeaponTemplateId: 'tome_west', extraWeaponTemplateIds: ['staff_west'] },
 ];
 
-export const ROSTER: Character[] = ROSTER_DEFS.map((entry) =>
-  createCharacter({
-    id: entry.jobId,
-    name: entry.name,
-    jobId: entry.jobId,
-    faction: entry.jobId.startsWith('east') ? 'east' : 'west',
-    stats: entry.stats,
-    weapon: { templateId: entry.weaponTemplateId, enhancementLevel: 0 },
-    skills: entry.skills,
-  }),
-);
+export const ROSTER: Character[] = ROSTER_DEFS.map((entry) => createCharacter(entry));
 
-export function cloneRosterCharacter(jobId: string): Character {
-  const template = ROSTER.find((c) => c.jobId === jobId);
-  if (!template) throw new Error(`Unknown roster entry: ${jobId}`);
-  return createCharacter({
-    id: template.id,
-    name: template.name,
-    jobId: template.jobId,
-    faction: template.faction,
-    stats: { ...template.baseStats },
-    weapon: { ...template.equippedWeapon },
-    skills: [...template.skills],
-  });
+export function cloneRosterCharacter(id: string): Character {
+  const entry = ROSTER_DEFS.find((e) => e.id === id);
+  if (!entry) throw new Error(`Unknown roster entry: ${id}`);
+  return createCharacter(entry);
 }

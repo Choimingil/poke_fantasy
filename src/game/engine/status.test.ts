@@ -1,57 +1,90 @@
 import { describe, expect, it } from 'vitest';
+import type { BattleMap, Character } from '../types';
 import { createCharacter } from './characterFactory';
-import { tickStatusAtTurnStart, tryApplyStatus } from './status';
+import { applyStatus, applyTileBurnDamage, getStatus, tickMapStatus, tickStatusAtTurnStart } from './status';
 
-function makeCharacter() {
+function makeCharacter(): Character {
   return createCharacter({
     id: 'c1',
     name: '테스터',
-    jobId: 'east_general',
-    faction: 'east',
-    stats: { attack: 10, defense: 10, hp: 160, speed: 10 },
-    weapon: { templateId: 'sword_1h_east', enhancementLevel: 0 },
-    skills: [],
+    baseStats: { hp: 160, attack: 10, magicAttack: 10, defense: 10, speed: 10 },
+    rawMove: 2,
+    sight: 3,
+    starterWeaponTemplateId: 'sword_short',
   });
 }
 
-describe('tryApplyStatus', () => {
-  it('rng가 확률보다 낮으면 상태이상이 적용된다', () => {
-    const character = makeCharacter();
-    const applied = tryApplyStatus(character, 'poison', 0.5, () => 0.1);
+function makeMap(terrain: BattleMap['tiles'][number][number]['terrain'] = 'plain'): BattleMap {
+  return { width: 1, height: 1, tiles: [[{ terrain }]] };
+}
+
+describe('applyStatus', () => {
+  it('상태를 새로 부여한다', () => {
+    const c = makeCharacter();
+    const applied = applyStatus(c, 'guarding', { turnsRemaining: 2, magnitude: 1 });
     expect(applied).toBe(true);
-    expect(character.statusEffects).toHaveLength(1);
+    expect(getStatus(c, 'guarding')?.turnsRemaining).toBe(2);
   });
 
-  it('rng가 확률보다 높으면 적용되지 않는다', () => {
-    const character = makeCharacter();
-    const applied = tryApplyStatus(character, 'poison', 0.5, () => 0.9);
-    expect(applied).toBe(false);
-    expect(character.statusEffects).toHaveLength(0);
-  });
-
-  it('방어구 강화도가 높을수록 상태이상 적용 확률이 낮아진다', () => {
-    const character = makeCharacter();
-    character.armorEnhancementLevel = 10; // 저항 50% (5%*10)
-    const applied = tryApplyStatus(character, 'poison', 0.5, () => 0.3); // 원래 확률 0.5 -> 저항 후 0.25, rng 0.3은 적용 실패해야 함
-    expect(applied).toBe(false);
+  it('noStack 옵션이 있으면 이미 걸려있는 상태를 갱신하지 않는다', () => {
+    const c = makeCharacter();
+    applyStatus(c, 'swordAwaken', { turnsRemaining: 1, magnitude: 1.2, noStack: true });
+    const secondApplied = applyStatus(c, 'swordAwaken', { turnsRemaining: 3, magnitude: 1.2, noStack: true });
+    expect(secondApplied).toBe(false);
+    expect(getStatus(c, 'swordAwaken')?.turnsRemaining).toBe(1);
   });
 });
 
 describe('tickStatusAtTurnStart', () => {
-  it('중독 상태는 매 턴 최대체력의 1/16만큼 도트 데미지를 준다', () => {
-    const character = makeCharacter();
-    character.statusEffects.push({ effect: 'poison', turnsRemaining: 2 });
-    const result = tickStatusAtTurnStart(character);
-    expect(result.dotDamage).toBe(10); // 160/16 = 10
-    expect(character.currentHp).toBe(150);
+  it('지속시간을 1 감소시키고 0이 되면 만료 처리한다', () => {
+    const c = makeCharacter();
+    applyStatus(c, 'farSight', { turnsRemaining: 1 });
+    const result = tickStatusAtTurnStart(c);
+    expect(result.expired).toContain('farSight');
+    expect(c.statusEffects).toHaveLength(0);
   });
 
-  it('수면/기절 상태는 해당 턴 행동을 불가능하게 하고 1턴 후 해제된다', () => {
-    const character = makeCharacter();
-    character.statusEffects.push({ effect: 'sleep', turnsRemaining: 1 });
-    const result = tickStatusAtTurnStart(character);
-    expect(result.skipTurn).toBe(true);
-    expect(result.expired).toContain('sleep');
-    expect(character.statusEffects).toHaveLength(0);
+  it('지속시간이 남아있으면 만료되지 않는다', () => {
+    const c = makeCharacter();
+    applyStatus(c, 'farSight', { turnsRemaining: 2 });
+    const result = tickStatusAtTurnStart(c);
+    expect(result.expired).toHaveLength(0);
+    expect(getStatus(c, 'farSight')?.turnsRemaining).toBe(1);
+  });
+});
+
+describe('applyTileBurnDamage', () => {
+  it('화염 타일 위의 캐릭터는 최대체력의 1/4만큼 피해를 입는다', () => {
+    const c = makeCharacter();
+    const map = makeMap('plain');
+    map.tiles[0][0].status = { type: 'burning', turnsRemaining: 2 };
+    const damage = applyTileBurnDamage(c, map);
+    expect(damage).toBe(40); // 160/4
+    expect(c.currentHp).toBe(120);
+  });
+
+  it('화염 타일이 아니면 피해가 없다', () => {
+    const c = makeCharacter();
+    const map = makeMap('plain');
+    expect(applyTileBurnDamage(c, map)).toBe(0);
+    expect(c.currentHp).toBe(160);
+  });
+});
+
+describe('tickMapStatus', () => {
+  it('화염 지속시간이 끝나면 상태가 사라지고, 숲이었다면 평지로 바뀐다', () => {
+    const map = makeMap('forest');
+    map.tiles[0][0].status = { type: 'burning', turnsRemaining: 1 };
+    tickMapStatus(map);
+    expect(map.tiles[0][0].status).toBeUndefined();
+    expect(map.tiles[0][0].terrain).toBe('plain');
+  });
+
+  it('화염 지속시간이 남아있으면 지형은 그대로다', () => {
+    const map = makeMap('forest');
+    map.tiles[0][0].status = { type: 'burning', turnsRemaining: 2 };
+    tickMapStatus(map);
+    expect(map.tiles[0][0].status?.turnsRemaining).toBe(1);
+    expect(map.tiles[0][0].terrain).toBe('forest');
   });
 });
