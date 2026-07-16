@@ -77,17 +77,3 @@ export function getSkill(id: string): Skill {
   if (!skill) throw new Error(`Unknown skill: ${id}`);
   return skill;
 }
-
-/** 특정 직업이 배울 수 있는 모든 기술(공통 + 직업 전용)을 반환한다. */
-export function getLearnableSkills(jobId: string): Skill[] {
-  return SKILLS.filter((s) => s.learnableBy === 'common' || (Array.isArray(s.learnableBy) && s.learnableBy.includes(jobId)));
-}
-
-/**
- * 현재 장착 무기로 해당 기술을 쓸 수 있는지 여부.
- * 공격 기술은 무기 타입이 일치해야 하고, 변화(유틸) 기술은 무기와 무관하게 사용 가능하다.
- */
-export function skillUsableWithWeapon(skill: Skill, weapon: WeaponTemplate): boolean {
-  if (skill.category === 'attack') return skill.type === weapon.type;
-  return true;
-}

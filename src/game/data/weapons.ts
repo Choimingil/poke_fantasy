@@ -26,12 +26,6 @@ const WEAPONS: WeaponTemplate[] = [
   { id: 'shield_tower', name: '타워 방패', kind: 'shield', range: 1, basePower: 0, baseSpeed: 8, handedness: 'oneHanded', defenseBonus: 25 },
 ];
 
-/** TRPG 무기 사거리(칸). 명시값이 없으면 원거리 2, 그 외 1. */
-export function weaponRange(weapon: WeaponTemplate): number {
-  if (weapon.range != null) return weapon.range;
-  return weapon.type === 'ranged' ? 2 : 1;
-}
-
 export function getWeapon(templateId: string): WeaponTemplate {
   const weapon = WEAPONS.find((w) => w.id === templateId);
   if (!weapon) throw new Error(`Unknown weapon template: ${templateId}`);
