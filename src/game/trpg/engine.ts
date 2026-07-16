@@ -127,6 +127,9 @@ const PROFICIENCY_BASE = 0.8;
 // ── 무기 부가효과 상수 ─────────────────────────────────────────────
 /** 적중 시 무기 부가효과 발동 확률. */
 const WEAPON_PROC_CHANCE = 0.3;
+/** 방패 블락 확률(방어 성공 시 피해 0). 관통은 무시. */
+const SHIELD_BLOCK_CHANCE = 0.3;
+type Offhand = 'none' | 'shield' | 'dagger';
 /** 출혈/기절 지속 턴. */
 const STATUS_TURNS = 2;
 type WeaponEffect = 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit' | 'none';
@@ -191,11 +194,15 @@ export interface TrpgUnit {
   attackMult: number; // 기합/버프 누적 공격 배수.
   bleed: number; // 출혈 남은 턴(라운드 시작 시 maxHp/8 감소).
   stun: number; // 기절 남은 턴(그 턴 행동 불가).
+  offhand: Offhand; // 보조장비: 없음/방패/단검(이도류).
+  procChoice: WeaponEffect | null; // 마법서·투척이 발동할 효과(선택).
 }
 
 export interface UnitDef {
   character: Character;
   gender: 'male' | 'female';
+  offhand?: Offhand;
+  tomeEffect?: WeaponEffect;
 }
 
 
@@ -297,6 +304,8 @@ export class TrpgGame {
       attackMult: 1,
       bleed: 0,
       stun: 0,
+      offhand: def.offhand ?? 'none',
+      procChoice: def.tomeEffect ?? null,
     };
   }
 
@@ -665,8 +674,10 @@ export class TrpgGame {
 
   /** 한 대상에게 공격 1회(다단히트 포함)를 적용하고 로그를 남긴다. */
   private applyAttack(attacker: TrpgUnit, target: TrpgUnit, skill: Skill, lines: string[]) {
-    // 무기 부가효과(적중 시 30% 확률로 1가지 효과).
-    const proc = this.rng() < WEAPON_PROC_CHANCE ? weaponEffectOf(this.weaponOf(attacker).kind) : 'none';
+    // 무기 부가효과(적중 시 30% 확률로 1가지 효과). 마법서·투척은 선택한 효과.
+    const kind = this.weaponOf(attacker).kind;
+    const effect = (kind === 'tome' || kind === 'thrown') && attacker.procChoice ? attacker.procChoice : weaponEffectOf(kind);
+    const proc = this.rng() < WEAPON_PROC_CHANCE ? effect : 'none';
 
     // 회피 판정(집중=회피 무시). 실패하면 피해 없음.
     if (proc !== 'focus' && this.rng() < this.evasion(target, attacker)) {
@@ -674,8 +685,17 @@ export class TrpgGame {
       target.guardFactor = 1;
       return;
     }
+    // 방패 블락(방패 보조장비 + 한손 무기 착용 시, 관통이 아니면 확률로 완전 방어).
+    const canBlock = target.offhand === 'shield' && this.weaponOf(target).handedness === 'oneHanded';
+    if (proc !== 'pierce' && canBlock && this.rng() < SHIELD_BLOCK_CHANCE) {
+      lines.push(`${attacker.name}의 ${skill.name}! 하지만 ${target.name}가 방패로 막아냈다!`);
+      target.guardFactor = 1;
+      return;
+    }
     const opts = { pierce: proc === 'pierce', crit: proc === 'crit' };
-    const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
+    // 이도류(단검 주무기 + 단검 보조): 타격 1회 추가.
+    const dualHit = attacker.offhand === 'dagger' && kind === 'dagger' ? 1 : 0;
+    const hitCount = (skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1) + dualHit;
     let total = 0;
     for (let i = 0; i < hitCount; i += 1) total += this.computeHit(attacker, target, skill, opts).damage;
     if (target.guardFactor === 0) {

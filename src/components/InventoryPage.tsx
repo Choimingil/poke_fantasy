@@ -10,6 +10,13 @@ import {
   registerableWeapons,
   type WeaponLoadoutMap,
 } from '../game/data/weaponLoadouts';
+import {
+  TOME_EFFECTS,
+  TOME_EFFECT_LABEL,
+  type EquipConfig,
+  type Offhand,
+  type TomeEffect,
+} from '../game/data/equipment';
 import { TrainerSprite, type Gender } from './TrainerSprite';
 
 interface InventoryPageProps {
@@ -17,12 +24,22 @@ interface InventoryPageProps {
   onChange: (jobId: string, skills: string[]) => void;
   weaponLoadouts: WeaponLoadoutMap;
   onWeaponChange: (jobId: string, weapons: string[]) => void;
+  equipConfig: EquipConfig;
+  onEquipChange: (cfg: EquipConfig) => void;
   onBack: () => void;
 }
 
 const ARMOR_BY_TYPE: Record<string, string> = { melee: '판금', ranged: '중갑', magic: '가죽' };
 
-export function InventoryPage({ loadouts, onChange, weaponLoadouts, onWeaponChange, onBack }: InventoryPageProps) {
+export function InventoryPage({
+  loadouts,
+  onChange,
+  weaponLoadouts,
+  onWeaponChange,
+  equipConfig,
+  onEquipChange,
+  onBack,
+}: InventoryPageProps) {
   const [jobId, setJobId] = useState(ROSTER[0].jobId);
   const [gender, setGender] = useState<Gender>('male');
 
@@ -43,6 +60,12 @@ export function InventoryPage({ loadouts, onChange, weaponLoadouts, onWeaponChan
       onChange(jobId, [...equipped, skillId]);
     }
   };
+
+  const offhand = equipConfig.offhand[jobId] ?? 'none';
+  const tomeEffect = equipConfig.tomeEffect[jobId] ?? 'bleed';
+  const setOffhand = (v: Offhand) => onEquipChange({ ...equipConfig, offhand: { ...equipConfig.offhand, [jobId]: v } });
+  const setTomeEffect = (v: TomeEffect) =>
+    onEquipChange({ ...equipConfig, tomeEffect: { ...equipConfig.tomeEffect, [jobId]: v } });
 
   const setExtra = (slot: number, weaponId: string) => {
     const next = [...extras];
@@ -113,6 +136,20 @@ export function InventoryPage({ loadouts, onChange, weaponLoadouts, onWeaponChan
                 </select>
               );
             })}
+            <p className="equip-label">보조장비 (방패=블락 / 단검=이도류)</p>
+            <select value={offhand} onChange={(e) => setOffhand(e.target.value as Offhand)} aria-label="보조장비">
+              <option value="none">없음</option>
+              <option value="shield">방패</option>
+              <option value="dagger">단검(이도류)</option>
+            </select>
+            <p className="equip-label">마법서·투척 발동 효과</p>
+            <select value={tomeEffect} onChange={(e) => setTomeEffect(e.target.value as TomeEffect)} aria-label="마법서/투척 효과">
+              {TOME_EFFECTS.map((e) => (
+                <option key={e} value={e}>
+                  {TOME_EFFECT_LABEL[e]}
+                </option>
+              ))}
+            </select>
           </div>
         </aside>
 

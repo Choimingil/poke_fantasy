@@ -12,6 +12,7 @@ import { getWeapon, WEAPONS } from './game/data/weapons';
 import { cloneRosterCharacter, ROSTER } from './game/data/roster';
 import { loadLoadouts, saveLoadouts, type LoadoutMap } from './game/data/loadouts';
 import { loadWeaponLoadouts, saveWeaponLoadouts, type WeaponLoadoutMap } from './game/data/weaponLoadouts';
+import { loadEquipConfig, saveEquipConfig, type EquipConfig } from './game/data/equipment';
 import type { Character } from './game/types';
 
 const STEP_DURATION_MS = 1100;
@@ -79,6 +80,7 @@ function App() {
   const [view, setView] = useState<'home' | 'inventory' | 'trpg-setup'>('home');
   const [loadouts, setLoadouts] = useState<LoadoutMap>(() => loadLoadouts());
   const [weaponLoadouts, setWeaponLoadouts] = useState<WeaponLoadoutMap>(() => loadWeaponLoadouts());
+  const [equipConfig, setEquipConfig] = useState<EquipConfig>(() => loadEquipConfig());
   const [trpgActive, setTrpgActive] = useState(false);
   const [trpgParty, setTrpgParty] = useState<PartyMember[]>([
     { jobId: 'east_general', gender: 'male' },
@@ -147,6 +149,11 @@ function App() {
     });
   };
 
+  const updateEquip = (next: EquipConfig) => {
+    setEquipConfig(next);
+    saveEquipConfig(next);
+  };
+
   const activeA = battle?.getActive('A');
   const activeB = battle?.getActive('B');
 
@@ -212,6 +219,7 @@ function App() {
         playerParty={trpgParty}
         enemyParty={trpgEnemyParty}
         weaponLoadouts={weaponLoadouts}
+        equipConfig={equipConfig}
         onExit={() => {
           setTrpgActive(false);
           setView('home');
@@ -227,6 +235,8 @@ function App() {
         onChange={updateLoadout}
         weaponLoadouts={weaponLoadouts}
         onWeaponChange={updateWeaponLoadout}
+        equipConfig={equipConfig}
+        onEquipChange={updateEquip}
         onBack={() => setView('home')}
       />
     );

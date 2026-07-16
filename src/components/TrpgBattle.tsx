@@ -3,6 +3,7 @@ import { getJob } from '../game/data/jobs';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { baseWeaponId, type WeaponLoadoutMap } from '../game/data/weaponLoadouts';
+import type { EquipConfig } from '../game/data/equipment';
 import { cloneRosterCharacter } from '../game/data/roster';
 import { GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
 import {
@@ -30,8 +31,11 @@ interface TrpgBattleProps {
   playerParty: PartyMember[];
   enemyParty: PartyMember[];
   weaponLoadouts?: WeaponLoadoutMap;
+  equipConfig?: EquipConfig;
   onExit: () => void;
 }
+
+const OFFHAND_LABEL: Record<string, string> = { none: '', shield: '방패', dagger: '단검(이도류)' };
 
 const TERRAIN_LABEL: Record<Terrain, string> = {
   plain: '',
@@ -57,14 +61,19 @@ interface Motion {
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-function toDefs(party: PartyMember[]): UnitDef[] {
-  return party.map((m) => ({ character: cloneRosterCharacter(m.jobId), gender: m.gender }));
+function toDefs(party: PartyMember[], equip?: EquipConfig): UnitDef[] {
+  return party.map((m) => ({
+    character: cloneRosterCharacter(m.jobId),
+    gender: m.gender,
+    offhand: equip?.offhand[m.jobId] ?? 'none',
+    tomeEffect: equip?.tomeEffect[m.jobId],
+  }));
 }
 
-export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, onExit }: TrpgBattleProps) {
+export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, equipConfig, onExit }: TrpgBattleProps) {
   const gameRef = useRef<TrpgGame | null>(null);
   if (!gameRef.current) {
-    gameRef.current = new TrpgGame(toDefs(playerParty), toDefs(enemyParty));
+    gameRef.current = new TrpgGame(toDefs(playerParty, equipConfig), toDefs(enemyParty));
   }
   const game = gameRef.current;
 
@@ -411,6 +420,7 @@ export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, onExit }: 
                     {game.weaponEffectLabel(current) ? `, ${game.weaponEffectLabel(current)}` : ''})
                   </span>
                   <span>방어구 {armorName(current.armorType)}</span>
+                  {current.offhand !== 'none' && <span>보조 {OFFHAND_LABEL[current.offhand]}</span>}
                   {(current.bleed > 0 || current.stun > 0) && (
                     <span className="trpg-status">
                       {current.bleed > 0 ? `🩸출혈${current.bleed}` : ''} {current.stun > 0 ? `💫기절${current.stun}` : ''}
