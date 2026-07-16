@@ -332,16 +332,16 @@ button:disabled {
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4));
 }
 
-/* 전장의 안개: 시야 밖 타일 */
+/* 전장의 안개(암흑): 시야 밖 타일. 완전 검정이 아니라 투명도를 준 검정으로 덮어 지형이 희미하게 비친다. */
 .tile-fog {
-  filter: brightness(0.28) saturate(0.4);
+  filter: brightness(0.6);
 }
 .tile-fog::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: rgba(6, 8, 18, 0.55);
+  background: rgba(8, 10, 20, 0.45);
 }
 
 /* 날씨 오버레이 (뷰포트 전체에 옅은 톤) */
@@ -360,8 +360,22 @@ button:disabled {
 .board-viewport.weather-snow::after { background: rgba(220, 230, 245, 0.12); }
 .board-viewport.weather-heatwave::after { background: linear-gradient(180deg, rgba(200, 90, 30, 0.14), rgba(150, 40, 10, 0.10)); }
 
+/* 시간대 틴트 (weather는 ::after를 쓰므로 시간대는 ::before로 겹치지 않게 처리) */
+.board-viewport.time-morning::before,
+.board-viewport.time-evening::before,
+.board-viewport.time-night::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.board-viewport.time-morning::before { background: rgba(255, 205, 130, 0.10); }
+.board-viewport.time-evening::before { background: rgba(150, 70, 30, 0.16); }
+.board-viewport.time-night::before { background: rgba(12, 18, 45, 0.34); }
+
 .tile-plain {
-  background: #c8b273;
+  background: #a9d67f;
 }
 
 .tile-forest {

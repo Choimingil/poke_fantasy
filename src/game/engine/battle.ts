@@ -9,6 +9,7 @@ import { determineTurnOrder } from './turnOrder';
 import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
 import { weatherTurnStartDamage, type Weather } from './weather';
+import type { TimeOfDay } from './daytime';
 
 export type Side = 'A' | 'B';
 
@@ -32,6 +33,7 @@ export class GridBattle {
   teamA: Character[];
   teamB: Character[];
   weather: Weather;
+  time: TimeOfDay;
   round = 0;
   roundQueue: Character[] = [];
   bonusQueue: Character[] = [];
@@ -43,12 +45,13 @@ export class GridBattle {
   negatedShields = new Set<string>();
   private rng: () => number;
 
-  constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random, weather: Weather = 'clear') {
+  constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random, weather: Weather = 'clear', time: TimeOfDay = 'day') {
     this.map = map;
     this.teamA = teamA;
     this.teamB = teamB;
     this.rng = rng;
     this.weather = weather;
+    this.time = time;
     for (const c of teamA) c.side = 'A';
     for (const c of teamB) c.side = 'B';
     this.beginRound();

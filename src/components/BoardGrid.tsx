@@ -25,6 +25,9 @@ export function BoardGrid({
   visibleEnemyIds,
   focusPos,
   weather,
+  time,
+  previewUnitId,
+  previewPos,
   onTileClick,
 }: {
   map: BattleMap;
@@ -38,6 +41,9 @@ export function BoardGrid({
   visibleEnemyIds: Set<string>;
   focusPos: GridPos | null;
   weather: string;
+  time: string;
+  previewUnitId?: string | null;
+  previewPos?: GridPos | null;
   onTileClick: (pos: GridPos) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -81,7 +87,7 @@ export function BoardGrid({
   }
 
   return (
-    <div className={`board-viewport weather-${weather}`} ref={viewportRef}>
+    <div className={`board-viewport weather-${weather} time-${time}`} ref={viewportRef}>
       <div
         className="grid-board"
         style={{
@@ -91,7 +97,14 @@ export function BoardGrid({
       >
         {cells}
         {teamA.map((c) => c.currentHp > 0 && (
-          <UnitToken key={c.id} character={c} side={'A' as Side} isCurrentTurn={c.id === currentUnitId} isSelectedTarget={targetableUnitIds.has(c.id)} />
+          <UnitToken
+            key={c.id}
+            character={c}
+            side={'A' as Side}
+            isCurrentTurn={c.id === currentUnitId}
+            isSelectedTarget={targetableUnitIds.has(c.id)}
+            posOverride={c.id === previewUnitId ? previewPos : null}
+          />
         ))}
         {/* 적 유닛은 플레이어 시야에 들어온 경우에만 표시(안개/숲 은폐) */}
         {teamB.map((c) => c.currentHp > 0 && visibleEnemyIds.has(c.id) && (

@@ -10,6 +10,7 @@ import { chebyshev, computeReachableTiles, effectiveMove, posKey } from '../game
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
 import { pickRandomWeather, WEATHER_LABEL } from '../game/engine/weather';
+import { pickRandomTime, TIME_LABEL } from '../game/engine/daytime';
 import { BoardGrid } from './BoardGrid';
 
 const AI_DELAY_MS = 500;
@@ -31,7 +32,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const map = createDefaultMap();
     teamA.forEach((c, i) => prepareForBattle(c, TEAM_A_SPAWNS[i % TEAM_A_SPAWNS.length], 'A'));
     teamB.forEach((c, i) => prepareForBattle(c, TEAM_B_SPAWNS[i % TEAM_B_SPAWNS.length], 'B'));
-    battleRef.current = new GridBattle(map, teamA, teamB, Math.random, pickRandomWeather(Math.random));
+    battleRef.current = new GridBattle(map, teamA, teamB, Math.random, pickRandomWeather(Math.random), pickRandomTime(Math.random));
   }
   const battle = battleRef.current;
   const forceRerender = () => setTick((t) => t + 1);
@@ -51,10 +52,13 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map)).map((e) => e.id),
   );
   // 카메라: 현재 유닛이 아군이거나 플레이어에게 보이는 적일 때만 그 위치로 이동(숨은 적은 추적 안 함).
+  // 아군이 이동 위치를 지정해 대기 중이면 그 예정 칸을 따라간다.
   const focusPos =
-    currentUnit && (currentUnit.side === 'A' || visibleEnemyIds.has(currentUnit.id))
-      ? currentUnit.position
-      : null;
+    isPlayerTurn && pendingMoveTile
+      ? pendingMoveTile
+      : currentUnit && (currentUnit.side === 'A' || visibleEnemyIds.has(currentUnit.id))
+        ? currentUnit.position
+        : null;
 
   useEffect(() => {
     if (battle.finished) {
@@ -104,7 +108,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     return (
       <div className="app-shell">
         <div className="battle-log-panel">
-          <p>{battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
+          <p>🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {battle.finished ? '전투 종료' : `${currentUnit?.name ?? ''}의 턴 진행 중...`}</p>
         </div>
         <BoardGrid
           map={battle.map}
@@ -118,6 +122,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           visibleEnemyIds={visibleEnemyIds}
           focusPos={focusPos}
           weather={battle.weather}
+          time={battle.time}
           onTileClick={() => {}}
         />
       </div>
@@ -166,7 +171,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   return (
     <div className="app-shell">
       <div className="battle-log-panel">
-        <p>{currentUnit.name}의 턴 (Lv.{currentUnit.level}, {weapon.name}) · 날씨: {WEATHER_LABEL[battle.weather]}</p>
+        <p>🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {currentUnit.name}의 턴 (Lv.{currentUnit.level}, {weapon.name})</p>
         <p className="battle-log-line">{battle.log[battle.log.length - 1]}</p>
       </div>
       <BoardGrid
@@ -181,6 +186,9 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         visibleEnemyIds={visibleEnemyIds}
         focusPos={focusPos}
         weather={battle.weather}
+        time={battle.time}
+        previewUnitId={currentUnit.id}
+        previewPos={pendingMoveTile}
         onTileClick={(pos) => {
           if (selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
             setPendingTargetPos(pos);
