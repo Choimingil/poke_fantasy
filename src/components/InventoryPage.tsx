@@ -1,17 +1,28 @@
 import { useState } from 'react';
 import { getJob } from '../game/data/jobs';
-import { getLearnableSkills } from '../game/data/skills';
+import { getLearnableSkills, skillPowerPercent } from '../game/data/skills';
+import { getWeapon } from '../game/data/weapons';
 import { ROSTER } from '../game/data/roster';
 import type { LoadoutMap } from '../game/data/loadouts';
+import {
+  baseWeaponId,
+  EXTRA_WEAPON_SLOTS,
+  TRPG_WEAPON_IDS,
+  type WeaponLoadoutMap,
+} from '../game/data/weaponLoadouts';
 import { TrainerSprite, type Gender } from './TrainerSprite';
 
 interface InventoryPageProps {
   loadouts: LoadoutMap;
   onChange: (jobId: string, skills: string[]) => void;
+  weaponLoadouts: WeaponLoadoutMap;
+  onWeaponChange: (jobId: string, weapons: string[]) => void;
   onBack: () => void;
 }
 
-export function InventoryPage({ loadouts, onChange, onBack }: InventoryPageProps) {
+const ARMOR_BY_TYPE: Record<string, string> = { melee: '판금', ranged: '중갑', magic: '가죽' };
+
+export function InventoryPage({ loadouts, onChange, weaponLoadouts, onWeaponChange, onBack }: InventoryPageProps) {
   const [jobId, setJobId] = useState(ROSTER[0].jobId);
   const [gender, setGender] = useState<Gender>('male');
 
@@ -21,12 +32,23 @@ export function InventoryPage({ loadouts, onChange, onBack }: InventoryPageProps
   const equipped = loadouts[jobId] ?? [];
   const slots = job.skillSlots;
 
+  const base = baseWeaponId(jobId);
+  const extras = weaponLoadouts[jobId] ?? [];
+
   const toggle = (skillId: string) => {
     if (equipped.includes(skillId)) {
       onChange(jobId, equipped.filter((id) => id !== skillId));
     } else if (equipped.length < slots) {
       onChange(jobId, [...equipped, skillId]);
     }
+  };
+
+  const setExtra = (slot: number, weaponId: string) => {
+    const next = [...extras];
+    if (weaponId === '') next.splice(slot, 1);
+    else next[slot] = weaponId;
+    // 중복 제거 + 빈칸 제거, 최대 슬롯 수 유지.
+    onWeaponChange(jobId, [...new Set(next.filter(Boolean))].slice(0, EXTRA_WEAPON_SLOTS));
   };
 
   return (
@@ -63,6 +85,32 @@ export function InventoryPage({ loadouts, onChange, onBack }: InventoryPageProps
           <p className="inventory-slots">
             장착 기술 <strong>{equipped.length}</strong> / {slots}
           </p>
+
+          <div className="inventory-equip">
+            <h3>장비</h3>
+            <p className="equip-row">
+              <span>기본 무기</span>
+              <strong>{getWeapon(base).name}</strong>
+            </p>
+            <p className="equip-row">
+              <span>방어구</span>
+              <strong>{ARMOR_BY_TYPE[job.type] ?? '천'}</strong>
+            </p>
+            <p className="equip-label">추가 무기 (최대 {EXTRA_WEAPON_SLOTS})</p>
+            {Array.from({ length: EXTRA_WEAPON_SLOTS }, (_, i) => {
+              const cur = extras[i] ?? '';
+              return (
+                <select key={i} value={cur} onChange={(e) => setExtra(i, e.target.value)} aria-label={`추가 무기 슬롯 ${i + 1}`}>
+                  <option value="">(비어있음)</option>
+                  {TRPG_WEAPON_IDS.filter((w) => w === cur || (w !== base && !extras.includes(w))).map((w) => (
+                    <option key={w} value={w}>
+                      {getWeapon(w).name}
+                    </option>
+                  ))}
+                </select>
+              );
+            })}
+          </div>
         </aside>
 
         <section className="inventory-main">
@@ -77,6 +125,7 @@ export function InventoryPage({ loadouts, onChange, onBack }: InventoryPageProps
                 <th>사용 직업</th>
                 <th>기술명</th>
                 <th>기술설명</th>
+                <th>위력</th>
                 <th>타입</th>
                 <th>명중률</th>
               </tr>
@@ -93,6 +142,7 @@ export function InventoryPage({ loadouts, onChange, onBack }: InventoryPageProps
                     <td>{skill.learnableBy === 'common' ? '공통' : job.name}</td>
                     <td className="skill-name">{skill.name}</td>
                     <td>{skill.description}</td>
+                    <td>{skill.category === 'attack' ? `${skillPowerPercent(skill.power)}%` : '-'}</td>
                     <td>
                       <span className={`type-badge type-${skill.typeLabel}`}>{skill.typeLabel}</span>
                     </td>

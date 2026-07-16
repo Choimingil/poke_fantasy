@@ -154,6 +154,40 @@
   font-size: 1.2em;
 }
 
+.inventory-equip {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #d8dcea;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inventory-equip h3 {
+  margin: 0 0 2px;
+  font-size: 1em;
+  color: #3b4a77;
+}
+
+.inventory-equip .equip-row {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9em;
+}
+
+.inventory-equip .equip-label {
+  margin: 6px 0 0;
+  font-size: 0.85em;
+  color: #6b7392;
+}
+
+.inventory-equip select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #c3c8dc;
+}
+
 .inventory-main {
   flex: 1 1 420px;
   min-width: 0;

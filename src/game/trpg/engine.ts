@@ -1,5 +1,5 @@
 import { getJob } from '../data/jobs';
-import { getSkill, skillUsableWithWeapon } from '../data/skills';
+import { getSkill, skillPowerPercent, skillUsableWithWeapon } from '../data/skills';
 import { getWeapon, weaponRange } from '../data/weapons';
 import type { Character, Faction, Skill } from '../types';
 import {
@@ -123,14 +123,6 @@ const WILLPOWER_CAP = 0.7;
 const STAT_ATK_DIVISOR = 6;
 /** 숙련도 하한(현재 강화 없음). 데미지 랜덤 계수 = [PROFICIENCY_BASE, 1]. */
 const PROFICIENCY_BASE = 0.8;
-/** 공격 기술 초기 위력 범위(이 범위를 위력 80~200%로 리스케일). */
-const SKILL_POWER_MIN = 18;
-const SKILL_POWER_MAX = 95;
-/** 기술위력(%) = 초기 위력을 [80, 200]%로 선형 리스케일(범위 밖은 클램프). */
-function skillPowerPercent(power: number): number {
-  const t = (power - SKILL_POWER_MIN) / (SKILL_POWER_MAX - SKILL_POWER_MIN);
-  return Math.max(80, Math.min(200, 80 + t * 120));
-}
 
 export interface TrpgUnit {
   id: string;

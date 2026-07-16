@@ -11,6 +11,7 @@ import { getSkill, skillUsableWithWeapon } from './game/data/skills';
 import { getWeapon, WEAPONS } from './game/data/weapons';
 import { cloneRosterCharacter, ROSTER } from './game/data/roster';
 import { loadLoadouts, saveLoadouts, type LoadoutMap } from './game/data/loadouts';
+import { loadWeaponLoadouts, saveWeaponLoadouts, type WeaponLoadoutMap } from './game/data/weaponLoadouts';
 import type { Character } from './game/types';
 
 const STEP_DURATION_MS = 1100;
@@ -77,6 +78,7 @@ function App() {
   const [teamBGender, setTeamBGender] = useState<Gender>('male');
   const [view, setView] = useState<'home' | 'inventory' | 'trpg-setup'>('home');
   const [loadouts, setLoadouts] = useState<LoadoutMap>(() => loadLoadouts());
+  const [weaponLoadouts, setWeaponLoadouts] = useState<WeaponLoadoutMap>(() => loadWeaponLoadouts());
   const [trpgActive, setTrpgActive] = useState(false);
   const [trpgParty, setTrpgParty] = useState<PartyMember[]>([
     { jobId: 'east_general', gender: 'male' },
@@ -133,6 +135,14 @@ function App() {
     setLoadouts((prev) => {
       const next = { ...prev, [jobId]: skills };
       saveLoadouts(next);
+      return next;
+    });
+  };
+
+  const updateWeaponLoadout = (jobId: string, weapons: string[]) => {
+    setWeaponLoadouts((prev) => {
+      const next = { ...prev, [jobId]: weapons };
+      saveWeaponLoadouts(next);
       return next;
     });
   };
@@ -201,6 +211,7 @@ function App() {
       <TrpgBattle
         playerParty={trpgParty}
         enemyParty={trpgEnemyParty}
+        weaponLoadouts={weaponLoadouts}
         onExit={() => {
           setTrpgActive(false);
           setView('home');
@@ -210,7 +221,15 @@ function App() {
   }
 
   if (!battle && view === 'inventory') {
-    return <InventoryPage loadouts={loadouts} onChange={updateLoadout} onBack={() => setView('home')} />;
+    return (
+      <InventoryPage
+        loadouts={loadouts}
+        onChange={updateLoadout}
+        weaponLoadouts={weaponLoadouts}
+        onWeaponChange={updateWeaponLoadout}
+        onBack={() => setView('home')}
+      />
+    );
   }
 
   if (!battle && view === 'trpg-setup') {

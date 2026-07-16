@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { getJob } from '../game/data/jobs';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
+import { baseWeaponId, type WeaponLoadoutMap } from '../game/data/weaponLoadouts';
 import { cloneRosterCharacter } from '../game/data/roster';
 import { GRID_SIZE, type Coord, type Terrain } from '../game/trpg/map';
 import {
@@ -28,6 +29,7 @@ export interface PartyMember {
 interface TrpgBattleProps {
   playerParty: PartyMember[];
   enemyParty: PartyMember[];
+  weaponLoadouts?: WeaponLoadoutMap;
   onExit: () => void;
 }
 
@@ -40,7 +42,6 @@ const TERRAIN_LABEL: Record<Terrain, string> = {
 };
 const WEATHER_LABEL: Record<Weather, string> = { clear: '맑음', rain: '비', snow: '눈', heat: '폭염' };
 const TIME_LABEL: Record<TimeOfDay, string> = { day: '낮', night: '밤' };
-const SWAP_WEAPONS = ['trpg_sword', 'trpg_bow', 'trpg_staff'];
 
 const CELL = 64; // 정사각형 칸(px)
 const VIEW_TILES = 7; // 한 화면에 보이는 칸 수(카메라)
@@ -60,7 +61,7 @@ function toDefs(party: PartyMember[]): UnitDef[] {
   return party.map((m) => ({ character: cloneRosterCharacter(m.jobId), gender: m.gender }));
 }
 
-export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps) {
+export function TrpgBattle({ playerParty, enemyParty, weaponLoadouts, onExit }: TrpgBattleProps) {
   const gameRef = useRef<TrpgGame | null>(null);
   if (!gameRef.current) {
     gameRef.current = new TrpgGame(toDefs(playerParty), toDefs(enemyParty));
@@ -456,11 +457,13 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
                   </div>
                   <div className="trpg-swap">
                     <span>무기 교체:</span>
-                    {SWAP_WEAPONS.filter((w) => w !== current.weaponId).map((w) => (
-                      <button key={w} type="button" onClick={() => onSwap(w)}>
-                        {getWeapon(w).name}
-                      </button>
-                    ))}
+                    {[...new Set([baseWeaponId(current.jobId), ...(weaponLoadouts?.[current.jobId] ?? [])])]
+                      .filter((w) => w !== current.weaponId)
+                      .map((w) => (
+                        <button key={w} type="button" onClick={() => onSwap(w)}>
+                          {getWeapon(w).name}
+                        </button>
+                      ))}
                   </div>
                   <div className="trpg-swap">
                     <span>방어구 교체:</span>

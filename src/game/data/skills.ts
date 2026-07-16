@@ -1,5 +1,14 @@
 import type { Skill, WeaponTemplate } from '../types';
 
+/** 공격 기술 초기 위력 범위(이 범위를 위력 80~200%로 리스케일). */
+const SKILL_POWER_MIN = 18;
+const SKILL_POWER_MAX = 95;
+/** 기술위력(%): 초기 위력값을 [80, 200]%로 선형 리스케일(범위 밖은 클램프). 데미지 공식에 사용. */
+export function skillPowerPercent(power: number): number {
+  const t = (power - SKILL_POWER_MIN) / (SKILL_POWER_MAX - SKILL_POWER_MIN);
+  return Math.round(Math.max(80, Math.min(200, 80 + t * 120)));
+}
+
 const SKILLS: Skill[] = [
   // ============================ 공통 기술 (4) ============================
   // 모든 직업이 배울 수 있는 변화(유틸) 기술. 무기 타입과 무관하게 사용 가능.
