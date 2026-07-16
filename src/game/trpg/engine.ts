@@ -1,8 +1,6 @@
 import { getJob } from '../data/jobs';
 import { getSkill, skillUsableWithWeapon } from '../data/skills';
 import { getWeapon, weaponRange } from '../data/weapons';
-import { rollWeaponProc } from '../engine/weaponEffects';
-import { typeAdvantageMultiplier } from '../engine/typeChart';
 import type { Character, Faction, Skill } from '../types';
 import {
   blocksSight,
@@ -63,11 +61,12 @@ const STAT_BASE = 5; // 초기 능력치(레벨1)
  * 방어력은 요구 레벨에 비례(=요구 레벨)해 재산정.
  * 무게로 인한 이동력/지구력 디버프는 없음(이동력은 지구력에서만 산출).
  */
-const ARMOR_STATS: Record<ArmorType, { def: number; strengthMult: number; reqLevel: number }> = {
-  cloth: { def: 1, strengthMult: 0, reqLevel: 100 },
-  leather: { def: 5, strengthMult: 0.5, reqLevel: 100 },
-  mail: { def: 10, strengthMult: 1, reqLevel: 100 },
-  plate: { def: 15, strengthMult: 1.5, reqLevel: 100 },
+const ARMOR_STATS: Record<ArmorType, { defMult: number; strengthMult: number; reqLevel: number }> = {
+  // 방어력 = 레벨(기준공격력) × defMult (천0.7/가죽0.9/중갑1.1/판금1.3).
+  cloth: { defMult: 0.7, strengthMult: 0, reqLevel: 100 },
+  leather: { defMult: 0.9, strengthMult: 0.5, reqLevel: 100 },
+  mail: { defMult: 1.1, strengthMult: 1, reqLevel: 100 },
+  plate: { defMult: 1.3, strengthMult: 1.5, reqLevel: 100 },
 };
 
 /** 방어구 착용에 필요한 근력(공격력) = round(요구 레벨 × 배수). 천=0. */
@@ -90,12 +89,17 @@ const ENDURANCE_PER_TILE = 100;
 function moveFromEndurance(endurance: number): number {
   return 1 + (endurance - STAT_BASE) / ENDURANCE_PER_TILE;
 }
+/** 테스트 캐릭터 레벨. 능력치 총합 = 5×(스탯수) + 3×(레벨−1). */
+const CHAR_LEVEL = 50;
+/** 만렙(100) 기준 한 스탯 최댓값 = 100×3+5 = 305. 정신력/회피율 분모. */
+const STAT_MAX_AT_100 = 100 * 3 + 5;
+
 /**
- * 테스트 캐릭터 아키타입 빌드(만렙 100, 분배 포인트 297, 기본 스탯 5).
- * 착용 방어구 요구 레벨 100 기준 요구 근력 → 판금 150 / 중갑 100 / 가죽 50.
- *  - 전사: 근력 150(판금) / 체력 80 / 지구력 77 → 이동력 맑음 1 · 비 1
- *  - 궁수: 근력 100(중갑) / 스피드 70 / 체력 30 / 나머지 지구력 117 → 이동력 맑음 2 · 비 1
- *  - 법사: 근력 50(가죽) / 마력 120 / 체력 30 / 스피드 50 / 지구력 57 → 이동력 맑음 1 · 비 1(경장)
+ * 테스트 캐릭터 아키타입 빌드(레벨 50, 분배 포인트 147 = 3×49, 기본 스탯 5).
+ * 스탯 = 체력(hp) / 근력(attack, 물리) / 지력(magic, 마법) / 지구력(endurance) / 스피드(speed).
+ *  - 전사: 근력 70 · 지구력 55(이동 1) · 체력 37 (판금)
+ *  - 궁수: 근력 55 · 지구력 45(이동 1) · 스피드 30 · 체력 37 (중갑)
+ *  - 법사: 지력 85 · 지구력 27(이동 1) · 스피드 18 · 체력 37 (가죽)
  */
 interface StatBuild {
   hp: number;
@@ -105,16 +109,20 @@ interface StatBuild {
   speed: number;
 }
 const TEST_BUILD: Record<'melee' | 'ranged' | 'magic', StatBuild> = {
-  melee: { hp: 80, attack: 150, magic: 5, endurance: 77, speed: 5 },
-  ranged: { hp: 30, attack: 100, magic: 5, endurance: 117, speed: 70 },
-  magic: { hp: 30, attack: 50, magic: 120, endurance: 57, speed: 50 },
+  melee: { hp: 37, attack: 70, magic: 5, endurance: 55, speed: 5 },
+  ranged: { hp: 37, attack: 55, magic: 5, endurance: 45, speed: 30 },
+  magic: { hp: 37, attack: 5, magic: 85, endurance: 27, speed: 18 },
 };
 
 // ── 정신력 상수 ────────────────────────────────────────────────────
 /** 정신력(디버프/부가효과 무시 확률) 상한. */
 const WILLPOWER_CAP = 0.7;
-/** 이 마력 수치에서 정신력이 상한(70%)에 도달. */
-const WILLPOWER_MAGIC_FOR_CAP = 200;
+
+// ── 데미지 공식 상수 ───────────────────────────────────────────────
+/** 기술 위력 기준값. 최종공격력에 (기술위력/이 값)을 곱해 기술별 차이를 반영. */
+const POWER_REF = 50;
+/** 숙련도 하한(현재 강화 없음). 데미지 랜덤 계수 = [PROFICIENCY_BASE, 1]. */
+const PROFICIENCY_BASE = 0.8;
 
 export interface TrpgUnit {
   id: string;
@@ -123,6 +131,7 @@ export interface TrpgUnit {
   faction: Faction;
   team: Team;
   gender: 'male' | 'female';
+  level: number;
   pos: Coord;
   hp: number;
   maxHp: number;
@@ -226,6 +235,7 @@ export class TrpgGame {
       faction: ch.faction,
       team,
       gender: def.gender,
+      level: CHAR_LEVEL,
       pos,
       hp: build.hp,
       maxHp: build.hp,
@@ -292,9 +302,21 @@ export class TrpgGame {
     return moveFromEndurance(unit.endurance);
   }
 
-  /** 정신력: 상대 디버프/부가효과를 무시할 확률(마력 기반, 최대 70%). */
+  /** 정신력: 상대 디버프/부가효과를 무시할 확률 = min(0.7, (지력/(100×3+5)) × 0.7). */
   willpower(unit: TrpgUnit): number {
-    return Math.min(WILLPOWER_CAP, (WILLPOWER_CAP * unit.magic) / WILLPOWER_MAGIC_FOR_CAP);
+    return Math.min(WILLPOWER_CAP, (unit.magic / STAT_MAX_AT_100) * WILLPOWER_CAP);
+  }
+
+  /** 회피율: (스피드/(100×3+5))/2 + (자신레벨−공격자레벨)/100. [0,1] 클램프. */
+  evasion(defender: TrpgUnit, attacker: TrpgUnit): number {
+    const bySpeed = defender.speed / STAT_MAX_AT_100 / 2;
+    const byLevel = (defender.level - attacker.level) / 100;
+    return Math.max(0, Math.min(1, bySpeed + byLevel));
+  }
+
+  /** 무기 공격력(= 캐릭터 레벨). 물리·마법 공통. (단검 3/4는 단검 도입 시 반영) */
+  weaponAttackValue(unit: TrpgUnit): number {
+    return unit.level;
   }
 
   /** 이번 턴 이동 페널티 합(방어구 무게 + 물 + 날씨). 소수 허용(rawMove에서 차감). */
@@ -336,9 +358,9 @@ export class TrpgGame {
     return e > 0 && e < 1;
   }
 
-  /** 실제 방어력 = 방어구 보너스(천1/가죽5/중갑10/판금15) + 보정치(디버프), 최소 0. */
+  /** 실제 방어력 = round(레벨 × 방어구 배수) + 보정치(디버프), 최소 0. */
   effectiveDefense(unit: TrpgUnit): number {
-    return Math.max(0, ARMOR_STATS[unit.armorType].def + unit.defense);
+    return Math.max(0, Math.round(unit.level * ARMOR_STATS[unit.armorType].defMult) + unit.defense);
   }
 
   /** 날씨/시간대를 반영한 실제 시야(최소 0). 밤에는 3칸으로 제한. */
@@ -556,32 +578,28 @@ export class TrpgGame {
   }
 
   private computeHit(attacker: TrpgUnit, target: TrpgUnit, skill: Skill): { damage: number; crit: boolean } {
-    const weapon = this.weaponOf(attacker);
-    const targetWeapon = this.weaponOf(target);
-    const proc = rollWeaponProc(weapon, 0, this.rng);
+    // 최종공격력 = (주스탯/3 + 무기공격력) × (기술위력/기준) × (숙련도~100% 랜덤).
+    // 주스탯: 마법 기술=지력(magic), 그 외=근력(attack).
+    const mainStat = skill.type === 'magic' ? attacker.magic : attacker.attack;
+    const weaponAtk = this.weaponAttackValue(attacker);
+    const powerFactor = skill.power / POWER_REF;
+    const prof = PROFICIENCY_BASE + this.rng() * (1 - PROFICIENCY_BASE);
+    const atkPower = (mainStat / 3 + weaponAtk) * powerFactor * prof * attacker.attackMult;
 
-    const atkStat = (skill.type === 'magic' ? attacker.magic : attacker.attack) * attacker.attackMult;
-    const power = skill.power + weapon.basePower * 0.5;
-    const defense = this.effectiveDefense(target) * (proc.pierce ? 0.5 : 1);
-    const raw = (atkStat * power) / (defense + 50);
-
-    // 무기 상성(들고 있는 무기끼리): 근거리>원거리>마법>근거리
-    const matchup = typeAdvantageMultiplier(weapon.type, targetWeapon.type);
-    const stab = getJob(attacker.jobId).type === skill.type ? 1.2 : 1;
-
-    // 숙련도(강화)로 편차 감소. 현재 강화 0 -> ±20%.
-    const varianceWidth = 0.2;
-    const variance = 1 - varianceWidth + this.rng() * varianceWidth * 2;
-
-    let dmg = raw * matchup * stab * variance;
-    dmg = dmg * target.guardFactor; // 방어 상태면 0 또는 0.5
-    if (proc.extraHit) dmg *= 1.3; // 활 연사 부가효과
-
-    return { damage: Math.max(target.guardFactor === 0 ? 0 : 1, Math.round(dmg)), crit: false };
+    // 최종데미지 = 최종공격력 − 방어력 (뺄셈). 방어 태세면 guardFactor(0/0.5) 적용.
+    let dmg = (atkPower - this.effectiveDefense(target)) * target.guardFactor;
+    dmg = Math.max(target.guardFactor === 0 ? 0 : 1, Math.round(dmg));
+    return { damage: dmg, crit: false };
   }
 
   /** 한 대상에게 공격 1회(다단히트 포함)를 적용하고 로그를 남긴다. */
   private applyAttack(attacker: TrpgUnit, target: TrpgUnit, skill: Skill, lines: string[]) {
+    // 회피 판정: 실패하면 피해 없음.
+    if (this.rng() < this.evasion(target, attacker)) {
+      lines.push(`${attacker.name}의 ${skill.name}! 하지만 ${target.name}가 회피했다!`);
+      target.guardFactor = 1;
+      return;
+    }
     const hitCount = skill.hits ? this.randInt(skill.hits.min, skill.hits.max) : 1;
     let total = 0;
     for (let i = 0; i < hitCount; i += 1) total += this.computeHit(attacker, target, skill).damage;
@@ -732,13 +750,13 @@ export class TrpgGame {
     const lines: string[] = [];
     if (!unit) return { ok: false, lines };
     const weapon = getWeapon(weaponId);
-    const req = weapon.requirement ?? {};
-    const stats: Record<string, number> = { attack: unit.attack, defense: unit.defense, hp: unit.maxHp, speed: unit.speed };
-    for (const [k, v] of Object.entries(req)) {
-      if ((stats[k] ?? 0) < (v ?? 0)) {
-        lines.push(`${unit.name}: ${weapon.name}의 요구 능력치(${k} ${v})를 만족하지 못한다.`);
-        return { ok: false, lines };
-      }
+    // 요구 근력/마력 = 레벨×2. 양손 무기는 절반(양손 파지). 물리=근력, 마법=마력(지력).
+    const isMagic = weapon.type === 'magic';
+    const reqValue = weapon.handedness === 'twoHanded' ? Math.ceil(unit.level * 2 / 2) : unit.level * 2;
+    const have = isMagic ? unit.magic : unit.attack;
+    if (have < reqValue) {
+      lines.push(`${unit.name}: ${weapon.name}의 요구 ${isMagic ? '마력' : '근력'}(${reqValue})을 만족하지 못한다. (보유 ${have})`);
+      return { ok: false, lines };
     }
     unit.weaponId = weaponId;
     lines.push(`${unit.name}가 무기를 ${weapon.name}(으)로 교체했다. (이번 턴 공격 불가)`);

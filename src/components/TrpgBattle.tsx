@@ -393,15 +393,16 @@ export function TrpgBattle({ playerParty, enemyParty, onExit }: TrpgBattleProps)
           ) : current ? (
             <div className="trpg-turn">
               <div className="trpg-unitinfo">
-                <strong>{current.name}</strong> ({getJob(current.jobId).name}) 턴
+                <strong>{current.name}</strong> (Lv.{current.level} {getJob(current.jobId).name}) 턴
                 <div className="trpg-stats">
-                  <span>HP {current.hp}/{current.maxHp}</span>
-                  <span>공 {current.attack}</span>
-                  <span>마 {current.magic}</span>
+                  <span>체력 {current.hp}/{current.maxHp}</span>
+                  <span>근력 {current.attack}</span>
+                  <span>지력 {current.magic}</span>
                   <span>지구력 {current.endurance}</span>
-                  <span>정신력 {Math.round(game.willpower(current) * 100)}%</span>
-                  <span>방 {game.effectiveDefense(current)}</span>
                   <span>스피드 {current.speed}</span>
+                  <span>정신력 {Math.round(game.willpower(current) * 100)}%</span>
+                  <span>회피 {Math.round(game.evasion(current, current) * 100)}%</span>
+                  <span>방어 {game.effectiveDefense(current)}</span>
                   <span>이동 {game.moveTiles(current)}{game.isSlowMover(current) ? ' (2턴에 1칸)' : ''}</span>
                   <span>시야 {game.effectiveVision(current)}</span>
                   <span>무기 {getWeapon(current.weaponId).name}(사거리 {game.rangeOf(current)})</span>
