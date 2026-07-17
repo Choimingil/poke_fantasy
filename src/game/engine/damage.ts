@@ -8,6 +8,8 @@ export interface DamageContext {
   defender: Character;
   skill: Skill;
   weapon: WeaponTemplate;
+  /** 장착 무기 인스턴스의 착용 레벨로 계산한 공격력(단검은 3/4 적용됨) */
+  weaponPower: number;
   attackerElement: Element;
   defenderElement: Element;
   /** 'combined' == 마법부여 사용 중(근력+지력 합산) */
@@ -42,7 +44,7 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
         : attacker.baseStats.attack;
 
   const tier1PowerBonus = masteryTier(attacker, weapon.kind) >= 1 ? (TIER1_BONUS[weapon.kind]?.powerBonusPercent ?? 0) : 0;
-  const effectivePower = (skill.power / 100) * (1 + tier1PowerBonus / 100) * (weapon.basePower + POWER_BASELINE);
+  const effectivePower = (skill.power / 100) * (1 + tier1PowerBonus / 100) * (ctx.weaponPower + POWER_BASELINE);
 
   const defenderDefense = defender.baseStats.defense * bluntUnityMultiplier(defender) + (ctx.defenderExtraDefense ?? 0);
 

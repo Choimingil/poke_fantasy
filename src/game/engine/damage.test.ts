@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Character } from '../types';
 import { getSkill } from '../data/skills';
-import { getWeapon } from '../data/weapons';
+import { getWeapon, weaponPower as calcWeaponPower } from '../data/weapons';
 import { createCharacter } from './characterFactory';
 import { calculateDamage } from './damage';
 
@@ -9,6 +9,8 @@ function sequenceRng(values: number[]): () => number {
   let i = 0;
   return () => values[Math.min(i++, values.length - 1)];
 }
+
+const SWORD_POWER = calcWeaponPower(10, 'sword');
 
 function makeCharacter(id: string, overrides: Partial<Character> = {}): Character {
   const c = createCharacter({
@@ -30,7 +32,7 @@ describe('calculateDamage', () => {
       attacker,
       defender,
       skill: getSkill('power_strike'),
-      weapon: getWeapon('sword_short'),
+      weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none',
       defenderElement: 'none',
       statSource: 'attack',
@@ -43,11 +45,11 @@ describe('calculateDamage', () => {
     const attacker = makeCharacter('atk');
     const defender = makeCharacter('def');
     const favorable = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'fire', defenderElement: 'earth', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const unfavorable = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'earth', defenderElement: 'fire', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const ratio = favorable.damage / unfavorable.damage;
@@ -59,11 +61,11 @@ describe('calculateDamage', () => {
     const attacker = makeCharacter('atk');
     const defender = makeCharacter('def');
     const neutral = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none', defenderElement: 'fire', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const noElement = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none', defenderElement: 'none', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     expect(neutral.damage).toBe(noElement.damage);
@@ -73,11 +75,11 @@ describe('calculateDamage', () => {
     const attacker = makeCharacter('atk');
     const defender = makeCharacter('def');
     const withoutShield = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none', defenderElement: 'none', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const withShield = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none', defenderElement: 'none', statSource: 'attack', defenderExtraDefense: 30, rng: sequenceRng([0.99, 0.5]),
     });
     expect(withShield.damage).toBeLessThan(withoutShield.damage);
@@ -87,11 +89,11 @@ describe('calculateDamage', () => {
     const attacker = makeCharacter('atk', { baseStats: { hp: 100, attack: 50, magicAttack: 30, defense: 30, speed: 10 } });
     const defender = makeCharacter('def');
     const attackOnly = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none', defenderElement: 'none', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const combined = calculateDamage({
-      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'),
+      attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
       attackerElement: 'none', defenderElement: 'none', statSource: 'combined', rng: sequenceRng([0.99, 0.5]),
     });
     expect(combined.damage).toBeGreaterThan(attackOnly.damage);

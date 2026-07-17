@@ -90,7 +90,6 @@ export interface WeaponTemplate {
   name: string;
   kind: WeaponKind;
   range: number;
-  basePower: number;
   baseSpeed: number;
   handedness: Handedness;
   defenseBonus?: number; // shield only, flat defense stat bonus while equipped
@@ -99,7 +98,22 @@ export interface WeaponTemplate {
 interface WeaponInstance {
   instanceId: string;
   templateId: string;
+  level: number; // 10 단위 등급(10~100). 공격력은 이 값으로 계산한다.
   element?: Element; // staff only, chosen when the instance is created
+}
+
+export type ArmorKind = 'cloth' | 'leather' | 'mail' | 'plate';
+
+export interface ArmorTemplate {
+  id: string;
+  name: string;
+  kind: ArmorKind;
+}
+
+interface ArmorInstance {
+  instanceId: string;
+  templateId: string;
+  level: number; // 10 단위 등급(10~100). 방어력은 이 값으로 계산한다.
 }
 
 export type SpriteGender = 'male' | 'female';
@@ -126,6 +140,8 @@ export interface Character {
   inventory: WeaponInstance[];
   equippedWeaponId: string;
   equippedShieldId?: string;
+  armor: ArmorInstance[];
+  equippedArmorId?: string;
 
   statusEffects: ActiveStatus[];
   elementOverride?: Element; // set by 지팡이 약화; persists until overwritten again

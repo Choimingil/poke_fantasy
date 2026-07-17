@@ -1,5 +1,6 @@
 import type { Character, Element, GridPos, StatusEffectType } from '../../types';
 import { getWeapon } from '../../data/weapons';
+import { armorDefense, getArmor } from '../../data/armor';
 import { manhattan } from '../grid';
 import { calculateDamage } from '../damage';
 import { applyStatus, type StatusApplyOptions } from '../status';
@@ -33,6 +34,13 @@ function shieldDefenseBonus(ctx: SkillContext, defender: Character): number {
   return getWeapon(instance.templateId).defenseBonus ?? 0;
 }
 
+function armorDefenseBonus(defender: Character): number {
+  if (!defender.equippedArmorId) return 0;
+  const instance = defender.armor.find((a) => a.instanceId === defender.equippedArmorId);
+  if (!instance) return 0;
+  return armorDefense(instance.level, getArmor(instance.templateId).kind);
+}
+
 /** 단일 대상에게 데미지를 적용하고 로그를 남기며, 처치 시 onKill을 호출한다. 실제로 가한 데미지를 반환. */
 export function dealDamageTo(ctx: SkillContext, defender: Character, powerOverride?: number): number {
   const skill = powerOverride !== undefined ? { ...ctx.skill, power: powerOverride } : ctx.skill;
@@ -41,10 +49,11 @@ export function dealDamageTo(ctx: SkillContext, defender: Character, powerOverri
     defender,
     skill,
     weapon: ctx.weapon,
+    weaponPower: ctx.weaponPower,
     attackerElement: resolveAttackerElement(ctx),
     defenderElement: defender.elementOverride ?? 'none',
     statSource: resolveStatSource(ctx),
-    defenderExtraDefense: shieldDefenseBonus(ctx, defender),
+    defenderExtraDefense: shieldDefenseBonus(ctx, defender) + armorDefenseBonus(defender),
     rng: ctx.rng,
   });
   defender.currentHp = Math.max(0, defender.currentHp - result.damage);

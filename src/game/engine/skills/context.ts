@@ -7,6 +7,8 @@ export interface SkillContext {
   actor: Character;
   skill: Skill;
   weapon: WeaponTemplate;
+  /** 장착 무기 인스턴스의 착용 레벨로 계산한 공격력 (단검은 3/4 적용됨) */
+  weaponPower: number;
   /** 단일 대상 스킬의 목표 캐릭터(있는 경우) */
   targetId?: string;
   /** 타일/범위 스킬이 겨냥한 좌표. 단일 대상 스킬은 그 대상의 현재 좌표. */

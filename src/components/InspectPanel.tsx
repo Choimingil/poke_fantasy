@@ -1,5 +1,6 @@
 import type { Character } from '../game/types';
 import { getWeapon } from '../game/data/weapons';
+import { getArmor } from '../game/data/armor';
 import { TrainerSprite } from './TrainerSprite';
 import { StatusChips } from './StatusChips';
 
@@ -17,6 +18,9 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
   const shield = unit.equippedShieldId
     ? getWeapon(unit.inventory.find((w) => w.instanceId === unit.equippedShieldId)!.templateId)
     : null;
+  const armor = unit.equippedArmorId
+    ? getArmor(unit.armor.find((a) => a.instanceId === unit.equippedArmorId)!.templateId)
+    : null;
   return (
     <div className="inspect-panel">
       <button type="button" className="inspect-close" onClick={onClose} aria-label="닫기">✕</button>
@@ -24,7 +28,7 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
         <TrainerSprite jobId={unit.spriteJob} gender={unit.gender} facing="front" className="inspect-sprite" />
         <div>
           <p className="inspect-name"><strong>{unit.name}</strong> · Lv.{unit.level}</p>
-          <p className="inspect-sub">{weapon.name}{shield ? ` + ${shield.name}` : ''}</p>
+          <p className="inspect-sub">{weapon.name}{shield ? ` + ${shield.name}` : ''}{armor ? ` · ${armor.name}` : ''}</p>
           <p className="inspect-hp">HP {unit.currentHp} / {unit.baseStats.hp}</p>
         </div>
       </div>

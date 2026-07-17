@@ -1,6 +1,6 @@
 import type { BattleMap, Character, GridPos, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
-import { getWeapon, isRangedOrMagicKind } from '../data/weapons';
+import { getWeapon, isRangedOrMagicKind, weaponPower } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
 import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
@@ -19,6 +19,7 @@ export interface UnitAction {
   targetId?: string;
   targetPos?: GridPos;
   switchWeaponTo?: string;
+  switchArmorTo?: string;
 }
 
 export interface KillEvent {
@@ -148,6 +149,14 @@ export class GridBattle {
           return;
         }
       }
+    } else if (action.switchArmorTo) {
+      const newArmor = unit.armor.find((a) => a.instanceId === action.switchArmorTo);
+      if (newArmor) {
+        unit.equippedArmorId = newArmor.instanceId;
+        this.log.push(`${unit.name}가 방어구를 교체했다.`);
+        this.afterAction();
+        return;
+      }
     }
 
     let steppedOntoHill = false;
@@ -179,7 +188,8 @@ export class GridBattle {
   private resolveSkillAction(unit: Character, action: UnitAction): void {
     const skill = getSkill(action.skillId!);
     const weaponKind = this.weaponKindOf(unit);
-    const weapon = getWeapon(unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!.templateId);
+    const weaponInstance = unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!;
+    const weapon = getWeapon(weaponInstance.templateId);
 
     if (skill.id !== FALLBACK_SKILL_ID && !getUsableSkillIds(unit, weaponKind).includes(skill.id)) {
       this.log.push(`${unit.name}는 ${skill.name}을(를) 사용할 수 없다.`);
@@ -257,6 +267,7 @@ export class GridBattle {
       actor: unit,
       skill,
       weapon,
+      weaponPower: weaponPower(weaponInstance.level, weapon.kind),
       targetId: target?.id,
       targetPos,
       negatedShields: this.negatedShields,

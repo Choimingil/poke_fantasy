@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { ROSTER, getRosterCharacter } from '../game/data/roster';
 import { getWeapon } from '../game/data/weapons';
+import { getArmor } from '../game/data/armor';
 import { getSkill } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
-import { equipShield, equipWeapon, unequipShield } from '../game/engine/inventory';
+import { equipArmor, equipShield, equipWeapon, unequipArmor, unequipShield } from '../game/engine/inventory';
+import { carryCapacityKg, meetsEquipLevel, totalEquipmentWeightKg } from '../game/engine/equipment';
 import { TrainerSprite } from './TrainerSprite';
 
 const STAT_ROWS: { key: 'hp' | 'attack' | 'magicAttack' | 'defense' | 'speed'; label: string }[] = [
@@ -40,6 +42,13 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
   };
 
   const selectedCount = c.skillLoadout.filter((id) => weaponPool.includes(id)).length;
+  const carriedWeight = totalEquipmentWeightKg(c);
+  const capacity = carryCapacityKg(c);
+
+  const setArmor = (instanceId: string) => {
+    equipArmor(c, instanceId);
+    onChange();
+  };
 
   return (
     <div className="app-shell inventory-screen">
@@ -74,25 +83,48 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
         </aside>
 
         <section className="inventory-main">
+          <h3>적재량 <span className="loadout-count">{carriedWeight}kg / {capacity}kg</span></h3>
+          <p className="inventory-hint">기본 장착 장비 외에 최대 2개까지 추가로 소지할 수 있습니다. 근력 5당 적재량 1kg 증가.</p>
+
           <h3>무기 · 보조장비</h3>
           <ul className="inventory-weapon-list">
             {c.inventory.map((instance) => {
               const template = getWeapon(instance.templateId);
               const isEquippedWeapon = instance.instanceId === c.equippedWeaponId;
               const isEquippedShield = instance.instanceId === c.equippedShieldId;
+              const canEquip = meetsEquipLevel(c, instance.level);
               return (
                 <li key={instance.instanceId} className={isEquippedWeapon || isEquippedShield ? 'inventory-item-equipped' : ''}>
-                  <span>{template.name} <em>({template.kind}{template.kind === 'staff' && instance.element ? `/${instance.element}` : ''})</em></span>
+                  <span>{template.name} Lv.{instance.level} <em>({template.kind}{template.kind === 'staff' && instance.element ? `/${instance.element}` : ''})</em></span>
                   {template.kind === 'shield' ? (
                     isEquippedShield ? (
                       <button type="button" onClick={() => { unequipShield(c); onChange(); }}>해제</button>
                     ) : (
-                      <button type="button" disabled={equippedWeapon.handedness === 'twoHanded'} onClick={() => { equipShield(c, instance.instanceId); onChange(); }}>장착</button>
+                      <button type="button" disabled={equippedWeapon.handedness === 'twoHanded' || !canEquip} onClick={() => { equipShield(c, instance.instanceId); onChange(); }}>{canEquip ? '장착' : `Lv.${instance.level} 필요`}</button>
                     )
                   ) : isEquippedWeapon ? (
                     <span className="inventory-equipped-badge">장착 중</span>
                   ) : (
-                    <button type="button" onClick={() => setWeapon(instance.instanceId)}>장착</button>
+                    <button type="button" disabled={!canEquip} onClick={() => setWeapon(instance.instanceId)}>{canEquip ? '장착' : `Lv.${instance.level} 필요`}</button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <h3>방어구</h3>
+          <ul className="inventory-weapon-list">
+            {c.armor.map((instance) => {
+              const template = getArmor(instance.templateId);
+              const isEquippedArmor = instance.instanceId === c.equippedArmorId;
+              const canEquip = meetsEquipLevel(c, instance.level);
+              return (
+                <li key={instance.instanceId} className={isEquippedArmor ? 'inventory-item-equipped' : ''}>
+                  <span>{template.name} Lv.{instance.level} <em>({template.kind})</em></span>
+                  {isEquippedArmor ? (
+                    <button type="button" onClick={() => { unequipArmor(c); onChange(); }}>해제</button>
+                  ) : (
+                    <button type="button" disabled={!canEquip} onClick={() => setArmor(instance.instanceId)}>{canEquip ? '장착' : `Lv.${instance.level} 필요`}</button>
                   )}
                 </li>
               );

@@ -1,38 +1,80 @@
-import type { Character, Element, GridPos, SpriteGender, StatBlock } from '../types';
+import type { ArmorKind, Character, Element, GridPos, SpriteGender, StatBlock } from '../types';
 import { getUsableSkillIds, initSkillUses, MAX_LOADOUT } from '../data/promotions';
 import { getWeapon } from '../data/weapons';
+import { armorTemplateForKind } from '../data/armor';
 import type { Side } from './battle';
+
+const DEFAULT_STARTING_LEVEL = 10;
+const DEFAULT_ITEM_LEVEL = 10;
+
+interface ExtraWeaponSpec {
+  templateId: string;
+  level?: number;
+}
+
+interface ExtraArmorSpec {
+  kind: ArmorKind;
+  level?: number;
+}
 
 export interface CreateCharacterOptions {
   id: string;
   name: string;
   spriteJob?: string;
   gender?: SpriteGender;
+  level?: number;
   baseStats: StatBlock;
   rawMove: number;
   sight: number;
   starterWeaponTemplateId: string;
+  starterWeaponLevel?: number;
   starterWeaponElement?: Element;
   starterShieldTemplateId?: string;
+  starterShieldLevel?: number;
+  starterArmorKind?: ArmorKind;
+  starterArmorLevel?: number;
   /** 인벤토리 장비 교체 UI를 시험해볼 수 있도록 추가로 소지한(미장착) 무기 */
-  extraWeaponTemplateIds?: string[];
+  extraWeaponTemplateIds?: ExtraWeaponSpec[];
+  /** 추가로 소지한(미장착) 방어구 */
+  extraArmorTemplateIds?: ExtraArmorSpec[];
 }
 
 export function createCharacter(opts: CreateCharacterOptions): Character {
   const weaponInstance = {
     instanceId: `${opts.id}-weapon`,
     templateId: opts.starterWeaponTemplateId,
+    level: opts.starterWeaponLevel ?? DEFAULT_ITEM_LEVEL,
     element: opts.starterWeaponElement,
   };
   const inventory = [weaponInstance];
   let equippedShieldId: string | undefined;
   if (opts.starterShieldTemplateId) {
-    const shieldInstance = { instanceId: `${opts.id}-shield`, templateId: opts.starterShieldTemplateId, element: undefined };
+    const shieldInstance = {
+      instanceId: `${opts.id}-shield`,
+      templateId: opts.starterShieldTemplateId,
+      level: opts.starterShieldLevel ?? DEFAULT_ITEM_LEVEL,
+      element: undefined,
+    };
     inventory.push(shieldInstance);
     equippedShieldId = shieldInstance.instanceId;
   }
-  for (const [i, templateId] of (opts.extraWeaponTemplateIds ?? []).entries()) {
-    inventory.push({ instanceId: `${opts.id}-extra${i}`, templateId, element: undefined });
+  for (const [i, extra] of (opts.extraWeaponTemplateIds ?? []).entries()) {
+    inventory.push({ instanceId: `${opts.id}-extra${i}`, templateId: extra.templateId, level: extra.level ?? DEFAULT_ITEM_LEVEL, element: undefined });
+  }
+
+  const armor = [];
+  let equippedArmorId: string | undefined;
+  if (opts.starterArmorKind) {
+    const armorInstance = {
+      instanceId: `${opts.id}-armor`,
+      templateId: armorTemplateForKind(opts.starterArmorKind).id,
+      level: opts.starterArmorLevel ?? DEFAULT_ITEM_LEVEL,
+    };
+    armor.push(armorInstance);
+    equippedArmorId = armorInstance.instanceId;
+  }
+  for (const [i, extra] of (opts.extraArmorTemplateIds ?? []).entries()) {
+    armor.push({ instanceId: `${opts.id}-extraArmor${i}`, templateId: armorTemplateForKind(extra.kind).id, level: extra.level ?? DEFAULT_ITEM_LEVEL });
   }
 
   const character: Character = {
@@ -40,7 +82,7 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     name: opts.name,
     spriteJob: opts.spriteJob ?? 'east_duelist',
     gender: opts.gender ?? 'male',
-    level: 1,
+    level: opts.level ?? DEFAULT_STARTING_LEVEL,
     xp: 0,
     unspentPromotions: 0,
     weaponMastery: {},
@@ -52,6 +94,8 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     inventory,
     equippedWeaponId: weaponInstance.instanceId,
     equippedShieldId,
+    armor,
+    equippedArmorId,
     statusEffects: [],
     skillUses: {},
     bonusActionPending: false,

@@ -5,7 +5,9 @@ import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/map
 import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
+import { getArmor } from '../game/data/armor';
 import { getBattleSkillIds } from '../game/data/promotions';
+import { meetsEquipLevel } from '../game/engine/equipment';
 import { manhattan, computeReachableTiles, effectiveMove, posKey, lineCrossesRock } from '../game/engine/grid';
 import { isRangedOrMagicKind } from '../game/data/weapons';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
@@ -20,6 +22,11 @@ import { InspectPanel } from './InspectPanel';
 
 const AI_DELAY_MS = 500;
 
+interface SwapCandidate {
+  kind: 'weapon' | 'armor';
+  instanceId: string;
+}
+
 export function GridBattleScreen({ teamA, teamB, onFinished }: {
   teamA: Character[];
   teamB: Character[];
@@ -29,7 +36,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [, setTick] = useState(0);
   const [pendingMoveTile, setPendingMoveTile] = useState<GridPos | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
-  const [pendingSwapTo, setPendingSwapTo] = useState<string | null>(null);
+  const [pendingSwapTo, setPendingSwapTo] = useState<SwapCandidate | null>(null);
   const [inspectId, setInspectId] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
@@ -119,14 +126,15 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     setInspectId(null);
   };
 
-  // 실제 행동 실행: 대기 중인 이동(pendingMoveTile)과 함께 주어진 스킬/타겟(또는 무기교체)을 즉시 실행한다.
-  const executeAction = (opts: { skillId?: string; targetId?: string; targetPos?: GridPos; swapTo?: string }) => {
+  // 실제 행동 실행: 대기 중인 이동(pendingMoveTile)과 함께 주어진 스킬/타겟(또는 무기·방어구 교체)을 즉시 실행한다.
+  const executeAction = (opts: { skillId?: string; targetId?: string; targetPos?: GridPos; swap?: SwapCandidate }) => {
     if (!currentUnit) return;
     const actorId = currentUnit.id;
     const action: UnitAction = {};
-    if (opts.swapTo) {
-      // 무기 교체는 단독 행동으로 처리(티어<3이면 교체가 턴을 소모).
-      action.switchWeaponTo = opts.swapTo;
+    if (opts.swap) {
+      // 무기/방어구 교체는 단독 행동으로 처리(무기는 티어<3이면 교체가 턴을 소모, 방어구는 항상 턴을 소모).
+      if (opts.swap.kind === 'weapon') action.switchWeaponTo = opts.swap.instanceId;
+      else action.switchArmorTo = opts.swap.instanceId;
       battle.takeTurn(action);
       resetPending();
       forceRerender();
@@ -147,7 +155,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
   // 확인/대기 버튼: 스킬은 즉시 발동되므로 여기서는 무기교체 → 이동 → 대기(턴 종료)만 처리.
   const submitAction = () => {
-    if (pendingSwapTo) executeAction({ swapTo: pendingSwapTo });
+    if (pendingSwapTo) executeAction({ swap: pendingSwapTo });
     else executeAction({});
   };
 
@@ -233,20 +241,28 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   // 스킬은 즉시 발동하므로 확인 버튼은 무기교체/이동 확정용. 둘 다 없으면 '대기'(턴 종료).
   const canConfirm = !!pendingSwapTo || !!pendingMoveTile;
 
-  // 무기 교체 후보(방패/현재 장착 무기 제외). 버튼 클릭 시 순환 선택.
-  const swapCandidates = currentUnit.inventory
-    .filter((w) => getWeapon(w.templateId).kind !== 'shield' && w.instanceId !== currentUnit.equippedWeaponId)
-    .map((w) => w.instanceId);
+  // 무기/방어구 교체 후보(방패·현재 장착 중인 것·착용 레벨 미달 제외). 버튼 클릭 시 순환 선택.
+  const swapCandidates: SwapCandidate[] = [
+    ...currentUnit.inventory
+      .filter((w) => getWeapon(w.templateId).kind !== 'shield' && w.instanceId !== currentUnit.equippedWeaponId && meetsEquipLevel(currentUnit, w.level))
+      .map((w): SwapCandidate => ({ kind: 'weapon', instanceId: w.instanceId })),
+    ...currentUnit.armor
+      .filter((a) => a.instanceId !== currentUnit.equippedArmorId && meetsEquipLevel(currentUnit, a.level))
+      .map((a): SwapCandidate => ({ kind: 'armor', instanceId: a.instanceId })),
+  ];
+  const sameCandidate = (a: SwapCandidate, b: SwapCandidate) => a.kind === b.kind && a.instanceId === b.instanceId;
   const cycleSwap = () => {
     if (swapCandidates.length === 0) return;
     setPendingMoveTile(null);
     setSelectedSkillId(null);
-    const idx = pendingSwapTo ? swapCandidates.indexOf(pendingSwapTo) : -1;
+    const idx = pendingSwapTo ? swapCandidates.findIndex((c) => sameCandidate(c, pendingSwapTo)) : -1;
     setPendingSwapTo(idx + 1 >= swapCandidates.length ? null : swapCandidates[idx + 1]);
   };
   const swapLabel = pendingSwapTo
-    ? `⇄ ${getWeapon(currentUnit.inventory.find((w) => w.instanceId === pendingSwapTo)!.templateId).name}`
-    : '⇄ 무기교체';
+    ? `⇄ ${pendingSwapTo.kind === 'weapon'
+        ? getWeapon(currentUnit.inventory.find((w) => w.instanceId === pendingSwapTo.instanceId)!.templateId).name
+        : getArmor(currentUnit.armor.find((a) => a.instanceId === pendingSwapTo.instanceId)!.templateId).name}`
+    : '⇄ 장비교체';
 
   return (
     <div className="app-shell battle-screen">

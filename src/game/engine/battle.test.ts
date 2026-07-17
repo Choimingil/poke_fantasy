@@ -85,7 +85,7 @@ describe('GridBattle', () => {
     prepareForBattle(b, { x: 1, y: 0 }, 'B');
     const bowInstance = a.inventory.find((w) => w.templateId === 'bow_short');
     expect(bowInstance).toBeUndefined(); // sword_short 캐릭터는 활을 갖고 있지 않음 - 인벤토리에 추가로 넣어 테스트
-    a.inventory.push({ instanceId: 'a-bow', templateId: 'bow_short' });
+    a.inventory.push({ instanceId: 'a-bow', templateId: 'bow_short', level: 10 });
 
     const battle = new GridBattle(map, [a], [b], () => 0.5);
     battle.takeTurn({ switchWeaponTo: 'a-bow' });
@@ -100,7 +100,7 @@ describe('GridBattle', () => {
     const b = makeUnit('b', 5);
     prepareForBattle(a, { x: 0, y: 0 }, 'A');
     prepareForBattle(b, { x: 1, y: 0 }, 'B');
-    a.inventory.push({ instanceId: 'a-bow', templateId: 'bow_short' });
+    a.inventory.push({ instanceId: 'a-bow', templateId: 'bow_short', level: 10 });
     a.weaponMastery.bow = 3;
 
     const battle = new GridBattle(map, [a], [b], () => 0.5);
