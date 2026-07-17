@@ -50,16 +50,17 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const currentUnit = battle.currentUnit();
   const isPlayerTurn = !battle.finished && currentUnit?.side === 'A';
 
-  // 전장의 안개: 플레이어(A팀) 시야 기준으로 밝혀진 타일과 보이는 적을 계산한다.
+  // 전장의 안개: 플레이어(A팀) 시야 기준으로 밝혀진 타일과 보이는 적을 계산한다. (시간대·날씨 시야 보정 반영)
+  const sightCond = { time: battle.time, weather: battle.weather };
   const alivePlayers = battle.teamA.filter((u) => u.currentHp > 0);
   const revealedTiles = new Set<string>();
   for (let y = 0; y < battle.map.height; y++) {
     for (let x = 0; x < battle.map.width; x++) {
-      if (isTileRevealed({ x, y }, alivePlayers)) revealedTiles.add(posKey({ x, y }));
+      if (isTileRevealed({ x, y }, alivePlayers, sightCond)) revealedTiles.add(posKey({ x, y }));
     }
   }
   const visibleEnemyIds = new Set(
-    battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map)).map((e) => e.id),
+    battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map, sightCond)).map((e) => e.id),
   );
   // 행동 순서 표시용: 살아있는 모든 유닛을 스피드 내림차순으로 정렬.
   const initiativeUnits = [...battle.teamA, ...battle.teamB]
@@ -92,7 +93,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const timer = setTimeout(() => {
       const ownTeam = unit.side === 'A' ? battle.teamA : battle.teamB;
       const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
-      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather);
+      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time);
       battle.takeTurn(action);
       if (action.skillId && action.targetId) triggerMotion(unit.id, [action.targetId]);
       aiBusyRef.current = false;
@@ -196,9 +197,9 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     if (selectedSkill.targetMode === 'enemy' || selectedSkill.targetMode === 'anyInSight') {
       for (const enemy of battle.teamB.filter((u) => u.currentHp > 0)) {
         const inRange = selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
-          ? isVisibleTo(currentUnit, enemy, battle.map)
+          ? isVisibleTo(currentUnit, enemy, battle.map, sightCond)
           : chebyshev(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range)) &&
-            isVisibleTo(currentUnit, enemy, battle.map);
+            isVisibleTo(currentUnit, enemy, battle.map, sightCond);
         if (inRange) targetableUnitIds.add(enemy.id);
       }
     } else if (selectedSkill.targetMode === 'tile') {

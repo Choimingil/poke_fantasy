@@ -195,7 +195,7 @@ export class GridBattle {
         return;
       }
       if (skill.ignoresRange || skill.targetMode === 'anyInSight') {
-        if (!isVisibleTo(unit, target, this.map)) {
+        if (!isVisibleTo(unit, target, this.map, { time: this.time, weather: this.weather })) {
           this.log.push(`${unit.name}의 시야 밖이라 ${skill.name}을(를) 사용할 수 없다.`);
           return;
         }

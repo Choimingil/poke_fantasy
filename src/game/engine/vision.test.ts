@@ -32,6 +32,19 @@ describe('effectiveSight', () => {
     unit.statusEffects.push({ type: 'farSight', turnsRemaining: 3 });
     expect(effectiveSight(unit)).toBe(4);
   });
+
+  it('밤에는 시야 -2, 비/눈은 추가 -1', () => {
+    const unit = makeUnit({ sight: 5 });
+    expect(effectiveSight(unit, { time: 'night' })).toBe(3); // 5-2
+    expect(effectiveSight(unit, { time: 'day', weather: 'rain' })).toBe(4); // 5-1
+    expect(effectiveSight(unit, { time: 'night', weather: 'snow' })).toBe(2); // 5-2-1
+    expect(effectiveSight(unit, { time: 'day', weather: 'clear' })).toBe(5);
+  });
+
+  it('시야는 최소 1 이하로 내려가지 않는다', () => {
+    const unit = makeUnit({ sight: 2 });
+    expect(effectiveSight(unit, { time: 'night', weather: 'rain' })).toBe(1); // 2-3 -> 1
+  });
 });
 
 describe('isVisibleTo', () => {

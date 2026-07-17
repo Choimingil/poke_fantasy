@@ -6,15 +6,17 @@ import { FALLBACK_SKILL_ID, getLoadoutSkillIds } from '../data/promotions';
 import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
+import type { TimeOfDay } from './daytime';
 
 /** 간단한 그리드 AI: 도발 대상 우선 → 가장 가까운 보이는 적 추적 → 사거리 내면 공격 스킬 사용 */
-export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: Character[], map: BattleMap, weather: Weather = 'clear'): UnitAction {
+export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: Character[], map: BattleMap, weather: Weather = 'clear', time: TimeOfDay = 'day'): UnitAction {
+  const cond = { time, weather };
   const allUnits = [...ownTeam, ...enemyTeam];
 
   const tauntStatus = unit.statusEffects.find((s) => s.type === 'taunted');
   let target = tauntStatus?.sourceId ? enemyTeam.find((u) => u.id === tauntStatus.sourceId && u.currentHp > 0) : undefined;
   if (!target) {
-    const visibleEnemies = enemyTeam.filter((u) => u.currentHp > 0 && isVisibleTo(unit, u, map));
+    const visibleEnemies = enemyTeam.filter((u) => u.currentHp > 0 && isVisibleTo(unit, u, map, cond));
     target = [...visibleEnemies].sort((a, b) => chebyshev(unit.position, a.position) - chebyshev(unit.position, b.position))[0];
   }
   if (!target) return {};
@@ -43,7 +45,7 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
   for (const skill of attackSkills) {
     const ignoresRange = skill.ignoresRange || skill.targetMode === 'anyInSight';
     const range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
-    const inRange = ignoresRange ? isVisibleTo(unit, target, map) : chebyshev(bestTile, target.position) <= range;
+    const inRange = ignoresRange ? isVisibleTo(unit, target, map, cond) : chebyshev(bestTile, target.position) <= range;
     if (inRange) {
       action.skillId = skill.id;
       action.targetId = target.id;
