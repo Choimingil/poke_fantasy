@@ -3,7 +3,7 @@ import { getSkill } from '../data/skills';
 import { getWeapon } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
-import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
+import { chebyshev, manhattan, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
@@ -201,7 +201,7 @@ export class GridBattle {
         }
       } else {
         const range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
-        if (chebyshev(unit.position, target.position) > range) {
+        if (manhattan(unit.position, target.position) > range) {
           this.log.push(`${unit.name}의 ${skill.name}이(가) 사거리 밖이다.`);
           return;
         }
@@ -212,7 +212,7 @@ export class GridBattle {
       if (action.targetPos) targetPos = action.targetPos;
       if (skill.range) {
         const range = skill.range === 'weapon' ? weapon.range : skill.range;
-        if (chebyshev(unit.position, targetPos) > range) {
+        if (manhattan(unit.position, targetPos) > range) {
           this.log.push(`${unit.name}의 ${skill.name}이(가) 사거리 밖이다.`);
           return;
         }

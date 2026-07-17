@@ -3,7 +3,7 @@ import type { UnitAction } from './battle';
 import { getSkill } from '../data/skills';
 import { getWeapon } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getLoadoutSkillIds } from '../data/promotions';
-import { chebyshev, computeReachableTiles, effectiveMove } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -17,14 +17,14 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
   let target = tauntStatus?.sourceId ? enemyTeam.find((u) => u.id === tauntStatus.sourceId && u.currentHp > 0) : undefined;
   if (!target) {
     const visibleEnemies = enemyTeam.filter((u) => u.currentHp > 0 && isVisibleTo(unit, u, map, cond));
-    target = [...visibleEnemies].sort((a, b) => chebyshev(unit.position, a.position) - chebyshev(unit.position, b.position))[0];
+    target = [...visibleEnemies].sort((a, b) => manhattan(unit.position, a.position) - manhattan(unit.position, b.position))[0];
   }
   if (!target) return {};
 
   const budget = effectiveMove(unit, map, weather);
   const reachable = [unit.position, ...computeReachableTiles(map, unit, allUnits, budget)];
   const bestTile = reachable.reduce((best, pos) =>
-    chebyshev(pos, target!.position) < chebyshev(best, target!.position) ? pos : best);
+    manhattan(pos, target!.position) < manhattan(best, target!.position) ? pos : best);
 
   const weaponInstance = unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
@@ -45,7 +45,7 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
   for (const skill of attackSkills) {
     const ignoresRange = skill.ignoresRange || skill.targetMode === 'anyInSight';
     const range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
-    const inRange = ignoresRange ? isVisibleTo(unit, target, map, cond) : chebyshev(bestTile, target.position) <= range;
+    const inRange = ignoresRange ? isVisibleTo(unit, target, map, cond) : manhattan(bestTile, target.position) <= range;
     if (inRange) {
       action.skillId = skill.id;
       action.targetId = target.id;

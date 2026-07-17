@@ -6,7 +6,7 @@ import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { getBattleSkillIds } from '../game/data/promotions';
-import { chebyshev, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
+import { manhattan, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
 import { pickRandomWeather, WEATHER_LABEL } from '../game/engine/weather';
@@ -26,8 +26,6 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [, setTick] = useState(0);
   const [pendingMoveTile, setPendingMoveTile] = useState<GridPos | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
-  const [pendingTargetId, setPendingTargetId] = useState<string | null>(null);
-  const [pendingTargetPos, setPendingTargetPos] = useState<GridPos | null>(null);
   const [pendingSwapTo, setPendingSwapTo] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
@@ -109,34 +107,39 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const resetPending = () => {
     setPendingMoveTile(null);
     setSelectedSkillId(null);
-    setPendingTargetId(null);
-    setPendingTargetPos(null);
     setPendingSwapTo(null);
   };
 
-  const submitAction = () => {
+  // 실제 행동 실행: 대기 중인 이동(pendingMoveTile)과 함께 주어진 스킬/타겟(또는 무기교체)을 즉시 실행한다.
+  const executeAction = (opts: { skillId?: string; targetId?: string; targetPos?: GridPos; swapTo?: string }) => {
     if (!currentUnit) return;
     const actorId = currentUnit.id;
     const action: UnitAction = {};
-    if (pendingSwapTo) {
+    if (opts.swapTo) {
       // 무기 교체는 단독 행동으로 처리(티어<3이면 교체가 턴을 소모).
-      action.switchWeaponTo = pendingSwapTo;
+      action.switchWeaponTo = opts.swapTo;
       battle.takeTurn(action);
       resetPending();
       forceRerender();
       return;
     }
     if (pendingMoveTile) action.moveTo = pendingMoveTile;
-    if (selectedSkillId) {
-      action.skillId = selectedSkillId;
-      if (pendingTargetId) action.targetId = pendingTargetId;
-      if (pendingTargetPos) action.targetPos = pendingTargetPos;
+    if (opts.skillId) {
+      action.skillId = opts.skillId;
+      if (opts.targetId) action.targetId = opts.targetId;
+      if (opts.targetPos) action.targetPos = opts.targetPos;
     }
-    const isAttack = selectedSkillId ? getSkill(selectedSkillId).category === 'attack' : false;
+    const isAttack = opts.skillId ? getSkill(opts.skillId).category === 'attack' : false;
     battle.takeTurn(action);
-    if (isAttack) triggerMotion(actorId, pendingTargetId ? [pendingTargetId] : []);
+    if (isAttack) triggerMotion(actorId, opts.targetId ? [opts.targetId] : []);
     resetPending();
     forceRerender();
+  };
+
+  // 확인/대기 버튼: 스킬은 즉시 발동되므로 여기서는 무기교체 → 이동 → 대기(턴 종료)만 처리.
+  const submitAction = () => {
+    if (pendingSwapTo) executeAction({ swapTo: pendingSwapTo });
+    else executeAction({});
   };
 
   if (!isPlayerTurn || !currentUnit) {
@@ -196,7 +199,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       for (const enemy of battle.teamB.filter((u) => u.currentHp > 0)) {
         const inRange = selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
           ? isVisibleTo(currentUnit, enemy, battle.map, sightCond)
-          : chebyshev(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range)) &&
+          : manhattan(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range)) &&
             isVisibleTo(currentUnit, enemy, battle.map, sightCond);
         if (inRange) targetableUnitIds.add(enemy.id);
       }
@@ -204,17 +207,14 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       const range = selectedSkill.range ? (selectedSkill.range === 'weapon' ? weapon.range : selectedSkill.range) : Math.max(battle.map.width, battle.map.height);
       for (let y = 0; y < battle.map.height; y++) {
         for (let x = 0; x < battle.map.width; x++) {
-          if (chebyshev(fromPos, { x, y }) <= range) targetableTiles.add(posKey({ x, y }));
+          if (manhattan(fromPos, { x, y }) <= range) targetableTiles.add(posKey({ x, y }));
         }
       }
     }
   }
 
-  const canConfirm =
-    !!pendingSwapTo ||
-    !!pendingMoveTile ||
-    (!!selectedSkillId &&
-      (selectedSkill?.targetMode === 'self' || selectedSkill?.targetMode === 'selfRadius' || selectedSkill?.targetMode === 'ally' || !!pendingTargetId || !!pendingTargetPos));
+  // 스킬은 즉시 발동하므로 확인 버튼은 무기교체/이동 확정용. 둘 다 없으면 '대기'(턴 종료).
+  const canConfirm = !!pendingSwapTo || !!pendingMoveTile;
 
   // 무기 교체 후보(방패/현재 장착 무기 제외). 버튼 클릭 시 순환 선택.
   const swapCandidates = currentUnit.inventory
@@ -224,8 +224,6 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     if (swapCandidates.length === 0) return;
     setPendingMoveTile(null);
     setSelectedSkillId(null);
-    setPendingTargetId(null);
-    setPendingTargetPos(null);
     const idx = pendingSwapTo ? swapCandidates.indexOf(pendingSwapTo) : -1;
     setPendingSwapTo(idx + 1 >= swapCandidates.length ? null : swapCandidates[idx + 1]);
   };
@@ -256,13 +254,14 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           motionAttackerId={motion?.attackerId ?? null}
           motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
           onTileClick={(pos) => {
-            if (selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
-              setPendingTargetPos(pos);
+            // 타겟을 누르면 즉시 기술 발동(확인 불필요).
+            if (selectedSkillId && selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
+              executeAction({ skillId: selectedSkillId, targetPos: pos });
               return;
             }
             const enemyAtTile = battle.teamB.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
-            if (enemyAtTile && targetableUnitIds.has(enemyAtTile.id)) {
-              setPendingTargetId(enemyAtTile.id);
+            if (selectedSkillId && enemyAtTile && targetableUnitIds.has(enemyAtTile.id)) {
+              executeAction({ skillId: selectedSkillId, targetId: enemyAtTile.id });
               return;
             }
             if (reachableTiles.has(posKey(pos))) {
@@ -289,7 +288,16 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
                   key={id}
                   type="button"
                   className={selectedSkillId === id ? 'skill-button-active' : ''}
-                  onClick={() => { setPendingSwapTo(null); setSelectedSkillId(selectedSkillId === id ? null : id); setPendingTargetId(null); setPendingTargetPos(null); }}
+                  onClick={() => {
+                    // 타겟이 필요 없는 기술(자신/자신범위/아군범위)은 버튼만 눌러도 즉시 발동.
+                    const noTarget = skill.targetMode === 'self' || skill.targetMode === 'selfRadius' || skill.targetMode === 'ally';
+                    if (noTarget) {
+                      executeAction({ skillId: id });
+                    } else {
+                      setPendingSwapTo(null);
+                      setSelectedSkillId(selectedSkillId === id ? null : id);
+                    }
+                  }}
                 >
                   {skill.name} ({uses})
                 </button>
