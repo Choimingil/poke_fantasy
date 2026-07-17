@@ -32,10 +32,12 @@ export function effectiveMove(c: Character, map: BattleMap, weather: Weather = '
   return Math.max(0, move);
 }
 
+// 직교 4방향. 대각선 이동은 직교 2칸을 거쳐야 하므로 자연히 비용 2가 되어
+// 이동 가능 범위가 시야와 동일한 마름모(맨해튼) 형태가 된다.
 const NEIGHBOR_OFFSETS: GridPos[] = [
-  { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 },
+  { x: 0, y: -1 },
   { x: -1, y: 0 }, { x: 1, y: 0 },
-  { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 },
+  { x: 0, y: 1 },
 ];
 
 export function canEnterTile(map: BattleMap, mover: Character, pos: GridPos, allUnits: Character[]): boolean {
@@ -47,7 +49,7 @@ export function canEnterTile(map: BattleMap, mover: Character, pos: GridPos, all
   return true;
 }
 
-/** 8방향 BFS. 모든 이동 가능한 지형의 이동 비용은 1칸으로 균일하므로(언덕은 완전 차단, 물은 예산 보너스일 뿐) BFS로 충분하다. */
+/** 직교 4방향 BFS(마름모 이동). 이동 비용은 칸당 1로 균일하므로(언덕은 완전 차단, 물은 예산 보너스일 뿐) BFS로 충분하다. */
 export function computeReachableTiles(map: BattleMap, mover: Character, allUnits: Character[], budget: number): GridPos[] {
   const steps = Math.floor(budget);
   const start = mover.position;

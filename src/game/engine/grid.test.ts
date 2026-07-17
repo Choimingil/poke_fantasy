@@ -32,14 +32,15 @@ describe('chebyshev', () => {
 });
 
 describe('computeReachableTiles', () => {
-  it('평지에서는 예산 범위 내 모든 타일(체비셰프 거리)에 도달 가능하다', () => {
+  it('평지에서는 예산 범위 내 마름모(맨해튼 거리) 타일에 도달 가능하다', () => {
     const map = makeMap();
-    const unit = makeUnit({ position: { x: 0, y: 0 } });
+    const unit = makeUnit({ position: { x: 2, y: 2 } });
     const reachable = computeReachableTiles(map, unit, [unit], 2);
     const keys = new Set(reachable.map(posKey));
-    expect(keys.has(posKey({ x: 2, y: 0 }))).toBe(true); // 2칸 거리
-    expect(keys.has(posKey({ x: 4, y: 4 }))).toBe(false); // 2칸 초과(체비셰프 거리 4)
-    expect(keys.has(posKey({ x: 0, y: 0 }))).toBe(false); // 시작 타일은 제외
+    expect(keys.has(posKey({ x: 4, y: 2 }))).toBe(true); // 직선 2칸 (맨해튼 2)
+    expect(keys.has(posKey({ x: 3, y: 3 }))).toBe(true); // 대각선 1칸 (맨해튼 2, 비용 2)
+    expect(keys.has(posKey({ x: 4, y: 4 }))).toBe(false); // 대각선 2칸 (맨해튼 4) — 사각형이면 도달했을 위치
+    expect(keys.has(posKey({ x: 2, y: 2 }))).toBe(false); // 시작 타일은 제외
   });
 
   it('언덕 타일은 등반 상태 없이는 진입할 수 없다', () => {
