@@ -39,14 +39,14 @@ describe('GridBattle', () => {
     expect(b.currentHp).toBeLessThan(100);
   });
 
-  it('보호: 주변 아군(대각선 포함)을 향한 공격을 시전자가 대신 받는다', () => {
+  it('보호: 마름모 1칸(직교 인접) 아군을 향한 공격을 시전자가 대신 받는다', () => {
     const map = makeMap();
     const guardian = makeUnit('guardian', 30);
     const ally = makeUnit('ally', 20);
     const enemy = makeUnit('enemy', 99); // 가장 빠름
     prepareForBattle(guardian, { x: 1, y: 1 }, 'A');
-    prepareForBattle(ally, { x: 2, y: 2 }, 'A'); // 대각선 인접
-    prepareForBattle(enemy, { x: 2, y: 3 }, 'B'); // ally 바로 아래
+    prepareForBattle(ally, { x: 1, y: 2 }, 'A'); // 직교 인접(맨해튼 1)
+    prepareForBattle(enemy, { x: 1, y: 3 }, 'B'); // ally 바로 아래
     const battle = new GridBattle(map, [guardian, ally], [enemy], () => 0);
     guardian.statusEffects.push({ type: 'guarding', turnsRemaining: 2, magnitude: 1 });
 

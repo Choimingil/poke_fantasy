@@ -15,6 +15,7 @@ import { pickRandomTime, TIME_LABEL } from '../game/engine/daytime';
 import { effectiveSpeed } from '../game/engine/turnOrder';
 import { BoardGrid } from './BoardGrid';
 import { InitiativeBar } from './InitiativeBar';
+import { StatusChips } from './StatusChips';
 
 const AI_DELAY_MS = 500;
 
@@ -278,9 +279,12 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
       {/* 맵 하단 행동 일자바 (2배 두께) */}
       <div className="action-bar action-bar-tall">
-        <p className="action-bar-status">
-          <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
-        </p>
+        <div className="action-bar-head">
+          <p className="action-bar-status">
+            <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
+          </p>
+          <StatusChips effects={currentUnit.statusEffects} />
+        </div>
         <p className="action-bar-log-line">{battle.log[battle.log.length - 1]}</p>
         <div className="action-bar-row">
           <div className="skill-grid">
