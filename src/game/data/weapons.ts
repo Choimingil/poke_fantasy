@@ -1,4 +1,11 @@
-import type { WeaponTemplate } from '../types';
+import type { WeaponKind, WeaponTemplate } from '../types';
+
+const MELEE_KINDS: WeaponKind[] = ['sword', 'blunt', 'spear', 'dagger'];
+
+/** 원거리·마법 무기인가(활·석궁·투척·지팡이·마법서). 숲 행동 제약·바위 차단 판정에 쓴다. */
+export function isRangedOrMagicKind(kind: WeaponKind): boolean {
+  return kind !== 'shield' && !MELEE_KINDS.includes(kind);
+}
 
 const WEAPONS: WeaponTemplate[] = [
   // 검 (range 1)

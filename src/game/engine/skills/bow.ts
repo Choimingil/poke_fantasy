@@ -9,6 +9,7 @@ const bowFlame: SkillHandler = (ctx) => {
   dealDamageTo(ctx, target);
   const tile = ctx.map.tiles[target.position.y][target.position.x];
   tile.status = { type: 'burning', turnsRemaining: TILE_BURN_TURNS };
+  if (tile.terrain === 'forest') tile.terrain = 'plain'; // 숲이 불타면 평지가 된다
   ctx.log.push(`${target.name}가 있던 타일이 불타오른다.`);
 };
 

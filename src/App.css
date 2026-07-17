@@ -470,6 +470,10 @@ button:disabled {
   background: #4a7fb5;
 }
 
+.tile-rock {
+  background: #6f6f78;
+}
+
 .tile-status-burning {
   background: #b5451f;
 }

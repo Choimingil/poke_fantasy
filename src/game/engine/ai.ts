@@ -1,9 +1,9 @@
 import type { BattleMap, Character } from '../types';
 import type { UnitAction } from './battle';
 import { getSkill } from '../data/skills';
-import { getWeapon } from '../data/weapons';
+import { getWeapon, isRangedOrMagicKind } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getLoadoutSkillIds } from '../data/promotions';
-import { manhattan, computeReachableTiles, effectiveMove } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
 import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -45,7 +45,8 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
   for (const skill of attackSkills) {
     const ignoresRange = skill.ignoresRange || skill.targetMode === 'anyInSight';
     const range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
-    const inRange = ignoresRange ? isVisibleTo(unit, target, map, cond) : manhattan(bestTile, target.position) <= range;
+    const blockedByRock = isRangedOrMagicKind(weapon.kind) && lineCrossesRock(map, bestTile, target.position);
+    const inRange = (ignoresRange ? isVisibleTo(unit, target, map, cond) : manhattan(bestTile, target.position) <= range) && !blockedByRock;
     if (inRange) {
       action.skillId = skill.id;
       action.targetId = target.id;

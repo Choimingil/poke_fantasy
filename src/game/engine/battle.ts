@@ -1,9 +1,9 @@
 import type { BattleMap, Character, GridPos, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
-import { getWeapon } from '../data/weapons';
+import { getWeapon, isRangedOrMagicKind } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
-import { manhattan, computeReachableTiles, effectiveMove } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
 import { isVisibleTo } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
@@ -150,17 +150,26 @@ export class GridBattle {
       }
     }
 
+    let steppedOntoHill = false;
     if (action.moveTo) {
       const budget = effectiveMove(unit, this.map, this.weather);
       const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget);
       if (reachable.some((p) => p.x === action.moveTo!.x && p.y === action.moveTo!.y)) {
         unit.position = action.moveTo;
         this.log.push(`${unit.name}가 이동했다.`);
+        // 언덕에 올라선 턴에는 (등반 상태가 아니면) 추가 행동을 할 수 없다.
+        if (this.map.tiles[unit.position.y][unit.position.x].terrain === 'hill' && !unit.statusEffects.some((s) => s.type === 'climbing')) {
+          steppedOntoHill = true;
+        }
       }
     }
 
     if (action.skillId) {
-      this.resolveSkillAction(unit, action);
+      if (steppedOntoHill) {
+        this.log.push(`${unit.name}는 언덕에 올라 이번 턴에는 행동할 수 없다.`);
+      } else {
+        this.resolveSkillAction(unit, action);
+      }
     }
 
     this.checkBattleEnd();
@@ -182,6 +191,11 @@ export class GridBattle {
     }
     if (skill.requiresTerrain && this.map.tiles[unit.position.y][unit.position.x].terrain !== skill.requiresTerrain) {
       this.log.push(`${unit.name}는 ${skill.name}을(를) 사용할 수 없다 (지형 조건 불충족).`);
+      return;
+    }
+    // 숲 안에서는 근접 무기만 행동할 수 있다.
+    if (this.map.tiles[unit.position.y][unit.position.x].terrain === 'forest' && isRangedOrMagicKind(weaponKind)) {
+      this.log.push(`${unit.name}는 숲 안에서는 근접 무기로만 행동할 수 있다.`);
       return;
     }
 
@@ -217,6 +231,12 @@ export class GridBattle {
           return;
         }
       }
+    }
+
+    // 원거리·마법 공격은 바위 타일을 넘어서 타격할 수 없다.
+    if ((skill.targetMode === 'enemy' || skill.targetMode === 'tile' || skill.targetMode === 'anyInSight') && isRangedOrMagicKind(weaponKind) && lineCrossesRock(this.map, unit.position, targetPos)) {
+      this.log.push(`${unit.name}의 ${skill.name}이(가) 바위에 가로막혔다.`);
+      return;
     }
 
     if (skill.maxUses !== undefined) {

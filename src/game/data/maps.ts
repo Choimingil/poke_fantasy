@@ -9,6 +9,8 @@ function terrainAt(x: number, y: number): TerrainType {
   if (y >= 2 && y <= 3 && x >= 6 && x <= 7) return 'forest'; // 상단(적측) 숲
   if (y >= 6 && y <= 7 && x >= 2 && x <= 3) return 'forest'; // 하단(아군측) 숲
   if (y >= 4 && y <= 5 && x >= 7 && x <= 8) return 'hill'; // 중앙 우측 언덕
+  if (x === 5 && (y === 4 || y === 5)) return 'rock'; // 중앙 바위(원거리 차단 엄폐)
+  if ((x === 1 && y === 4) || (x === 8 && y === 6)) return 'rock'; // 가장자리 바위
   return 'plain';
 }
 

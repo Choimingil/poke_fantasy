@@ -11,6 +11,7 @@ const TERRAIN_ICON: Record<string, string> = {
   forest: '🌲',
   hill: '⛰️',
   water: '🌊',
+  rock: '🪨',
 };
 
 export function BoardGrid({

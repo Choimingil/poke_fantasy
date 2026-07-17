@@ -6,7 +6,8 @@ import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
 import { getBattleSkillIds } from '../game/data/promotions';
-import { manhattan, computeReachableTiles, effectiveMove, posKey } from '../game/engine/grid';
+import { manhattan, computeReachableTiles, effectiveMove, posKey, lineCrossesRock } from '../game/engine/grid';
+import { isRangedOrMagicKind } from '../game/data/weapons';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
 import { pickRandomWeather, WEATHER_LABEL } from '../game/engine/weather';
@@ -54,7 +55,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const revealedTiles = new Set<string>();
   for (let y = 0; y < battle.map.height; y++) {
     for (let x = 0; x < battle.map.width; x++) {
-      if (isTileRevealed({ x, y }, alivePlayers, sightCond)) revealedTiles.add(posKey({ x, y }));
+      if (isTileRevealed({ x, y }, alivePlayers, battle.map, sightCond)) revealedTiles.add(posKey({ x, y }));
     }
   }
   const visibleEnemyIds = new Set(
@@ -191,23 +192,26 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   );
 
   const fromPos = pendingMoveTile ?? currentUnit.position;
+  const rangedWeapon = isRangedOrMagicKind(weapon.kind);
   const selectedSkill = selectedSkillId ? getSkill(selectedSkillId) : null;
   const targetableUnitIds = new Set<string>();
   const targetableTiles = new Set<string>();
   if (selectedSkill) {
     if (selectedSkill.targetMode === 'enemy' || selectedSkill.targetMode === 'anyInSight') {
       for (const enemy of battle.teamB.filter((u) => u.currentHp > 0)) {
-        const inRange = selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
+        const rockBlocked = rangedWeapon && lineCrossesRock(battle.map, fromPos, enemy.position);
+        const inRange = (selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
           ? isVisibleTo(currentUnit, enemy, battle.map, sightCond)
           : manhattan(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range)) &&
-            isVisibleTo(currentUnit, enemy, battle.map, sightCond);
+            isVisibleTo(currentUnit, enemy, battle.map, sightCond)) &&
+          !rockBlocked;
         if (inRange) targetableUnitIds.add(enemy.id);
       }
     } else if (selectedSkill.targetMode === 'tile') {
       const range = selectedSkill.range ? (selectedSkill.range === 'weapon' ? weapon.range : selectedSkill.range) : Math.max(battle.map.width, battle.map.height);
       for (let y = 0; y < battle.map.height; y++) {
         for (let x = 0; x < battle.map.width; x++) {
-          if (manhattan(fromPos, { x, y }) <= range) targetableTiles.add(posKey({ x, y }));
+          if (manhattan(fromPos, { x, y }) <= range && !(rangedWeapon && lineCrossesRock(battle.map, fromPos, { x, y }))) targetableTiles.add(posKey({ x, y }));
         }
       }
     }

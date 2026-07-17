@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BattleMap, Character } from '../types';
 import { createCharacter } from './characterFactory';
-import { canEnterTile, chebyshev, computeReachableTiles, effectiveMove, posKey } from './grid';
+import { canEnterTile, chebyshev, computeReachableTiles, effectiveMove, lineCrossesRock, posKey } from './grid';
 
 function makeMap(terrainOverrides: Record<string, BattleMap['tiles'][number][number]['terrain']> = {}): BattleMap {
   const tiles = [];
@@ -43,13 +43,20 @@ describe('computeReachableTiles', () => {
     expect(keys.has(posKey({ x: 2, y: 2 }))).toBe(false); // 시작 타일은 제외
   });
 
-  it('언덕 타일은 등반 상태 없이는 진입할 수 없다', () => {
+  it('언덕은 진입 가능하지만 바위는 진입할 수 없다', () => {
+    const map = makeMap({ '3,2': 'hill', '2,3': 'rock' });
+    const unit = makeUnit({ position: { x: 2, y: 2 } });
+    expect(canEnterTile(map, unit, { x: 3, y: 2 }, [unit])).toBe(true); // 언덕 진입 가능
+    expect(canEnterTile(map, unit, { x: 2, y: 3 }, [unit])).toBe(false); // 바위 진입 불가
+  });
+
+  it('물·언덕은 넘어서 이동할 수 없다(경로 종착)', () => {
+    // (2,2) 시작 → 오른쪽으로 (3,2) 언덕, (4,2) 그 너머. 예산 3이어도 언덕 너머는 못 감.
     const map = makeMap({ '3,2': 'hill' });
     const unit = makeUnit({ position: { x: 2, y: 2 } });
-    expect(canEnterTile(map, unit, { x: 3, y: 2 }, [unit])).toBe(false);
-
-    unit.statusEffects.push({ type: 'climbing', turnsRemaining: 3 });
-    expect(canEnterTile(map, unit, { x: 3, y: 2 }, [unit])).toBe(true);
+    const keys = new Set(computeReachableTiles(map, unit, [unit], 3).map(posKey));
+    expect(keys.has(posKey({ x: 3, y: 2 }))).toBe(true); // 언덕까지는 도달
+    expect(keys.has(posKey({ x: 4, y: 2 }))).toBe(false); // 언덕 너머는 불가
   });
 
   it('다른 유닛이 점유한 타일에는 진입할 수 없다', () => {
@@ -57,6 +64,15 @@ describe('computeReachableTiles', () => {
     const unit = makeUnit({ id: 'a', position: { x: 2, y: 2 } });
     const blocker = makeUnit({ id: 'b', position: { x: 3, y: 2 } });
     expect(canEnterTile(map, unit, { x: 3, y: 2 }, [unit, blocker])).toBe(false);
+  });
+});
+
+describe('lineCrossesRock', () => {
+  it('사이에 바위가 있으면 true, 없거나 인접이면 false', () => {
+    const map = makeMap({ '3,2': 'rock' });
+    expect(lineCrossesRock(map, { x: 2, y: 2 }, { x: 4, y: 2 })).toBe(true); // 사이에 바위
+    expect(lineCrossesRock(map, { x: 2, y: 2 }, { x: 2, y: 5 })).toBe(false); // 다른 방향
+    expect(lineCrossesRock(map, { x: 2, y: 2 }, { x: 3, y: 2 })).toBe(false); // 인접(사이 없음)
   });
 });
 
@@ -68,11 +84,13 @@ describe('effectiveMove', () => {
     expect(effectiveMove(unit, map)).toBe(2.5);
   });
 
-  it('급류 상태는 물 타일 위에 있을 때만 이동력 +1', () => {
+  it('물 타일은 이동력을 감소시키고 급류가 이를 상쇄한다', () => {
     const map = makeMap({ '2,2': 'water' });
     const onWater = makeUnit({ position: { x: 2, y: 2 }, rawMove: 3 });
+    expect(effectiveMove(onWater, map)).toBe(2); // 물 -1
+
     onWater.statusEffects.push({ type: 'riverSurge', turnsRemaining: 3 });
-    expect(effectiveMove(onWater, map)).toBe(4);
+    expect(effectiveMove(onWater, map)).toBe(3); // -1 +1
 
     const onLand = makeUnit({ position: { x: 0, y: 0 }, rawMove: 3 });
     onLand.statusEffects.push({ type: 'riverSurge', turnsRemaining: 3 });

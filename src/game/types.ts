@@ -17,7 +17,7 @@ type Handedness = 'oneHanded' | 'twoHanded';
 type StatKey = 'hp' | 'attack' | 'magicAttack' | 'defense' | 'speed';
 export type StatBlock = Record<StatKey, number>;
 
-export type TerrainType = 'plain' | 'forest' | 'hill' | 'water';
+export type TerrainType = 'plain' | 'forest' | 'hill' | 'water' | 'rock';
 
 interface TileStatus {
   type: 'burning';
