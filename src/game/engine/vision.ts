@@ -1,5 +1,5 @@
 import type { BattleMap, Character, GridPos } from '../types';
-import { chebyshev } from './grid';
+import { manhattan } from './grid';
 import type { TimeOfDay } from './daytime';
 import type { Weather } from './weather';
 
@@ -25,7 +25,7 @@ export function effectiveSight(c: Character, cond?: SightConditions): number {
 }
 
 export function isVisibleTo(viewer: Character, target: Character, map: BattleMap, cond?: SightConditions): boolean {
-  const dist = chebyshev(viewer.position, target.position);
+  const dist = manhattan(viewer.position, target.position);
   if (dist > effectiveSight(viewer, cond)) return false;
   const onForest = map.tiles[target.position.y][target.position.x].terrain === 'forest';
   if (onForest) {
@@ -43,6 +43,6 @@ export function isVisibleToTeam(target: Character, team: Character[], map: Battl
 /** 관측 진영이 해당 타일을 밝히고 있는가(시야 반경 내). 숲 타일은 실루엣이 항상 보이므로 별도 처리. */
 export function isTileRevealed(pos: GridPos, team: Character[], cond?: SightConditions): boolean {
   return team.some(
-    (viewer) => viewer.currentHp > 0 && chebyshev(viewer.position, pos) <= effectiveSight(viewer, cond),
+    (viewer) => viewer.currentHp > 0 && manhattan(viewer.position, pos) <= effectiveSight(viewer, cond),
   );
 }

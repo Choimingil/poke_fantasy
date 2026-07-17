@@ -5,6 +5,11 @@ export function chebyshev(a: GridPos, b: GridPos): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
+/** 맨해튼 거리(대각선 1칸 = 2). 시야 판정에 사용해 마름모 형태가 되도록 한다. */
+export function manhattan(a: GridPos, b: GridPos): number {
+  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
 export function posKey(p: GridPos): string {
   return `${p.x},${p.y}`;
 }

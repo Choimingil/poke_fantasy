@@ -55,6 +55,17 @@ describe('isVisibleTo', () => {
     expect(isVisibleTo(viewer, target, map)).toBe(false);
   });
 
+  it('시야는 마름모(맨해튼 거리) 형태: 대각선 1칸은 시야 2를 소모한다', () => {
+    const map = makeMap();
+    const viewer = makeUnit({ id: 'v', position: { x: 3, y: 3 }, sight: 2 });
+    // 정직선 2칸: 보임 (거리 2)
+    expect(isVisibleTo(viewer, makeUnit({ id: 'a', position: { x: 5, y: 3 } }), map)).toBe(true);
+    // 대각선 1칸: 보임 (거리 2)
+    expect(isVisibleTo(viewer, makeUnit({ id: 'b', position: { x: 4, y: 4 } }), map)).toBe(true);
+    // 대각선 2칸: 안 보임 (거리 4 > 2) — 사각형이면 보였을 위치
+    expect(isVisibleTo(viewer, makeUnit({ id: 'c', position: { x: 5, y: 5 } }), map)).toBe(false);
+  });
+
   it('숲 타일의 대상은 투시 없이는 근접 반경 밖에서 보이지 않는다', () => {
     const map = makeMap({ '3,0': 'forest' });
     const viewer = makeUnit({ id: 'v', position: { x: 0, y: 0 }, sight: 5 });
