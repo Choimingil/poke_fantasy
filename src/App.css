@@ -752,3 +752,8 @@ button:disabled {
 .hp-bar-fill.low {
   background: #e53935;
 }
+
+/* 적군(B팀)의 체력은 잔량과 관계없이 항상 빨간색으로 표시 */
+.unit-token-teamB .hp-bar-fill {
+  background: #e53935;
+}
