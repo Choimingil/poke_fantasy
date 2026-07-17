@@ -642,6 +642,67 @@ button:disabled {
   color: #ffdede;
   border-color: #e05555;
 }
+
+/* 아군 정보 카드(맵 좌측 상단 오버레이) */
+.inspect-panel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 30;
+  width: min(270px, 72%);
+  background: rgba(22, 24, 36, 0.95);
+  color: #f4f6ee;
+  border: 1px solid #3a3f52;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+.inspect-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 7px;
+  background: transparent;
+  color: #cfd3e0;
+  font-size: 0.9em;
+}
+.inspect-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.inspect-sprite {
+  width: 52px;
+  height: auto;
+}
+.inspect-name {
+  margin: 0;
+}
+.inspect-sub {
+  margin: 2px 0;
+  font-size: 0.85em;
+  color: #cfd3e0;
+}
+.inspect-hp {
+  margin: 2px 0 0;
+  font-size: 0.85em;
+  color: #f0b8b8;
+}
+.inspect-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px 14px;
+  margin: 8px 0;
+  font-size: 0.85em;
+}
+.inspect-stat {
+  display: flex;
+  justify-content: space-between;
+}
+.inspect-panel .status-chips {
+  justify-content: flex-start;
+  max-width: 100%;
+}
 .action-bar-log {
   color: #a9b0c2;
 }

@@ -16,6 +16,7 @@ import { effectiveSpeed } from '../game/engine/turnOrder';
 import { BoardGrid } from './BoardGrid';
 import { InitiativeBar } from './InitiativeBar';
 import { StatusChips } from './StatusChips';
+import { InspectPanel } from './InspectPanel';
 
 const AI_DELAY_MS = 500;
 
@@ -29,6 +30,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [pendingMoveTile, setPendingMoveTile] = useState<GridPos | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [pendingSwapTo, setPendingSwapTo] = useState<string | null>(null);
+  const [inspectId, setInspectId] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
@@ -65,6 +67,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const visibleEnemyIds = new Set(
     battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map, sightCond)).map((e) => e.id),
   );
+  const inspectUnit = inspectId ? (battle.teamA.find((u) => u.id === inspectId && u.currentHp > 0) ?? null) : null;
   // 행동 순서 표시용: 살아있는 모든 유닛을 스피드 내림차순으로 정렬.
   const initiativeUnits = [...battle.teamA, ...battle.teamB]
     .filter((u) => u.currentHp > 0)
@@ -113,6 +116,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     setPendingMoveTile(null);
     setSelectedSkillId(null);
     setPendingSwapTo(null);
+    setInspectId(null);
   };
 
   // 실제 행동 실행: 대기 중인 이동(pendingMoveTile)과 함께 주어진 스킬/타겟(또는 무기교체)을 즉시 실행한다.
@@ -169,8 +173,12 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             focusPos={focusPos}
             motionAttackerId={motion?.attackerId ?? null}
             motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
-            onTileClick={() => {}}
+            onTileClick={(pos) => {
+              const ally = battle.teamA.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
+              setInspectId(ally ? ally.id : null);
+            }}
           />
+          {inspectUnit && <InspectPanel unit={inspectUnit} onClose={() => setInspectId(null)} />}
         </div>
         <div className="action-bar action-bar-tall action-bar-waiting">
           <p className="action-bar-status">
@@ -274,12 +282,19 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
               executeAction({ skillId: selectedSkillId, targetId: enemyAtTile.id });
               return;
             }
+            // 아군을 누르면 정보 카드 표시(현재 차례가 아닌 아군 포함).
+            const allyAtTile = battle.teamA.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
+            if (allyAtTile) {
+              setInspectId(allyAtTile.id);
+              return;
+            }
             if (reachableTiles.has(posKey(pos))) {
               setPendingSwapTo(null);
               setPendingMoveTile(pos);
             }
           }}
         />
+        {inspectUnit && <InspectPanel unit={inspectUnit} onClose={() => setInspectId(null)} />}
       </div>
 
       {/* 맵 하단 행동 일자바 (2배 두께) */}
