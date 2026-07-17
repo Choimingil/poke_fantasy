@@ -66,8 +66,8 @@ export function BoardGrid({
     for (let x = 0; x < map.width; x++) {
       const tile = map.tiles[y][x];
       const key = posKey({ x, y });
-      // 숲 타일은 실루엣이 항상 보이고(내부 유닛만 은폐), 그 외 타일은 시야 밖이면 안개로 덮는다.
-      const revealed = tile.terrain === 'forest' || revealedTiles.has(key);
+      // 시야 밖 타일은 (숲 포함) 모두 안개로 덮는다.
+      const revealed = revealedTiles.has(key);
       const classes = [
         'tile-cell',
         `tile-${tile.terrain}`,
