@@ -3,7 +3,7 @@ import { getSkill } from '../data/skills';
 import { getWeapon } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
-import { chebyshev, manhattan, computeReachableTiles, effectiveMove } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove } from './grid';
 import { isVisibleTo } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
@@ -105,7 +105,7 @@ export class GridBattle {
         ally.id !== target.id &&
         ally.currentHp > 0 &&
         ally.statusEffects.some((s) => s.type === 'guarding') &&
-        chebyshev(ally.position, target.position) <= (ally.statusEffects.find((s) => s.type === 'guarding')?.magnitude ?? GUARD_DEFAULT_RADIUS),
+        manhattan(ally.position, target.position) <= (ally.statusEffects.find((s) => s.type === 'guarding')?.magnitude ?? GUARD_DEFAULT_RADIUS),
     );
     return guardian ?? target;
   }

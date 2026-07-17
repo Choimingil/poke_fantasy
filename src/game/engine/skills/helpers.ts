@@ -1,12 +1,12 @@
 import type { Character, Element, GridPos, StatusEffectType } from '../../types';
 import { getWeapon } from '../../data/weapons';
-import { chebyshev } from '../grid';
+import { manhattan } from '../grid';
 import { calculateDamage } from '../damage';
 import { applyStatus, type StatusApplyOptions } from '../status';
 import type { SkillContext } from './context';
 
 export function aliveUnitsInRadius(units: Character[], origin: GridPos, radius: number): Character[] {
-  return units.filter((u) => u.currentHp > 0 && chebyshev(u.position, origin) <= radius);
+  return units.filter((u) => u.currentHp > 0 && manhattan(u.position, origin) <= radius);
 }
 
 /** 마법부여가 활성화되어 있으면 그 속성이 우선, 아니면 스킬의 element 필드(weaponElement/고정 속성)를 해석 */
