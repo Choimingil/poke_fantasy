@@ -146,7 +146,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
           <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit?.id ?? null} visibleEnemyIds={visibleEnemyIds} />
         </div>
-        <div className="battle-stage">
+        <div className={`battle-stage weather-${battle.weather} time-${battle.time}`}>
           <BoardGrid
             map={battle.map}
             teamA={battle.teamA}
@@ -158,8 +158,6 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             revealedTiles={revealedTiles}
             visibleEnemyIds={visibleEnemyIds}
             focusPos={focusPos}
-            weather={battle.weather}
-            time={battle.time}
             motionAttackerId={motion?.attackerId ?? null}
             motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
             onTileClick={() => {}}
@@ -241,7 +239,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
       </div>
-      <div className="battle-stage">
+      <div className={`battle-stage weather-${battle.weather} time-${battle.time}`}>
         <BoardGrid
           map={battle.map}
           teamA={battle.teamA}
@@ -253,8 +251,6 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           revealedTiles={revealedTiles}
           visibleEnemyIds={visibleEnemyIds}
           focusPos={focusPos}
-          weather={battle.weather}
-          time={battle.time}
           previewUnitId={currentUnit.id}
           previewPos={pendingMoveTile}
           motionAttackerId={motion?.attackerId ?? null}

@@ -24,8 +24,6 @@ export function BoardGrid({
   revealedTiles,
   visibleEnemyIds,
   focusPos,
-  weather,
-  time,
   previewUnitId,
   previewPos,
   motionAttackerId,
@@ -42,8 +40,6 @@ export function BoardGrid({
   revealedTiles: Set<string>;
   visibleEnemyIds: Set<string>;
   focusPos: GridPos | null;
-  weather: string;
-  time: string;
   previewUnitId?: string | null;
   previewPos?: GridPos | null;
   motionAttackerId?: string | null;
@@ -91,7 +87,7 @@ export function BoardGrid({
   }
 
   return (
-    <div className={`board-viewport weather-${weather} time-${time}`} ref={viewportRef}>
+    <div className="board-viewport" ref={viewportRef}>
       <div
         className="grid-board"
         style={{

@@ -388,11 +388,12 @@ button:disabled {
   display: none; /* Chrome/Safari */
 }
 
-/* 큰 고정 크기 보드: 뷰포트보다 작으면 가운데 정렬, 크면 카메라가 스크롤. */
+/* 큰 고정 크기 보드: 뷰포트보다 작으면 가운데 정렬, 크면 카메라가 스크롤.
+   gap 배경을 어둡게 해서 안개 구역에서 격자 틈이 밝은 '균열'로 보이지 않게 한다. */
 .grid-board {
   display: grid;
   gap: 1px;
-  background: #333;
+  background: #14151d;
   position: relative;
   margin: auto;
 }
@@ -424,35 +425,34 @@ button:disabled {
   background: rgba(8, 10, 20, 0.45);
 }
 
-/* 날씨 오버레이 (뷰포트 전체에 옅은 톤) */
-.board-viewport.weather-rain { background: #171b26; }
-.board-viewport.weather-rain::after,
-.board-viewport.weather-snow::after,
-.board-viewport.weather-heatwave::after {
+/* 날씨/시간대 틴트: 스크롤되는 뷰포트가 아니라 고정된 무대(.battle-stage)에 올려
+   카메라가 이동해도 화면 전체를 균일하게 덮도록 한다(안개가 '깨져 보이는' 현상 방지). */
+.battle-stage.weather-rain::after,
+.battle-stage.weather-snow::after,
+.battle-stage.weather-heatwave::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 5;
 }
-.board-viewport.weather-rain::after { background: linear-gradient(180deg, rgba(60, 90, 140, 0.18), rgba(40, 60, 100, 0.10)); }
-.board-viewport.weather-snow { background: #202430; }
-.board-viewport.weather-snow::after { background: rgba(220, 230, 245, 0.12); }
-.board-viewport.weather-heatwave::after { background: linear-gradient(180deg, rgba(200, 90, 30, 0.14), rgba(150, 40, 10, 0.10)); }
+.battle-stage.weather-rain::after { background: linear-gradient(180deg, rgba(60, 90, 140, 0.18), rgba(40, 60, 100, 0.10)); }
+.battle-stage.weather-snow::after { background: rgba(220, 230, 245, 0.12); }
+.battle-stage.weather-heatwave::after { background: linear-gradient(180deg, rgba(200, 90, 30, 0.14), rgba(150, 40, 10, 0.10)); }
 
 /* 시간대 틴트 (weather는 ::after를 쓰므로 시간대는 ::before로 겹치지 않게 처리) */
-.board-viewport.time-morning::before,
-.board-viewport.time-evening::before,
-.board-viewport.time-night::before {
+.battle-stage.time-morning::before,
+.battle-stage.time-evening::before,
+.battle-stage.time-night::before {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 4;
 }
-.board-viewport.time-morning::before { background: rgba(255, 205, 130, 0.10); }
-.board-viewport.time-evening::before { background: rgba(150, 70, 30, 0.16); }
-.board-viewport.time-night::before { background: rgba(12, 18, 45, 0.34); }
+.battle-stage.time-morning::before { background: rgba(255, 205, 130, 0.10); }
+.battle-stage.time-evening::before { background: rgba(150, 70, 30, 0.16); }
+.battle-stage.time-night::before { background: rgba(12, 18, 45, 0.34); }
 
 .tile-plain {
   background: #a9d67f;
