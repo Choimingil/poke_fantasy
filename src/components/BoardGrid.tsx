@@ -23,6 +23,7 @@ export function BoardGrid({
   targetableUnitIds,
   targetableTiles,
   revealedTiles,
+  exploredTiles,
   visibleEnemyIds,
   focusPos,
   previewUnitId,
@@ -39,6 +40,7 @@ export function BoardGrid({
   targetableUnitIds: Set<string>;
   targetableTiles: Set<string>;
   revealedTiles: Set<string>;
+  exploredTiles: Set<string>;
   visibleEnemyIds: Set<string>;
   focusPos: GridPos | null;
   previewUnitId?: string | null;
@@ -66,18 +68,21 @@ export function BoardGrid({
     for (let x = 0; x < map.width; x++) {
       const tile = map.tiles[y][x];
       const key = posKey({ x, y });
-      // 시야 밖 타일은 지형 정보를 알 수 없게 균일한 암흑 타일(tile-unknown)로 표시한다.
+      // 시야: 현재 보이면 지형 전체 색, 한 번 밝혔던(탐사) 타일은 지형 색을 어둡게(스타크래프트식),
+      // 한 번도 못 본 타일은 지형을 알 수 없는 균일한 암흑 타일로 표시한다.
       const revealed = revealedTiles.has(key);
+      const explored = revealed || exploredTiles.has(key);
       const classes = [
         'tile-cell',
-        revealed ? `tile-${tile.terrain}` : 'tile-unknown',
+        explored ? `tile-${tile.terrain}` : 'tile-unknown',
+        !revealed && explored ? 'tile-explored' : '',
         revealed && tile.status?.type === 'burning' ? 'tile-status-burning' : '',
         reachableTiles.has(key) ? 'tile-highlight-move' : '',
         targetableTiles.has(key) ? 'tile-highlight-target' : '',
       ]
         .filter(Boolean)
         .join(' ');
-      const icon = !revealed ? '' : (tile.status?.type === 'burning' ? '🔥' : TERRAIN_ICON[tile.terrain]);
+      const icon = !explored ? '' : (revealed && tile.status?.type === 'burning' ? '🔥' : TERRAIN_ICON[tile.terrain]);
       cells.push(
         <div key={key} className={classes} style={{ gridColumn: x + 1, gridRow: y + 1 }} onClick={() => onTileClick({ x, y })}>
           {icon && <span className="terrain-icon">{icon}</span>}

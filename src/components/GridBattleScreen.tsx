@@ -32,6 +32,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
+  const exploredRef = useRef<Set<string>>(new Set()); // 한 번이라도 시야로 밝혔던 타일(탐사 완료)
 
   const triggerMotion = (attackerId: string, targetIds: string[]) => {
     motionKeyRef.current += 1;
@@ -59,6 +60,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       if (isTileRevealed({ x, y }, alivePlayers, battle.map, sightCond)) revealedTiles.add(posKey({ x, y }));
     }
   }
+  // 밝혀진 타일은 탐사 완료로 누적 기록(스타크래프트식: 이후 시야를 벗어나도 지형은 어둡게 기억).
+  for (const k of revealedTiles) exploredRef.current.add(k);
   const visibleEnemyIds = new Set(
     battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map, sightCond)).map((e) => e.id),
   );
@@ -161,6 +164,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             targetableUnitIds={new Set()}
             targetableTiles={new Set()}
             revealedTiles={revealedTiles}
+            exploredTiles={exploredRef.current}
             visibleEnemyIds={visibleEnemyIds}
             focusPos={focusPos}
             motionAttackerId={motion?.attackerId ?? null}
@@ -252,6 +256,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           targetableUnitIds={targetableUnitIds}
           targetableTiles={targetableTiles}
           revealedTiles={revealedTiles}
+          exploredTiles={exploredRef.current}
           visibleEnemyIds={visibleEnemyIds}
           focusPos={focusPos}
           previewUnitId={currentUnit.id}
