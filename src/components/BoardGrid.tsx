@@ -66,19 +66,18 @@ export function BoardGrid({
     for (let x = 0; x < map.width; x++) {
       const tile = map.tiles[y][x];
       const key = posKey({ x, y });
-      // 시야 밖 타일은 (숲 포함) 모두 안개로 덮는다.
+      // 시야 밖 타일은 지형 정보를 알 수 없게 균일한 암흑 타일(tile-unknown)로 표시한다.
       const revealed = revealedTiles.has(key);
       const classes = [
         'tile-cell',
-        `tile-${tile.terrain}`,
-        tile.status?.type === 'burning' ? 'tile-status-burning' : '',
-        revealed ? '' : 'tile-fog',
+        revealed ? `tile-${tile.terrain}` : 'tile-unknown',
+        revealed && tile.status?.type === 'burning' ? 'tile-status-burning' : '',
         reachableTiles.has(key) ? 'tile-highlight-move' : '',
         targetableTiles.has(key) ? 'tile-highlight-target' : '',
       ]
         .filter(Boolean)
         .join(' ');
-      const icon = tile.status?.type === 'burning' ? '🔥' : (revealed ? TERRAIN_ICON[tile.terrain] : '');
+      const icon = !revealed ? '' : (tile.status?.type === 'burning' ? '🔥' : TERRAIN_ICON[tile.terrain]);
       cells.push(
         <div key={key} className={classes} style={{ gridColumn: x + 1, gridRow: y + 1 }} onClick={() => onTileClick({ x, y })}>
           {icon && <span className="terrain-icon">{icon}</span>}
