@@ -106,7 +106,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const timer = setTimeout(() => {
       const ownTeam = unit.side === 'A' ? battle.teamA : battle.teamB;
       const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
-      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time);
+      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time, battle.knownEnemyPositions[unit.side!]);
       battle.takeTurn(action);
       if (action.skillId && action.targetId) triggerMotion(unit.id, [action.targetId]);
       aiBusyRef.current = false;

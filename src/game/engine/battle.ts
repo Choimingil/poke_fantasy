@@ -4,7 +4,7 @@ import { getWeapon, isRangedOrMagicKind, weaponPower } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
 import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
-import { isVisibleTo } from './vision';
+import { isVisibleTo, isVisibleToTeam } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
@@ -44,6 +44,8 @@ export class GridBattle {
   finished = false;
   winner: Side | null = null;
   negatedShields = new Set<string>();
+  /** 각 진영이 마지막으로 확인한 상대 유닛 위치(현재 시야 밖이어도 유지) — 시야 밖일 때 이동 판단에 사용 */
+  knownEnemyPositions: Record<Side, Record<string, GridPos>> = { A: {}, B: {} };
   private rng: () => number;
 
   constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random, weather: Weather = 'clear', time: TimeOfDay = 'day') {
@@ -99,6 +101,21 @@ export class GridBattle {
     this.levelUpEvents.push(...results);
   }
 
+  /** 양 진영이 현재 시야로 확인 가능한 상대 유닛의 위치를 각자의 '마지막 확인 위치' 기억에 갱신한다. */
+  private updateKnownPositions(): void {
+    const cond = { time: this.time, weather: this.weather };
+    for (const side of ['A', 'B'] as Side[]) {
+      const observers = (side === 'A' ? this.teamA : this.teamB).filter((u) => u.currentHp > 0);
+      const enemies = side === 'A' ? this.teamB : this.teamA;
+      for (const enemy of enemies) {
+        if (enemy.currentHp <= 0) continue;
+        if (isVisibleToTeam(enemy, observers, this.map, cond)) {
+          this.knownEnemyPositions[side][enemy.id] = { ...enemy.position };
+        }
+      }
+    }
+  }
+
   /** 보호 상태의 아군이 근처에 있으면 공격을 그 아군에게 대신 돌린다 */
   private resolveGuardRedirect(target: Character): Character {
     const guardian = this.ownTeamOf(target).find(
@@ -113,6 +130,7 @@ export class GridBattle {
 
   takeTurn(action: UnitAction): void {
     if (this.finished) return;
+    this.updateKnownPositions();
     const fromRoundQueue = this.roundQueue.length > 0;
     const unit = fromRoundQueue ? this.roundQueue.shift()! : this.bonusQueue.shift();
     if (!unit) return;

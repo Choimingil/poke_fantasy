@@ -1,4 +1,4 @@
-import type { BattleMap, Character } from '../types';
+import type { BattleMap, Character, GridPos } from '../types';
 import type { UnitAction } from './battle';
 import { getSkill } from '../data/skills';
 import { getWeapon, isRangedOrMagicKind } from '../data/weapons';
@@ -8,8 +8,31 @@ import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
 import type { TimeOfDay } from './daytime';
 
-/** 간단한 그리드 AI: 도발 대상 우선 → 가장 가까운 보이는 적 추적 → 사거리 내면 공격 스킬 사용 */
-export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: Character[], map: BattleMap, weather: Weather = 'clear', time: TimeOfDay = 'day'): UnitAction {
+/**
+ * 시야 안에 적이 하나도 없을 때 이동 목표로 삼을 위치를 정한다.
+ * 1) 예전에 확인했던(지금은 시야 밖인) 적 중 가장 가까운 마지막 목격 위치
+ * 2) 그마저 없으면(교전 전) 맵 중앙 — 정찰하듯 전진하게 한다.
+ */
+function estimateAdvancePos(unit: Character, enemyTeam: Character[], map: BattleMap, knownPositions: Record<string, GridPos>): GridPos {
+  const knownAlive = enemyTeam.filter((u) => u.currentHp > 0 && knownPositions[u.id]);
+  if (knownAlive.length > 0) {
+    return [...knownAlive].sort(
+      (a, b) => manhattan(unit.position, knownPositions[a.id]) - manhattan(unit.position, knownPositions[b.id]),
+    ).map((u) => knownPositions[u.id])[0];
+  }
+  return { x: Math.floor(map.width / 2), y: Math.floor(map.height / 2) };
+}
+
+/** 간단한 그리드 AI: 도발 대상 우선 → 가장 가까운 보이는 적 추적 → 시야 밖이면 마지막 목격/맵 중앙으로 전진 → 사거리 내면 공격 스킬 사용 */
+export function pickAiAction(
+  unit: Character,
+  ownTeam: Character[],
+  enemyTeam: Character[],
+  map: BattleMap,
+  weather: Weather = 'clear',
+  time: TimeOfDay = 'day',
+  knownPositions: Record<string, GridPos> = {},
+): UnitAction {
   const cond = { time, weather };
   const allUnits = [...ownTeam, ...enemyTeam];
 
@@ -19,12 +42,19 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
     const visibleEnemies = enemyTeam.filter((u) => u.currentHp > 0 && isVisibleTo(unit, u, map, cond));
     target = [...visibleEnemies].sort((a, b) => manhattan(unit.position, a.position) - manhattan(unit.position, b.position))[0];
   }
-  if (!target) return {};
+  // 시야 안에 실제 대상이 없어도 이동은 예상 위치(마지막 목격/맵 중앙)를 향해 계속한다.
+  const movePos = target ? target.position : estimateAdvancePos(unit, enemyTeam, map, knownPositions);
 
   const budget = effectiveMove(unit, map, weather);
   const reachable = [unit.position, ...computeReachableTiles(map, unit, allUnits, budget)];
   const bestTile = reachable.reduce((best, pos) =>
-    manhattan(pos, target!.position) < manhattan(best, target!.position) ? pos : best);
+    manhattan(pos, movePos) < manhattan(best, movePos) ? pos : best);
+
+  const action: UnitAction = {};
+  if (bestTile.x !== unit.position.x || bestTile.y !== unit.position.y) action.moveTo = bestTile;
+
+  // 공격은 실제로 확인된(시야 안/도발) 대상에게만 시도한다 — 예상 위치는 이동에만 쓴다.
+  if (!target) return action;
 
   const weaponInstance = unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
@@ -38,9 +68,6 @@ export function pickAiAction(unit: Character, ownTeam: Character[], enemyTeam: C
     .filter((s) => s.category === 'attack' && (s.targetMode === 'enemy' || s.targetMode === 'anyInSight'));
   // 사용 가능한 공격 스킬이 없으면 기본 공격(주먹)으로 대체.
   if (attackSkills.length === 0) attackSkills.push(getSkill(FALLBACK_SKILL_ID));
-
-  const action: UnitAction = {};
-  if (bestTile.x !== unit.position.x || bestTile.y !== unit.position.y) action.moveTo = bestTile;
 
   for (const skill of attackSkills) {
     const ignoresRange = skill.ignoresRange || skill.targetMode === 'anyInSight';

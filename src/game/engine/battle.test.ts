@@ -134,6 +134,24 @@ describe('GridBattle', () => {
     expect(battle.winner).toBe('A');
   });
 
+  it('시야 밖으로 나간 적의 마지막 목격 위치를 기억한다', () => {
+    const map: BattleMap = { width: 10, height: 10, tiles: Array.from({ length: 10 }, () => Array.from({ length: 10 }, () => ({ terrain: 'plain' as const }))) };
+    const a = makeUnit('a', 20, { sight: 3 });
+    const b = makeUnit('b', 10, { sight: 3 });
+    prepareForBattle(a, { x: 0, y: 0 }, 'A');
+    prepareForBattle(b, { x: 1, y: 0 }, 'B'); // 처음엔 시야 안
+    const battle = new GridBattle(map, [a], [b], () => 0.5);
+
+    battle.takeTurn({}); // a의 턴: 이 시점에 b를 확인
+    expect(battle.knownEnemyPositions.A['b']).toEqual({ x: 1, y: 0 });
+
+    b.position = { x: 9, y: 9 }; // 시야 밖으로 순간이동(테스트 편의상 직접 이동)
+    battle.takeTurn({}); // b의 턴
+
+    // a의 기억에는 여전히 마지막으로 확인했던 (1,0)이 남아있어야 한다
+    expect(battle.knownEnemyPositions.A['b']).toEqual({ x: 1, y: 0 });
+  });
+
   it('보호 상태의 아군이 근처에 있으면 공격이 그 아군에게 대신 향한다', () => {
     const map = makeMap();
     const a = makeUnit('a', 30);
