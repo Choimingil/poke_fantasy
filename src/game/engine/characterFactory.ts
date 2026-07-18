@@ -1,4 +1,4 @@
-import type { ArmorKind, Character, Element, GridPos, SpriteGender, StatBlock } from '../types';
+import type { ArmorKind, Character, Element, GridPos, ProcEffect, SpriteGender, StatBlock } from '../types';
 import { getUsableSkillIds, initSkillUses, MAX_LOADOUT } from '../data/promotions';
 import { getWeapon } from '../data/weapons';
 import { armorTemplateForKind } from '../data/armor';
@@ -24,11 +24,12 @@ export interface CreateCharacterOptions {
   gender?: SpriteGender;
   level?: number;
   baseStats: StatBlock;
-  rawMove: number;
   sight: number;
   starterWeaponTemplateId: string;
   starterWeaponLevel?: number;
   starterWeaponElement?: Element;
+  /** 마법서/투척무기 전용: 이 인스턴스가 지닐 부가효과(출혈/기절/관통/집중/급소) 선택 */
+  starterWeaponProcEffect?: ProcEffect;
   starterShieldTemplateId?: string;
   starterShieldLevel?: number;
   starterArmorKind?: ArmorKind;
@@ -45,6 +46,7 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     templateId: opts.starterWeaponTemplateId,
     level: opts.starterWeaponLevel ?? DEFAULT_ITEM_LEVEL,
     element: opts.starterWeaponElement,
+    procEffect: opts.starterWeaponProcEffect,
   };
   const inventory = [weaponInstance];
   let equippedShieldId: string | undefined;
@@ -54,12 +56,13 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
       templateId: opts.starterShieldTemplateId,
       level: opts.starterShieldLevel ?? DEFAULT_ITEM_LEVEL,
       element: undefined,
+      procEffect: undefined,
     };
     inventory.push(shieldInstance);
     equippedShieldId = shieldInstance.instanceId;
   }
   for (const [i, extra] of (opts.extraWeaponTemplateIds ?? []).entries()) {
-    inventory.push({ instanceId: `${opts.id}-extra${i}`, templateId: extra.templateId, level: extra.level ?? DEFAULT_ITEM_LEVEL, element: undefined });
+    inventory.push({ instanceId: `${opts.id}-extra${i}`, templateId: extra.templateId, level: extra.level ?? DEFAULT_ITEM_LEVEL, element: undefined, procEffect: undefined });
   }
 
   const armor = [];
@@ -85,9 +88,9 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     level: opts.level ?? DEFAULT_STARTING_LEVEL,
     xp: 0,
     unspentPromotions: 0,
+    unspentStatPoints: 0,
     weaponMastery: {},
     baseStats: { ...opts.baseStats },
-    rawMove: opts.rawMove,
     sight: opts.sight,
     currentHp: opts.baseStats.hp,
     position: { x: 0, y: 0 },

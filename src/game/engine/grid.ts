@@ -23,18 +23,43 @@ function tileAt(map: BattleMap, p: GridPos): { terrain: BattleMap['tiles'][numbe
 }
 
 const WATER_MOVE_PENALTY = 1;
+const MOVE_CAP = 5;
+const END_PER_MOVE = 30;
 
+/** UI 표시용: 지형/날씨/상태 보정 없이 지구력만으로 계산한 기본 이동력("5+a" 표기의 a 포함). */
+export function baseMoveFromEndurance(endurance: number): { shown: number; excess: number } {
+  const raw = endurance / END_PER_MOVE + 1;
+  return { shown: Math.min(MOVE_CAP, raw), excess: Math.max(0, raw - MOVE_CAP) };
+}
+
+/**
+ * 이동력 = (지구력 / 30) + 1. 5를 넘는 초과분(a)은 '표시상' 버퍼로 남아 이동력 감소 페널티를 우선 상쇄하고,
+ * 그래도 남는 페널티만 실제 이동력(최대 5)에서 차감한다. 즉 END가 높을수록 이동 디버프에 더 잘 버틴다.
+ */
 export function effectiveMove(c: Character, map: BattleMap, weather: Weather = 'clear'): number {
-  let move = c.rawMove;
+  const raw = c.baseStats.endurance / END_PER_MOVE + 1;
+  let bonus = 0;
+  let penalty = 0;
   const legHit = c.statusEffects.find((s) => s.type === 'legHit');
-  if (legHit) move += legHit.magnitude ?? -0.5;
+  if (legHit) penalty += Math.abs(legHit.magnitude ?? 0.5);
   const onWater = map.tiles[c.position.y][c.position.x].terrain === 'water';
   if (onWater) {
-    move -= WATER_MOVE_PENALTY; // 물 위에서는 이동력 감소
-    if (c.statusEffects.some((s) => s.type === 'riverSurge')) move += 1; // 급류로 상쇄
+    penalty += WATER_MOVE_PENALTY; // 물 위에서는 이동력 감소
+    if (c.statusEffects.some((s) => s.type === 'riverSurge')) bonus += 1; // 급류로 상쇄
   }
-  move += weatherMoveModifier(c, weather);
-  return Math.max(0, move);
+  penalty += Math.abs(Math.min(0, weatherMoveModifier(c, weather)));
+
+  const total = raw + bonus;
+  const excess = Math.max(0, total - MOVE_CAP); // 5를 넘는 초과분(a)
+  const cappedBase = Math.min(MOVE_CAP, total);
+  const remainingPenalty = Math.max(0, penalty - excess); // 초과분이 페널티를 우선 흡수
+  return Math.max(0, cappedBase - remainingPenalty);
+}
+
+/** 이동력이 1 미만이면 2턴에 1칸만 이동 가능(라운드가 홀수일 때만). effectiveMove 결과를 실제 이동 칸 수로 변환한다. */
+export function moveStepsForRound(effectiveMoveValue: number, round: number): number {
+  if (effectiveMoveValue >= 1) return Math.floor(effectiveMoveValue);
+  return round % 2 === 1 ? 1 : 0;
 }
 
 /** 물·언덕은 진입은 가능하지만 그 칸을 넘어서 계속 이동할 수 없다(경로 종착 전용). */

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { StatKey } from '../game/types';
 import { ROSTER, getRosterCharacter } from '../game/data/roster';
 import { getWeapon } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
@@ -6,14 +7,17 @@ import { getSkill } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
 import { equipArmor, equipShield, equipWeapon, unequipArmor, unequipShield } from '../game/engine/inventory';
 import { carryCapacityKg, meetsEquipLevel, totalEquipmentWeightKg } from '../game/engine/equipment';
+import { baseMoveFromEndurance } from '../game/engine/grid';
+import { mentalResistChance } from '../game/engine/derivedStats';
+import { spendStatPoint } from '../game/engine/leveling';
 import { TrainerSprite } from './TrainerSprite';
 
-const STAT_ROWS: { key: 'hp' | 'attack' | 'magicAttack' | 'defense' | 'speed'; label: string }[] = [
+const STAT_ROWS: { key: StatKey; label: string }[] = [
   { key: 'hp', label: '체력' },
   { key: 'attack', label: '근력' },
   { key: 'magicAttack', label: '지력' },
-  { key: 'defense', label: '방어' },
   { key: 'speed', label: '스피드' },
+  { key: 'endurance', label: '지구력' },
 ];
 
 export function InventoryScreen({ onChange, onBack }: { onChange: () => void; onBack: () => void }) {
@@ -50,6 +54,14 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
     onChange();
   };
 
+  const allocateStat = (stat: StatKey) => {
+    spendStatPoint(c, stat);
+    onChange();
+  };
+
+  const move = baseMoveFromEndurance(c.baseStats.endurance);
+  const moveLabel = move.excess > 0 ? `${move.shown}+${move.excess.toFixed(1)}` : `${Math.floor(move.shown)}`;
+
   return (
     <div className="app-shell inventory-screen">
       <div className="inventory-header">
@@ -73,12 +85,19 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
             <p><strong>{c.name}</strong> · Lv.{c.level}</p>
           </div>
           <div className="inventory-stats">
-            <h3>능력치</h3>
+            <h3>능력치 {c.unspentStatPoints > 0 && <span className="loadout-count">분배 가능 {c.unspentStatPoints}</span>}</h3>
             {STAT_ROWS.map(({ key, label }) => (
-              <p key={key} className="stat-row"><span>{label}</span><strong>{c.baseStats[key]}</strong></p>
+              <p key={key} className="stat-row">
+                <span>{label}</span>
+                <strong>{c.baseStats[key]}</strong>
+                {c.unspentStatPoints > 0 && (
+                  <button type="button" className="stat-plus-button" onClick={() => allocateStat(key)}>+</button>
+                )}
+              </p>
             ))}
-            <p className="stat-row"><span>이동력</span><strong>{c.rawMove}</strong></p>
+            <p className="stat-row"><span>이동력</span><strong>{moveLabel}</strong></p>
             <p className="stat-row"><span>시야</span><strong>{c.sight}</strong></p>
+            <p className="stat-row"><span>정신력</span><strong>{Math.round(mentalResistChance(c) * 100)}%</strong></p>
           </div>
         </aside>
 

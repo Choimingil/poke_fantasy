@@ -50,8 +50,9 @@ const WEAPONS: WeaponTemplate[] = [
   { id: 'thrown_a', name: '투척무기', kind: 'thrown', range: 2, baseSpeed: 20, handedness: 'oneHanded' },
 
   // 방패 — 스킬 없는 순수 스탯 아이템 (한손 무기와 병용 가능), 부가효과 없음
-  { id: 'shield_round', name: '원형 방패', kind: 'shield', range: 1, baseSpeed: 12, handedness: 'oneHanded', defenseBonus: 15 },
-  { id: 'shield_tower', name: '타워 방패', kind: 'shield', range: 1, baseSpeed: 8, handedness: 'oneHanded', defenseBonus: 25 },
+  // defenseBonus는 새 데미지 공식(최종데미지 = 공격력 - 방어력) 규모에 맞춘 값(placeholder).
+  { id: 'shield_round', name: '원형 방패', kind: 'shield', range: 1, baseSpeed: 12, handedness: 'oneHanded', defenseBonus: 3 },
+  { id: 'shield_tower', name: '타워 방패', kind: 'shield', range: 1, baseSpeed: 8, handedness: 'oneHanded', defenseBonus: 6 },
 ];
 
 export function getWeapon(templateId: string): WeaponTemplate {

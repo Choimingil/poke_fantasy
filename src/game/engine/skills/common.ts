@@ -1,5 +1,5 @@
 import type { Element } from '../../types';
-import { dealDamageTo, applyStatusTo } from './helpers';
+import { dealDamageTo, applyStatusTo, applyDebuffTo } from './helpers';
 import type { SkillContext, SkillHandler } from './context';
 
 const ELEMENT_NAMES: Record<Exclude<Element, 'none'>, string> = {
@@ -32,7 +32,7 @@ const protect: SkillHandler = (ctx) => {
 const taunt: SkillHandler = (ctx) => {
   const target = findTarget(ctx);
   if (!target) return;
-  applyStatusTo(target, 'taunted', { turnsRemaining: 2, sourceId: ctx.actor.id }, ctx.log, '도발');
+  applyDebuffTo(ctx, target, 'taunted', { turnsRemaining: 2, sourceId: ctx.actor.id }, '도발');
 };
 
 const rockfall: SkillHandler = (ctx) => {

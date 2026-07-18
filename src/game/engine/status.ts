@@ -54,6 +54,20 @@ export function tickStatusAtTurnStart(character: Character): StatusTickResult {
   return { dotDamage: 0, expired };
 }
 
+/** 출혈(검 부가효과) 상태의 캐릭터는 매 턴 최대체력 1/8을 잃는다. tickStatusAtTurnStart로 지속시간이 깎이기 전에 호출해야 정확히 2턴 동안 적용된다. */
+export function applyBleedDamage(character: Character): number {
+  if (!character.statusEffects.some((s) => s.type === 'bleeding')) return 0;
+  const damage = Math.max(1, Math.round(character.baseStats.hp / 8));
+  character.currentHp = Math.max(0, character.currentHp - damage);
+  return damage;
+}
+
+/** 기절(둔기 부가효과) 상태이면 이번 턴에 30% 확률로 행동이 불가능한지 판정한다. */
+export function rollStunned(character: Character, rng: () => number): boolean {
+  if (!character.statusEffects.some((s) => s.type === 'stunned')) return false;
+  return rng() < 0.3;
+}
+
 /** 화염 타일 위에 있는 캐릭터는 매 턴 최대체력 1/4을 잃는다 */
 export function applyTileBurnDamage(character: Character, map: BattleMap): number {
   const tile = map.tiles[character.position.y][character.position.x];

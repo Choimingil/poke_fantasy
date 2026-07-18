@@ -17,8 +17,7 @@ function makeUnit(overrides: Partial<Character> = {}): Character {
   const c = createCharacter({
     id: overrides.id ?? 'unit',
     name: 'unit',
-    baseStats: { hp: 100, attack: 10, magicAttack: 10, defense: 10, speed: 10 },
-    rawMove: 2,
+    baseStats: { hp: 100, attack: 10, magicAttack: 10, speed: 10, endurance: 10 },
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });
@@ -77,22 +76,25 @@ describe('lineCrossesRock', () => {
 });
 
 describe('effectiveMove', () => {
+  // 지구력 60 → 기본 이동력 (60/30)+1 = 3, 기존 rawMove:3 기준과 동일하게 맞춘 값.
+  const MOVE3_STATS = { hp: 100, attack: 10, magicAttack: 10, speed: 10, endurance: 60 };
+
   it('legHit 상태는 이동력을 magnitude만큼 감소시킨다', () => {
     const map = makeMap();
-    const unit = makeUnit({ position: { x: 2, y: 2 }, rawMove: 3 });
+    const unit = makeUnit({ position: { x: 2, y: 2 }, baseStats: MOVE3_STATS });
     unit.statusEffects.push({ type: 'legHit', turnsRemaining: 3, magnitude: -0.5 });
     expect(effectiveMove(unit, map)).toBe(2.5);
   });
 
   it('물 타일은 이동력을 감소시키고 급류가 이를 상쇄한다', () => {
     const map = makeMap({ '2,2': 'water' });
-    const onWater = makeUnit({ position: { x: 2, y: 2 }, rawMove: 3 });
+    const onWater = makeUnit({ position: { x: 2, y: 2 }, baseStats: MOVE3_STATS });
     expect(effectiveMove(onWater, map)).toBe(2); // 물 -1
 
     onWater.statusEffects.push({ type: 'riverSurge', turnsRemaining: 3 });
     expect(effectiveMove(onWater, map)).toBe(3); // -1 +1
 
-    const onLand = makeUnit({ position: { x: 0, y: 0 }, rawMove: 3 });
+    const onLand = makeUnit({ position: { x: 0, y: 0 }, baseStats: MOVE3_STATS });
     onLand.statusEffects.push({ type: 'riverSurge', turnsRemaining: 3 });
     expect(effectiveMove(onLand, map)).toBe(3);
   });

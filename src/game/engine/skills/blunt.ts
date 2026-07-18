@@ -1,4 +1,4 @@
-import { aliveUnitsInRadius, applyStatusTo, dealDamageTo } from './helpers';
+import { aliveUnitsInRadius, applyStatusTo, applyDebuffTo, dealDamageTo } from './helpers';
 import type { SkillHandler } from './context';
 
 const SHIELD_NEGATE_CHANCE = 0.4;
@@ -11,7 +11,7 @@ const bluntLeghit: SkillHandler = (ctx) => {
   const target = findEnemyTarget(ctx);
   if (!target) return;
   dealDamageTo(ctx, target);
-  if (target.currentHp > 0) applyStatusTo(target, 'legHit', { turnsRemaining: 3, magnitude: -0.5 }, ctx.log, '다리 부상');
+  if (target.currentHp > 0) applyDebuffTo(ctx, target, 'legHit', { turnsRemaining: 3, magnitude: -0.5 }, '다리 부상');
 };
 
 const bluntUnity: SkillHandler = (ctx) => {

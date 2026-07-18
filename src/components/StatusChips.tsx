@@ -13,10 +13,12 @@ const STATUS_LABEL: Record<StatusEffectType, string> = {
   bowCrit: '급소',
   focused: '집중',
   legHit: '다리부상',
+  bleeding: '출혈',
+  stunned: '기절',
 };
 
 // 디버프로 취급하는 상태(붉은색)
-const DEBUFFS = new Set<StatusEffectType>(['taunted', 'legHit']);
+const DEBUFFS = new Set<StatusEffectType>(['taunted', 'legHit', 'bleeding', 'stunned']);
 
 /** 현재 캐릭터의 버프/디버프와 남은 턴 수를 칩으로 표시한다. */
 export function StatusChips({ effects }: { effects: ActiveStatus[] }) {

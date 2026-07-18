@@ -6,8 +6,7 @@ function makeSwordCharacter() {
   return createCharacter({
     id: 'c1',
     name: '검사',
-    baseStats: { hp: 100, attack: 20, magicAttack: 5, defense: 10, speed: 10 },
-    rawMove: 3,
+    baseStats: { hp: 100, attack: 20, magicAttack: 5, speed: 10, endurance: 10 },
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });

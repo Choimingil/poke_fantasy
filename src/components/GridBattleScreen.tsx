@@ -8,7 +8,7 @@ import { getWeapon } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getBattleSkillIds } from '../game/data/promotions';
 import { meetsEquipLevel } from '../game/engine/equipment';
-import { manhattan, computeReachableTiles, effectiveMove, posKey, lineCrossesRock } from '../game/engine/grid';
+import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, posKey, lineCrossesRock } from '../game/engine/grid';
 import { isRangedOrMagicKind } from '../game/data/weapons';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
@@ -106,7 +106,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const timer = setTimeout(() => {
       const ownTeam = unit.side === 'A' ? battle.teamA : battle.teamB;
       const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
-      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time, battle.knownEnemyPositions[unit.side!]);
+      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time, battle.knownEnemyPositions[unit.side!], battle.round);
       battle.takeTurn(action);
       if (action.skillId && action.targetId) triggerMotion(unit.id, [action.targetId]);
       aiBusyRef.current = false;
@@ -199,7 +199,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
   const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
-  const budget = effectiveMove(currentUnit, battle.map, battle.weather);
+  const budget = moveStepsForRound(effectiveMove(currentUnit, battle.map, battle.weather), battle.round);
   const reachable = pendingMoveTile ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
   const reachableTiles = new Set(reachable.map(posKey));
 

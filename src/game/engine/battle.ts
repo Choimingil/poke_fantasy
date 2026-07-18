@@ -3,10 +3,10 @@ import { getSkill } from '../data/skills';
 import { getWeapon, isRangedOrMagicKind, weaponPower } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
-import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
 import { isVisibleTo, isVisibleToTeam } from './vision';
 import { determineTurnOrder } from './turnOrder';
-import { applyTileBurnDamage, tickMapStatus, tickStatusAtTurnStart } from './status';
+import { applyBleedDamage, applyTileBurnDamage, rollStunned, tickMapStatus, tickStatusAtTurnStart } from './status';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
 import { weatherTurnStartDamage, type Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -140,7 +140,13 @@ export class GridBattle {
       return;
     }
 
+    let stunnedThisTurn = false;
     if (fromRoundQueue) {
+      // 출혈 피해와 기절 판정은 상태 지속시간이 깎이기 전(적용된 턴부터 정확히 2턴)에 확인한다.
+      const bleed = applyBleedDamage(unit);
+      if (bleed > 0) this.log.push(`${unit.name}는 출혈로 ${bleed}의 데미지를 입었다.`);
+      stunnedThisTurn = rollStunned(unit, this.rng);
+
       const tick = tickStatusAtTurnStart(unit);
       for (const expired of tick.expired) this.log.push(`${unit.name}의 ${expired} 상태가 해제되었다.`);
       const burn = applyTileBurnDamage(unit, this.map);
@@ -150,6 +156,11 @@ export class GridBattle {
       if (unit.currentHp <= 0) {
         this.log.push(`${unit.name}가 쓰러졌다.`);
         this.checkBattleEnd();
+        this.afterAction();
+        return;
+      }
+      if (stunnedThisTurn) {
+        this.log.push(`${unit.name}는 기절해서 이번 턴에 행동할 수 없다.`);
         this.afterAction();
         return;
       }
@@ -179,7 +190,7 @@ export class GridBattle {
 
     let steppedOntoHill = false;
     if (action.moveTo) {
-      const budget = effectiveMove(unit, this.map, this.weather);
+      const budget = moveStepsForRound(effectiveMove(unit, this.map, this.weather), this.round);
       const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget);
       if (reachable.some((p) => p.x === action.moveTo!.x && p.y === action.moveTo!.y)) {
         unit.position = action.moveTo;

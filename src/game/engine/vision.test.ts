@@ -17,8 +17,7 @@ function makeUnit(overrides: Partial<Character> = {}): Character {
   const c = createCharacter({
     id: overrides.id ?? 'unit',
     name: 'unit',
-    baseStats: { hp: 100, attack: 10, magicAttack: 10, defense: 10, speed: 10 },
-    rawMove: 2,
+    baseStats: { hp: 100, attack: 10, magicAttack: 10, speed: 10, endurance: 10 },
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });

@@ -7,8 +7,7 @@ function makeUnit(id: string, speed: number, weaponTemplateId = 'sword_short'): 
   return createCharacter({
     id,
     name: id,
-    baseStats: { hp: 100, attack: 10, magicAttack: 10, defense: 10, speed },
-    rawMove: 2,
+    baseStats: { hp: 100, attack: 10, magicAttack: 10, speed, endurance: 10 },
     sight: 3,
     starterWeaponTemplateId: weaponTemplateId,
   });

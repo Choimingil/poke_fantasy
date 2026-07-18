@@ -17,8 +17,7 @@ function makeUnit(id: string, speed: number, overrides: Partial<Character> = {})
   const c = createCharacter({
     id,
     name: id,
-    baseStats: { hp: 100, attack: 50, magicAttack: 10, defense: 10, speed },
-    rawMove: 2,
+    baseStats: { hp: 100, attack: 50, magicAttack: 10, speed, endurance: 10 },
     sight: 5,
     starterWeaponTemplateId: 'sword_short',
   });
@@ -47,7 +46,8 @@ describe('GridBattle', () => {
     prepareForBattle(guardian, { x: 1, y: 1 }, 'A');
     prepareForBattle(ally, { x: 1, y: 2 }, 'A'); // 직교 인접(맨해튼 1)
     prepareForBattle(enemy, { x: 1, y: 3 }, 'B'); // ally 바로 아래
-    const battle = new GridBattle(map, [guardian, ally], [enemy], () => 0);
+    // rng=0.5: 명중(0.5*100<accuracy)은 통과하되, 회피 판정(rng < 회피율)은 실패시켜 공격이 확정으로 적중하게 한다.
+    const battle = new GridBattle(map, [guardian, ally], [enemy], () => 0.5);
     guardian.statusEffects.push({ type: 'guarding', turnsRemaining: 2, magnitude: 1 });
 
     battle.takeTurn({ skillId: 'power_strike', targetId: 'ally' }); // 적이 ally 공격
@@ -68,12 +68,12 @@ describe('GridBattle', () => {
 
   it('이동 예산을 벗어난 타일로는 이동할 수 없다', () => {
     const map = makeMap();
-    const a = makeUnit('a', 20, { rawMove: 2 });
+    const a = makeUnit('a', 20);
     const b = makeUnit('b', 10);
     prepareForBattle(a, { x: 0, y: 0 }, 'A');
     prepareForBattle(b, { x: 4, y: 4 }, 'B');
     const battle = new GridBattle(map, [a], [b], () => 0.5);
-    battle.takeTurn({ moveTo: { x: 4, y: 0 } }); // 거리 4 > 이동력 2
+    battle.takeTurn({ moveTo: { x: 4, y: 0 } }); // 거리 4 > 이동력(지구력 10 → 약 1.33)
     expect(a.position).toEqual({ x: 0, y: 0 });
   });
 
@@ -111,8 +111,8 @@ describe('GridBattle', () => {
 
   it('처치 시 처치한 캐릭터만 경험치를 얻는다', () => {
     const map = makeMap();
-    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, defense: 10, speed: 20 } });
-    const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, defense: 1, speed: 5 } });
+    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, speed: 20, endurance: 10 } });
+    const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, speed: 5, endurance: 5 } });
     prepareForBattle(a, { x: 0, y: 0 }, 'A');
     prepareForBattle(b, { x: 1, y: 0 }, 'B');
     const battle = new GridBattle(map, [a], [b], () => 0.01);
@@ -124,8 +124,8 @@ describe('GridBattle', () => {
 
   it('한 팀의 유닛이 모두 쓰러지면 전투가 종료되고 승자가 기록된다', () => {
     const map = makeMap();
-    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, defense: 10, speed: 20 } });
-    const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, defense: 1, speed: 5 } });
+    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, speed: 20, endurance: 10 } });
+    const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, speed: 5, endurance: 5 } });
     prepareForBattle(a, { x: 0, y: 0 }, 'A');
     prepareForBattle(b, { x: 1, y: 0 }, 'B');
     const battle = new GridBattle(map, [a], [b], () => 0.01);

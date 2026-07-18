@@ -16,8 +16,7 @@ function makeCharacter(id: string, overrides: Partial<Character> = {}): Characte
   const c = createCharacter({
     id,
     name: id,
-    baseStats: { hp: 100, attack: 50, magicAttack: 30, defense: 30, speed: 10 },
-    rawMove: 2,
+    baseStats: { hp: 100, attack: 50, magicAttack: 30, speed: 10, endurance: 30 },
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });
@@ -26,8 +25,8 @@ function makeCharacter(id: string, overrides: Partial<Character> = {}): Characte
 
 describe('calculateDamage', () => {
   it('최소 데미지는 1 이상이다', () => {
-    const attacker = makeCharacter('atk', { baseStats: { hp: 100, attack: 1, magicAttack: 1, defense: 10, speed: 10 } });
-    const defender = makeCharacter('def', { baseStats: { hp: 100, attack: 10, magicAttack: 10, defense: 999, speed: 10 } });
+    const attacker = makeCharacter('atk', { baseStats: { hp: 100, attack: 1, magicAttack: 1, speed: 10, endurance: 10 } });
+    const defender = makeCharacter('def', { baseStats: { hp: 100, attack: 10, magicAttack: 10, speed: 10, endurance: 10 } });
     const result = calculateDamage({
       attacker,
       defender,
@@ -80,13 +79,13 @@ describe('calculateDamage', () => {
     });
     const withShield = calculateDamage({
       attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
-      attackerElement: 'none', defenderElement: 'none', statSource: 'attack', defenderExtraDefense: 30, rng: sequenceRng([0.99, 0.5]),
+      attackerElement: 'none', defenderElement: 'none', statSource: 'attack', defenderDefense: 30, rng: sequenceRng([0.99, 0.5]),
     });
     expect(withShield.damage).toBeLessThan(withoutShield.damage);
   });
 
   it('combined statSource는 근력+지력 합산치를 주능력치로 사용한다(마법부여)', () => {
-    const attacker = makeCharacter('atk', { baseStats: { hp: 100, attack: 50, magicAttack: 30, defense: 30, speed: 10 } });
+    const attacker = makeCharacter('atk', { baseStats: { hp: 100, attack: 50, magicAttack: 30, speed: 10, endurance: 30 } });
     const defender = makeCharacter('def');
     const attackOnly = calculateDamage({
       attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,

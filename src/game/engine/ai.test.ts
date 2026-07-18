@@ -17,8 +17,7 @@ function makeUnit(id: string, position: { x: number; y: number }) {
   const c = createCharacter({
     id,
     name: id,
-    baseStats: { hp: 100, attack: 20, magicAttack: 10, defense: 10, speed: 10 },
-    rawMove: 3,
+    baseStats: { hp: 100, attack: 20, magicAttack: 10, speed: 10, endurance: 60 }, // raw move ~3
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });

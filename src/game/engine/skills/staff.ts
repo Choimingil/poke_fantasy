@@ -1,4 +1,5 @@
 import { weaknessOf } from '../elements';
+import { mentalResistChance } from '../derivedStats';
 import { aliveUnitsInRadius, dealDamageTo } from './helpers';
 import type { SkillHandler } from './context';
 
@@ -13,6 +14,10 @@ const staffWeaken: SkillHandler = (ctx) => {
   const weaponInstance = ctx.actor.inventory.find((w) => w.instanceId === ctx.actor.equippedWeaponId);
   const staffElement = weaponInstance?.element;
   if (!staffElement || staffElement === 'none') return;
+  if (ctx.rng() < mentalResistChance(target)) {
+    ctx.log.push(`${target.name}는 정신력으로 약화 효과를 무시했다.`);
+    return;
+  }
   target.elementOverride = weaknessOf(staffElement);
   ctx.log.push(`${target.name}의 속성이 ${target.elementOverride}(으)로 바뀌었다.`);
 };

@@ -14,7 +14,7 @@ export type WeaponKind =
 
 type Handedness = 'oneHanded' | 'twoHanded';
 
-type StatKey = 'hp' | 'attack' | 'magicAttack' | 'defense' | 'speed';
+export type StatKey = 'hp' | 'attack' | 'magicAttack' | 'speed' | 'endurance';
 export type StatBlock = Record<StatKey, number>;
 
 export type TerrainType = 'plain' | 'forest' | 'hill' | 'water' | 'rock';
@@ -50,9 +50,11 @@ export type StatusEffectType =
   | 'forestVision' // 투시: can see into forest beyond concealment radius
   | 'swordAwaken' // 각성: speed x1.2, no-stack
   | 'bluntUnity' // 단결: defense x1.2, no-stack
-  | 'bowCrit' // 급소: chance to crit
+  | 'bowCrit' // 급소(스킬): chance to crit
   | 'focused' // 집중 (reserved for a later weapon phase)
-  | 'legHit'; // 다리 타격: move penalty
+  | 'legHit' // 다리 타격: move penalty
+  | 'bleeding' // 출혈(검 부가효과): 매 턴 최대체력 1/8 피해
+  | 'stunned'; // 기절(둔기 부가효과): 매 턴 30% 확률로 행동 불가
 
 export interface ActiveStatus {
   type: StatusEffectType;
@@ -95,11 +97,15 @@ export interface WeaponTemplate {
   defenseBonus?: number; // shield only, flat defense stat bonus while equipped
 }
 
+/** 무기 종류별 30% 확률 부가효과. 마법서/투척무기는 인스턴스마다 하나를 선택해 지닌다(그 외 종류는 kind로 고정 매핑). */
+export type ProcEffect = 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit';
+
 interface WeaponInstance {
   instanceId: string;
   templateId: string;
   level: number; // 10 단위 등급(10~100). 공격력은 이 값으로 계산한다.
   element?: Element; // staff only, chosen when the instance is created
+  procEffect?: ProcEffect; // tome/thrown only, chosen when the instance is created
 }
 
 export type ArmorKind = 'cloth' | 'leather' | 'mail' | 'plate';
@@ -127,10 +133,10 @@ export interface Character {
   level: number;
   xp: number;
   unspentPromotions: number;
+  unspentStatPoints: number; // 레벨업마다 3점 지급, 체력/근력/지력/스피드/지구력에 분배
   weaponMastery: Partial<Record<WeaponKind, number>>; // 0-6, absent key == tier 0
 
   baseStats: StatBlock;
-  rawMove: number;
   sight: number;
 
   currentHp: number;

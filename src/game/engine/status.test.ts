@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { BattleMap, Character } from '../types';
 import { createCharacter } from './characterFactory';
-import { applyStatus, applyTileBurnDamage, getStatus, tickMapStatus, tickStatusAtTurnStart } from './status';
+import { applyBleedDamage, applyStatus, applyTileBurnDamage, getStatus, rollStunned, tickMapStatus, tickStatusAtTurnStart } from './status';
 
 function makeCharacter(): Character {
   return createCharacter({
     id: 'c1',
     name: '테스터',
-    baseStats: { hp: 160, attack: 10, magicAttack: 10, defense: 10, speed: 10 },
-    rawMove: 2,
+    baseStats: { hp: 160, attack: 10, magicAttack: 10, speed: 10, endurance: 10 },
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });
@@ -68,6 +67,34 @@ describe('applyTileBurnDamage', () => {
     const map = makeMap('plain');
     expect(applyTileBurnDamage(c, map)).toBe(0);
     expect(c.currentHp).toBe(160);
+  });
+});
+
+describe('applyBleedDamage', () => {
+  it('출혈 상태의 캐릭터는 매 턴 최대체력의 1/8만큼 피해를 입는다', () => {
+    const c = makeCharacter();
+    applyStatus(c, 'bleeding', { turnsRemaining: 2 });
+    expect(applyBleedDamage(c)).toBe(20); // 160/8
+    expect(c.currentHp).toBe(140);
+  });
+
+  it('출혈이 아니면 피해가 없다', () => {
+    const c = makeCharacter();
+    expect(applyBleedDamage(c)).toBe(0);
+  });
+});
+
+describe('rollStunned', () => {
+  it('기절 상태가 아니면 항상 false', () => {
+    const c = makeCharacter();
+    expect(rollStunned(c, () => 0)).toBe(false);
+  });
+
+  it('기절 상태면 30% 확률로 행동 불가를 판정한다', () => {
+    const c = makeCharacter();
+    applyStatus(c, 'stunned', { turnsRemaining: 2 });
+    expect(rollStunned(c, () => 0)).toBe(true); // 0 < 0.3
+    expect(rollStunned(c, () => 0.99)).toBe(false);
   });
 });
 

@@ -18,8 +18,7 @@ function makeUnit(weaponTemplateId: string, overrides: Partial<Character> = {}):
   const c = createCharacter({
     id: overrides.id ?? 'unit',
     name: 'unit',
-    baseStats: { hp: 160, attack: 10, magicAttack: 10, defense: 10, speed: 10 },
-    rawMove: 3,
+    baseStats: { hp: 160, attack: 10, magicAttack: 10, speed: 10, endurance: 60 }, // raw move 3
     sight: 3,
     starterWeaponTemplateId: weaponTemplateId,
   });
@@ -44,7 +43,7 @@ describe('weatherMoveModifier', () => {
 
   it('effectiveMove에 날씨 보정이 반영된다', () => {
     const map = makeMap();
-    const melee = makeUnit('sword_short', { rawMove: 3 });
+    const melee = makeUnit('sword_short');
     expect(effectiveMove(melee, map, 'rain')).toBe(2.5);
     expect(effectiveMove(melee, map, 'clear')).toBe(3);
   });
@@ -66,7 +65,7 @@ describe('weatherTurnStartDamage (폭염)', () => {
   });
 
   it('정신력(마법공격력)이 높으면 확률적으로 저항한다', () => {
-    const mage = makeUnit('staff_east', { baseStats: { hp: 160, attack: 10, magicAttack: 36, defense: 10, speed: 10 } });
+    const mage = makeUnit('staff_east', { baseStats: { hp: 160, attack: 10, magicAttack: 36, speed: 10, endurance: 10 } });
     // magicAttack 36 → 저항확률 min(0.7, 0.9)=0.7. rng=0.1 < 0.7 → 저항 성공
     const dmg = weatherTurnStartDamage(mage, 'heatwave', () => 0.1);
     expect(dmg).toBe(0);
