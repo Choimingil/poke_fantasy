@@ -631,6 +631,7 @@ button:disabled {
   border-radius: 999px;
   white-space: nowrap;
   border: 1px solid transparent;
+  cursor: pointer;
 }
 .status-chip-buff {
   background: #2f5030;
@@ -641,6 +642,21 @@ button:disabled {
   background: #5a2a2a;
   color: #ffdede;
   border-color: #e05555;
+}
+.status-chip-open {
+  box-shadow: 0 0 0 2px rgba(255, 211, 77, 0.6);
+}
+/* 상태 칩 클릭 시 나오는 설명 */
+.status-desc {
+  flex-basis: 100%;
+  font-size: 0.75em;
+  color: #dfe3ee;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin-top: 2px;
+  white-space: normal;
+  text-align: left;
 }
 
 /* 아군 정보 카드(맵 좌측 상단 오버레이) */

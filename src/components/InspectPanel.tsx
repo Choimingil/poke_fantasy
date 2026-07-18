@@ -1,5 +1,5 @@
 import type { Character, StatKey } from '../game/types';
-import { getWeapon } from '../game/data/weapons';
+import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { baseMoveFromEndurance } from '../game/engine/grid';
 import { mentalResistChance } from '../game/engine/derivedStats';
@@ -16,7 +16,8 @@ const STAT_ROWS: { key: StatKey; label: string }[] = [
 
 /** 아군(비활성 포함) 캐릭터를 눌렀을 때 뜨는 정보 카드. */
 export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () => void }) {
-  const weapon = getWeapon(unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!.templateId);
+  const weaponInstance = unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!;
+  const weaponName = weaponInstanceName(weaponInstance);
   const shield = unit.equippedShieldId
     ? getWeapon(unit.inventory.find((w) => w.instanceId === unit.equippedShieldId)!.templateId)
     : null;
@@ -32,7 +33,7 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
         <TrainerSprite jobId={unit.spriteJob} gender={unit.gender} facing="front" className="inspect-sprite" />
         <div>
           <p className="inspect-name"><strong>{unit.name}</strong> · Lv.{unit.level}</p>
-          <p className="inspect-sub">{weapon.name}{shield ? ` + ${shield.name}` : ''}{armor ? ` · ${armor.name}` : ''}</p>
+          <p className="inspect-sub">{weaponName}{shield ? ` + ${shield.name}` : ''}{armor ? ` · ${armor.name}` : ''}</p>
           <p className="inspect-hp">HP {unit.currentHp} / {unit.baseStats.hp}</p>
         </div>
       </div>

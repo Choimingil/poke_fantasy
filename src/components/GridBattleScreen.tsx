@@ -4,7 +4,7 @@ import { GridBattle, type UnitAction } from '../game/engine/battle';
 import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/maps';
 import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill, skillTypeLabel } from '../game/data/skills';
-import { getWeapon } from '../game/data/weapons';
+import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getBattleSkillIds } from '../game/data/promotions';
 import { meetsEquipLevel } from '../game/engine/equipment';
 import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, posKey, lineCrossesRock } from '../game/engine/grid';
@@ -75,7 +75,12 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const visibleEnemyIds = new Set(
     battle.teamB.filter((e) => e.currentHp > 0 && isVisibleToTeam(e, alivePlayers, battle.map, sightCond)).map((e) => e.id),
   );
-  const inspectUnit = inspectId ? (battle.teamA.find((u) => u.id === inspectId && u.currentHp > 0) ?? null) : null;
+  // 상세 조회 대상: 아군 또는 현재 보이는 적. (숨은 적/사망 시 자동으로 닫힘)
+  const inspectUnit = inspectId
+    ? ([...battle.teamA, ...battle.teamB].find(
+        (u) => u.id === inspectId && u.currentHp > 0 && (u.side === 'A' || visibleEnemyIds.has(u.id)),
+      ) ?? null)
+    : null;
   // 행동 순서 표시용: 살아있는 모든 유닛을 스피드 내림차순으로 정렬.
   const initiativeUnits = [...battle.teamA, ...battle.teamB]
     .filter((u) => u.currentHp > 0)
@@ -183,8 +188,11 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             motionAttackerId={motion?.attackerId ?? null}
             motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
             onTileClick={(pos) => {
-              const ally = battle.teamA.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
-              setInspectId(ally ? ally.id : null);
+              // 캐릭터(아군 또는 보이는 적)를 누르면 상세 팝업 전환, 빈 타일이면 닫힘.
+              const at = [...battle.teamA, ...battle.teamB].find(
+                (u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y && (u.side === 'A' || visibleEnemyIds.has(u.id)),
+              );
+              setInspectId(at ? at.id : null);
             }}
           />
           {inspectUnit && <InspectPanel unit={inspectUnit} onClose={() => setInspectId(null)} />}
@@ -290,12 +298,16 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
               executeAction({ skillId: selectedSkillId, targetId: enemyAtTile.id });
               return;
             }
-            // 아군을 누르면 정보 카드 표시(현재 차례가 아닌 아군 포함).
-            const allyAtTile = battle.teamA.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
-            if (allyAtTile) {
-              setInspectId(allyAtTile.id);
+            // 캐릭터(아군 또는 보이는 적)를 누르면 정보 카드 표시/전환(현재 차례가 아닌 캐릭터 포함).
+            const charAtTile = [...battle.teamA, ...battle.teamB].find(
+              (u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y && (u.side === 'A' || visibleEnemyIds.has(u.id)),
+            );
+            if (charAtTile) {
+              setInspectId(charAtTile.id);
               return;
             }
+            // 빈 타일/그 외 클릭 → 상세 팝업 닫기 후 이동 처리.
+            setInspectId(null);
             if (reachableTiles.has(posKey(pos))) {
               setPendingSwapTo(null);
               setPendingMoveTile(pos);
@@ -318,7 +330,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       <div className="action-bar action-bar-tall">
         <div className="action-bar-head">
           <p className="action-bar-status">
-            <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weapon.name}
+            <strong>{currentUnit.name}</strong> · Lv.{currentUnit.level} · {weaponInstanceName(weaponInstance)}
           </p>
           <StatusChips effects={currentUnit.statusEffects} />
         </div>

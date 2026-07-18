@@ -1,6 +1,21 @@
-import type { WeaponKind, WeaponTemplate } from '../types';
+import type { Element, ProcEffect, WeaponKind, WeaponTemplate } from '../types';
 
 const MELEE_KINDS: WeaponKind[] = ['sword', 'blunt', 'spear', 'dagger'];
+
+const WEAPON_ELEMENT_LABEL: Record<Exclude<Element, 'none'>, string> = {
+  fire: '불', water: '물', wood: '나무', steel: '강철', earth: '땅',
+};
+const WEAPON_PROC_LABEL: Record<ProcEffect, string> = {
+  bleed: '출혈', stun: '기절', pierce: '관통', focus: '집중', crit: '급소',
+};
+
+/** 인스턴스 표시 이름: 지팡이=속성(예 "불의 법장"), 마법서/투척=부가효과(예 "출혈의 주술서"). */
+export function weaponInstanceName(inst: { templateId: string; element?: Element; procEffect?: ProcEffect }): string {
+  const t = getWeapon(inst.templateId);
+  if (t.kind === 'staff' && inst.element && inst.element !== 'none') return `${WEAPON_ELEMENT_LABEL[inst.element]}의 ${t.name}`;
+  if ((t.kind === 'tome' || t.kind === 'thrown') && inst.procEffect) return `${WEAPON_PROC_LABEL[inst.procEffect]}의 ${t.name}`;
+  return t.name;
+}
 
 /** 원거리·마법 무기인가(활·석궁·투척·지팡이·마법서). 숲 행동 제약·바위 차단 판정에 쓴다. */
 export function isRangedOrMagicKind(kind: WeaponKind): boolean {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { StatKey } from '../game/types';
 import { ROSTER, getRosterCharacter } from '../game/data/roster';
-import { getWeapon } from '../game/data/weapons';
+import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getSkill, skillTypeLabel } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
@@ -114,7 +114,7 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
               const canEquip = meetsEquipLevel(c, instance.level);
               return (
                 <li key={instance.instanceId} className={isEquippedWeapon || isEquippedShield ? 'inventory-item-equipped' : ''}>
-                  <span>{template.name} Lv.{instance.level} <em>({template.kind}{template.kind === 'staff' && instance.element ? `/${instance.element}` : ''})</em></span>
+                  <span>{weaponInstanceName(instance)} Lv.{instance.level} <em>({template.kind})</em></span>
                   {template.kind === 'shield' ? (
                     isEquippedShield ? (
                       <button type="button" onClick={() => { unequipShield(c); onChange(); }}>해제</button>

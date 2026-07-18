@@ -1,5 +1,5 @@
 import type { Character } from '../game/types';
-import { getWeapon } from '../game/data/weapons';
+import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor, armorDefense } from '../game/data/armor';
 import { meetsEquipLevel } from '../game/engine/equipment';
 
@@ -48,7 +48,7 @@ export function EquipSwapMenu({
                   disabled={equipped || locked}
                   onClick={() => onSelect({ kind: 'weapon', instanceId: w.instanceId })}
                 >
-                  <span>{tpl.name} <em>({tpl.kind} · 사거리 {tpl.range})</em></span>
+                  <span>{weaponInstanceName(w)} <em>({tpl.kind} · 사거리 {tpl.range})</em></span>
                   <span className="equip-item-meta">
                     Lv.{w.level}
                     {equipped ? ' · 장착 중' : locked ? ` · 🔒 Lv.${w.level} 필요` : ''}
