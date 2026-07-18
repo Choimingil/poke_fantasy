@@ -3,9 +3,8 @@ import type { Character, GridPos } from '../game/types';
 import { GridBattle, type UnitAction } from '../game/engine/battle';
 import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/maps';
 import { prepareForBattle } from '../game/engine/characterFactory';
-import { getSkill } from '../game/data/skills';
+import { getSkill, skillTypeLabel } from '../game/data/skills';
 import { getWeapon } from '../game/data/weapons';
-import { getArmor } from '../game/data/armor';
 import { getBattleSkillIds } from '../game/data/promotions';
 import { meetsEquipLevel } from '../game/engine/equipment';
 import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, posKey, lineCrossesRock } from '../game/engine/grid';
@@ -19,6 +18,7 @@ import { BoardGrid } from './BoardGrid';
 import { InitiativeBar } from './InitiativeBar';
 import { StatusChips } from './StatusChips';
 import { InspectPanel } from './InspectPanel';
+import { EquipSwapMenu } from './EquipSwapMenu';
 
 const AI_DELAY_MS = 500;
 
@@ -37,6 +37,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [pendingMoveTile, setPendingMoveTile] = useState<GridPos | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [pendingSwapTo, setPendingSwapTo] = useState<SwapCandidate | null>(null);
+  const [swapMenuOpen, setSwapMenuOpen] = useState(false);
   const [inspectId, setInspectId] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const aiBusyRef = useRef(false);
@@ -123,6 +124,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     setPendingMoveTile(null);
     setSelectedSkillId(null);
     setPendingSwapTo(null);
+    setSwapMenuOpen(false);
     setInspectId(null);
   };
 
@@ -153,10 +155,9 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     forceRerender();
   };
 
-  // 확인/대기 버튼: 스킬은 즉시 발동되므로 여기서는 무기교체 → 이동 → 대기(턴 종료)만 처리.
+  // 확인/대기 버튼: 스킬·장비교체는 각자 즉시/모달로 처리되므로 여기서는 이동 → 대기(턴 종료)만 처리.
   const submitAction = () => {
-    if (pendingSwapTo) executeAction({ swap: pendingSwapTo });
-    else executeAction({});
+    executeAction({});
   };
 
   if (!isPlayerTurn || !currentUnit) {
@@ -238,31 +239,22 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     }
   }
 
-  // 스킬은 즉시 발동하므로 확인 버튼은 무기교체/이동 확정용. 둘 다 없으면 '대기'(턴 종료).
-  const canConfirm = !!pendingSwapTo || !!pendingMoveTile;
+  // 스킬은 즉시 발동, 장비교체는 모달로 처리하므로 확인 버튼은 이동 확정용. 없으면 '대기'(턴 종료).
+  const canConfirm = !!pendingMoveTile;
 
-  // 무기/방어구 교체 후보(방패·현재 장착 중인 것·착용 레벨 미달 제외). 버튼 클릭 시 순환 선택.
-  const swapCandidates: SwapCandidate[] = [
-    ...currentUnit.inventory
-      .filter((w) => getWeapon(w.templateId).kind !== 'shield' && w.instanceId !== currentUnit.equippedWeaponId && meetsEquipLevel(currentUnit, w.level))
-      .map((w): SwapCandidate => ({ kind: 'weapon', instanceId: w.instanceId })),
-    ...currentUnit.armor
-      .filter((a) => a.instanceId !== currentUnit.equippedArmorId && meetsEquipLevel(currentUnit, a.level))
-      .map((a): SwapCandidate => ({ kind: 'armor', instanceId: a.instanceId })),
-  ];
-  const sameCandidate = (a: SwapCandidate, b: SwapCandidate) => a.kind === b.kind && a.instanceId === b.instanceId;
-  const cycleSwap = () => {
-    if (swapCandidates.length === 0) return;
-    setPendingMoveTile(null);
-    setSelectedSkillId(null);
-    const idx = pendingSwapTo ? swapCandidates.findIndex((c) => sameCandidate(c, pendingSwapTo)) : -1;
-    setPendingSwapTo(idx + 1 >= swapCandidates.length ? null : swapCandidates[idx + 1]);
-  };
-  const swapLabel = pendingSwapTo
-    ? `⇄ ${pendingSwapTo.kind === 'weapon'
-        ? getWeapon(currentUnit.inventory.find((w) => w.instanceId === pendingSwapTo.instanceId)!.templateId).name
-        : getArmor(currentUnit.armor.find((a) => a.instanceId === pendingSwapTo.instanceId)!.templateId).name}`
-    : '⇄ 장비교체';
+  // 장비교체 가능 여부(무기 방패 제외 + 방어구 중 착용 레벨 충족 & 미장착이 하나라도 있으면 활성).
+  const hasSwapTarget =
+    currentUnit.inventory.some((w) => getWeapon(w.templateId).kind !== 'shield' && w.instanceId !== currentUnit.equippedWeaponId && meetsEquipLevel(currentUnit, w.level)) ||
+    currentUnit.armor.some((a) => a.instanceId !== currentUnit.equippedArmorId && meetsEquipLevel(currentUnit, a.level));
+
+  // 이동력이 1 미만이면 2턴에 1칸만 이동 가능 — 이번 턴 이동 가능 여부를 안내한다.
+  const rawMoveValue = effectiveMove(currentUnit, battle.map, battle.weather);
+  const subOneMove = rawMoveValue < 1;
+  const moveWarning = subOneMove
+    ? (budget === 0
+        ? '이동력이 1 미만이라 이번 턴에는 이동할 수 없습니다. (2턴에 1칸)'
+        : '이동력이 1 미만 — 이번 턴은 1칸만 이동할 수 있습니다. (2턴에 1칸)')
+    : null;
 
   return (
     <div className="app-shell battle-screen">
@@ -311,6 +303,15 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           }}
         />
         {inspectUnit && <InspectPanel unit={inspectUnit} onClose={() => setInspectId(null)} />}
+        {swapMenuOpen && (
+          <EquipSwapMenu
+            unit={currentUnit}
+            selected={pendingSwapTo}
+            onSelect={(c) => setPendingSwapTo(c)}
+            onConfirm={() => { if (pendingSwapTo) executeAction({ swap: pendingSwapTo }); setSwapMenuOpen(false); }}
+            onClose={() => { setSwapMenuOpen(false); setPendingSwapTo(null); }}
+          />
+        )}
       </div>
 
       {/* 맵 하단 행동 일자바 (2배 두께) */}
@@ -322,6 +323,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           <StatusChips effects={currentUnit.statusEffects} />
         </div>
         <p className="action-bar-log-line">{battle.log[battle.log.length - 1]}</p>
+        {moveWarning && <p className="action-bar-warning">{moveWarning}</p>}
         <div className="action-bar-row">
           <div className="skill-grid">
             {usableSkillIds.map((id) => {
@@ -343,14 +345,15 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
                     }
                   }}
                 >
-                  {skill.name} ({uses})
+                  <span className="skill-btn-name">{skill.name}</span>
+                  <span className="skill-btn-meta"><span className={`skill-type type-${skillTypeLabel(skill)}`}>{skillTypeLabel(skill)}</span> · {uses}</span>
                 </button>
               );
             })}
           </div>
           <div className="action-side">
-            <button type="button" className="swap-button" disabled={swapCandidates.length === 0} onClick={cycleSwap}>
-              {swapLabel}
+            <button type="button" className="swap-button" disabled={!hasSwapTarget} onClick={() => { setPendingMoveTile(null); setSelectedSkillId(null); setPendingSwapTo(null); setSwapMenuOpen(true); }}>
+              ⇄ 장비교체
             </button>
             <div className="confirm-buttons">
               <button type="button" onClick={resetPending}>취소</button>

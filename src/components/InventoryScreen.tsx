@@ -3,7 +3,7 @@ import type { StatKey } from '../game/types';
 import { ROSTER, getRosterCharacter } from '../game/data/roster';
 import { getWeapon } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
-import { getSkill } from '../game/data/skills';
+import { getSkill, skillTypeLabel } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
 import { equipArmor, equipShield, equipWeapon, unequipArmor, unequipShield } from '../game/engine/inventory';
 import { carryCapacityKg, meetsEquipLevel, totalEquipmentWeightKg } from '../game/engine/equipment';
@@ -161,9 +161,11 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
                 <li key={id} className={on ? 'skill-selected' : ''}>
                   <label>
                     <input type="checkbox" checked={on} disabled={full} onChange={() => toggleSkill(id)} />
-                    <span className="skill-name">{skill.name}</span>
+                    <span className="skill-name">
+                      {skill.name} <span className={`skill-type type-${skillTypeLabel(skill)}`}>{skillTypeLabel(skill)}</span>
+                    </span>
                     <span className="skill-meta">
-                      {skill.category === 'attack' ? `위력 ${skill.power}%` : skill.category} · 명중 {skill.accuracy}
+                      {skill.power > 0 ? `위력 ${skill.power}%` : skill.category} · 명중 {skill.accuracy}
                       {skill.maxUses !== undefined ? ` · ${skill.maxUses}회` : ' · ∞'}
                     </span>
                   </label>

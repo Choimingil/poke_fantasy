@@ -79,3 +79,16 @@ export function getSkill(id: string): Skill {
   if (!skill) throw new Error(`Unknown skill: ${id}`);
   return skill;
 }
+
+export type SkillTypeLabel = '물리' | '마법' | '변화';
+
+/**
+ * 기술 타입: 물리(근력 주스탯) / 마법(지력 주스탯) / 변화(위력 없음·부가효과).
+ * - 주술 + 지팡이·마법서 전용 기술 = 마법
+ * - 그 외 위력이 있는 기술 = 물리
+ * - 그 외 위력이 없는 기술 = 변화
+ */
+export function skillTypeLabel(skill: Skill): SkillTypeLabel {
+  if (skill.id === 'incantation' || skill.weaponKind === 'staff' || skill.weaponKind === 'tome') return '마법';
+  return skill.power > 0 ? '물리' : '변화';
+}

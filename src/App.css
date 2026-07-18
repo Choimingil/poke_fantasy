@@ -735,11 +735,117 @@ button:disabled {
   max-width: 460px;
 }
 .skill-grid button {
-  padding: 8px 10px;
+  padding: 6px 8px;
   font-size: 0.9em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  overflow: hidden;
+}
+.skill-btn-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+}
+.skill-btn-meta {
+  font-size: 0.75em;
+  opacity: 0.9;
+}
+
+/* 기술 타입 배지: 물리(주황)/마법(파랑)/변화(회색) */
+.skill-type {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.72em;
+  font-weight: bold;
+  vertical-align: middle;
+}
+.type-물리 { background: #7a3c1e; color: #ffd9c2; }
+.type-마법 { background: #274a86; color: #cfe0ff; }
+.type-변화 { background: #4a4a55; color: #dfe1ea; }
+
+/* 이동 불가 안내(이동력 1 미만) */
+.action-bar-warning {
+  margin: 2px 0 0;
+  font-size: 0.82em;
+  color: #ffcf8f;
+}
+
+/* 전투 중 장비 교체 창(맵 좌측 상단 오버레이) */
+.equip-menu {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 40;
+  width: min(320px, 80%);
+  max-height: 86%;
+  overflow-y: auto;
+  background: rgba(20, 22, 34, 0.97);
+  color: #f4f6ee;
+  border: 1px solid #3a3f52;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.equip-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.equip-menu-section {
+  margin: 10px 0 4px;
+  font-size: 0.8em;
+  color: #a9b0c2;
+}
+.equip-menu-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.equip-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: #2b2f3d;
+  border: 1px solid #3a3f52;
+  border-radius: 8px;
+  font-size: 0.85em;
+  text-align: left;
+}
+.equip-item em {
+  color: #a9b0c2;
+  font-style: normal;
+  font-size: 0.85em;
+}
+.equip-item-meta {
+  color: #cfd3e0;
+  font-size: 0.82em;
+  white-space: nowrap;
+}
+.equip-item-selected {
+  border-color: #ffd34d;
+  box-shadow: 0 0 0 2px rgba(255, 211, 77, 0.4);
+}
+.equip-item:disabled {
+  opacity: 0.55;
+}
+.equip-menu-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.equip-menu-actions button {
+  flex: 1;
+  padding: 9px 8px;
 }
 
 /* 우측 컨트롤: 위=무기교체, 아래=취소·확인 */
