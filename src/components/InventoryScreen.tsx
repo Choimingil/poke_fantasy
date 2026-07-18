@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { StatKey } from '../game/types';
 import { ROSTER, getRosterCharacter } from '../game/data/roster';
-import { getWeapon, weaponInstanceName } from '../game/data/weapons';
+import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, weaponPower } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getSkill, skillTypeLabel } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
@@ -112,9 +112,18 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
               const isEquippedWeapon = instance.instanceId === c.equippedWeaponId;
               const isEquippedShield = instance.instanceId === c.equippedShieldId;
               const canEquip = meetsEquipLevel(c, instance.level);
+              const eligibleTwoHanded = canWieldTwoHanded(template.kind);
+              const twoHandedActive = isEquippedWeapon && eligibleTwoHanded && !c.equippedShieldId;
+              const shownPower = Math.floor(weaponPower(instance.level, template.kind) * (twoHandedActive ? TWO_HANDED_POWER_MULT : 1));
               return (
                 <li key={instance.instanceId} className={isEquippedWeapon || isEquippedShield ? 'inventory-item-equipped' : ''}>
-                  <span>{weaponInstanceName(instance)} Lv.{instance.level} <em>({template.kind})</em></span>
+                  <span>
+                    {weaponInstanceName(instance)} Lv.{instance.level}{' '}
+                    <em>({template.kind}{template.kind !== 'shield' ? `, 공격력 ${shownPower}` : ''})</em>
+                    {eligibleTwoHanded && (
+                      <span className="two-handed-badge">{twoHandedActive ? '양손 ×1.3 적용' : '양손 시 ×1.3'}</span>
+                    )}
+                  </span>
                   {template.kind === 'shield' ? (
                     isEquippedShield ? (
                       <button type="button" onClick={() => { unequipShield(c); onChange(); }}>해제</button>

@@ -1,5 +1,5 @@
 import type { Character } from '../game/types';
-import { getWeapon, weaponInstanceName } from '../game/data/weapons';
+import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, weaponPower } from '../game/data/weapons';
 import { getArmor, armorDefense } from '../game/data/armor';
 import { meetsEquipLevel } from '../game/engine/equipment';
 
@@ -40,6 +40,9 @@ export function EquipSwapMenu({
             const equipped = w.instanceId === unit.equippedWeaponId;
             const locked = !equipped && !meetsEquipLevel(unit, w.level);
             const on = isSelected('weapon', w.instanceId);
+            const eligibleTwoHanded = canWieldTwoHanded(tpl.kind);
+            const twoHandedActive = equipped && eligibleTwoHanded && !unit.equippedShieldId;
+            const shownPower = Math.floor(weaponPower(w.level, tpl.kind) * (twoHandedActive ? TWO_HANDED_POWER_MULT : 1));
             return (
               <li key={w.instanceId}>
                 <button
@@ -48,7 +51,12 @@ export function EquipSwapMenu({
                   disabled={equipped || locked}
                   onClick={() => onSelect({ kind: 'weapon', instanceId: w.instanceId })}
                 >
-                  <span>{weaponInstanceName(w)} <em>({tpl.kind} · 사거리 {tpl.range})</em></span>
+                  <span>
+                    {weaponInstanceName(w)} <em>({tpl.kind} · 공격력 {shownPower} · 사거리 {tpl.range})</em>
+                    {eligibleTwoHanded && (
+                      <span className="two-handed-badge">{twoHandedActive ? '양손 ×1.3 적용' : '양손 시 ×1.3'}</span>
+                    )}
+                  </span>
                   <span className="equip-item-meta">
                     Lv.{w.level}
                     {equipped ? ' · 장착 중' : locked ? ` · 🔒 Lv.${w.level} 필요` : ''}

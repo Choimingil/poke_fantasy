@@ -1,6 +1,6 @@
 import type { BattleMap, Character, GridPos, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
-import { getWeapon, isRangedOrMagicKind, weaponPower } from '../data/weapons';
+import { effectiveWeaponPower, getWeapon, isRangedOrMagicKind } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
 import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
@@ -296,7 +296,7 @@ export class GridBattle {
       actor: unit,
       skill,
       weapon,
-      weaponPower: weaponPower(weaponInstance.level, weapon.kind),
+      weaponPower: effectiveWeaponPower(weaponInstance.level, weapon.kind, !!unit.equippedShieldId),
       targetId: target?.id,
       targetPos,
       negatedShields: this.negatedShields,

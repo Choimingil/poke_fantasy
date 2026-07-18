@@ -783,6 +783,19 @@ button:disabled {
 .type-마법 { background: #274a86; color: #cfe0ff; }
 .type-변화 { background: #4a4a55; color: #dfe1ea; }
 
+/* 양손 파지(방패 없이 두 손) 공격력 1.3배 배지 */
+.two-handed-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.7em;
+  font-weight: bold;
+  vertical-align: middle;
+  background: #5a4a1e;
+  color: #ffe6a6;
+}
+
 /* 이동 불가 안내(이동력 1 미만) */
 .action-bar-warning {
   margin: 2px 0 0;

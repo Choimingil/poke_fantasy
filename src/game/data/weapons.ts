@@ -31,6 +31,20 @@ export function weaponPower(level: number, kind: WeaponKind): number {
   return kind === 'dagger' ? base * 0.75 : base;
 }
 
+/** 방패 없이 두 손으로 파지할 때의 무기공격력 배수. */
+export const TWO_HANDED_POWER_MULT = 1.3;
+
+/** 방패 없이 두 손으로 들 수 있는 무기인가(단검·투척무기·방패는 제외). */
+export function canWieldTwoHanded(kind: WeaponKind): boolean {
+  return kind !== 'dagger' && kind !== 'thrown' && kind !== 'shield';
+}
+
+/** 실제 적용되는 무기공격력. 양손 파지(방패/보조 무기 미장착 + 양손 가능 무기)면 1.3배. */
+export function effectiveWeaponPower(level: number, kind: WeaponKind, hasOffhand: boolean): number {
+  const base = weaponPower(level, kind);
+  return canWieldTwoHanded(kind) && !hasOffhand ? base * TWO_HANDED_POWER_MULT : base;
+}
+
 const WEAPONS: WeaponTemplate[] = [
   // 검 (range 1)
   { id: 'sword_short', name: '환도', kind: 'sword', range: 1, baseSpeed: 20, handedness: 'oneHanded' },
