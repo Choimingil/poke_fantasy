@@ -1,5 +1,5 @@
-import type { Character, WeaponKind } from '../types';
-import { getWeapon } from '../data/weapons';
+import type { ArmorKind, Character } from '../types';
+import { getArmor } from '../data/armor';
 
 export type Weather = 'clear' | 'rain' | 'snow' | 'heatwave';
 
@@ -12,19 +12,18 @@ export const WEATHER_LABEL: Record<Weather, string> = {
   heatwave: '폭염',
 };
 
-// 중장(근접) 계열은 비에, 경장(원거리·마법) 계열은 눈에 이동 페널티를 받는다.
-const HEAVY_KINDS: WeaponKind[] = ['sword', 'blunt', 'spear', 'shield'];
+// 중장(중갑·판금)은 비에, 경장(천·가죽, 미착용 포함)은 눈에 이동 페널티를 받는다.
+const HEAVY_ARMOR: ArmorKind[] = ['mail', 'plate'];
 
-function equippedKind(c: Character): WeaponKind | undefined {
-  const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
-  return inst ? getWeapon(inst.templateId).kind : undefined;
+function equippedArmorKind(c: Character): ArmorKind | undefined {
+  if (!c.equippedArmorId) return undefined;
+  const inst = c.armor.find((a) => a.instanceId === c.equippedArmorId);
+  return inst ? getArmor(inst.templateId).kind : undefined;
 }
 
-/** 날씨에 따른 rawMove 보정치. 비=중장 -0.5, 눈=경장 -0.5. */
+/** 날씨에 따른 rawMove 보정치. 착용한 방어구 종류로 판정: 비=중장 -0.5, 눈=경장 -0.5. */
 export function weatherMoveModifier(c: Character, weather: Weather): number {
-  const kind = equippedKind(c);
-  if (!kind) return 0;
-  const heavy = HEAVY_KINDS.includes(kind);
+  const heavy = HEAVY_ARMOR.includes(equippedArmorKind(c) ?? 'cloth'); // 미착용은 경장 취급
   if (weather === 'rain' && heavy) return -0.5;
   if (weather === 'snow' && !heavy) return -0.5;
   return 0;
