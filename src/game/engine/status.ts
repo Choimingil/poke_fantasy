@@ -51,6 +51,14 @@ export function tickStatusAtTurnStart(character: Character): StatusTickResult {
       }
       return true;
     });
+  // 약화(지팡이) 속성 변경도 시간이 지나면 해제된다.
+  if (character.elementOverrideTurns !== undefined) {
+    character.elementOverrideTurns -= 1;
+    if (character.elementOverrideTurns <= 0) {
+      character.elementOverride = undefined;
+      character.elementOverrideTurns = undefined;
+    }
+  }
   return { dotDamage: 0, expired };
 }
 
@@ -60,6 +68,19 @@ export function applyBleedDamage(character: Character): number {
   const damage = Math.max(1, Math.round(character.baseStats.hp / 8));
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
+}
+
+/** 맹독(투척 기술)도 출혈과 동일하게 매 턴 최대체력 1/8을 잃는다. 출혈과 별개로 중복 적용된다. */
+export function applyPoisonDamage(character: Character): number {
+  if (!character.statusEffects.some((s) => s.type === 'poisoned')) return 0;
+  const damage = Math.max(1, Math.round(character.baseStats.hp / 8));
+  character.currentHp = Math.max(0, character.currentHp - damage);
+  return damage;
+}
+
+/** 봉쇄(창 봉쇄) 상태이면 이번 턴 이동할 수 없다. */
+export function isImmobilized(character: Character): boolean {
+  return character.statusEffects.some((s) => s.type === 'immobilized');
 }
 
 /** 기절(둔기 부가효과) 상태이면 이번 턴에 30% 확률로 행동이 불가능한지 판정한다. */

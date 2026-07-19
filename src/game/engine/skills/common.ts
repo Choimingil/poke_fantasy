@@ -12,17 +12,17 @@ function findTarget(ctx: SkillContext) {
 
 const powerStrike: SkillHandler = (ctx) => {
   const target = findTarget(ctx);
-  if (target) dealDamageTo(ctx, target);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
 const fist: SkillHandler = (ctx) => {
   const target = findTarget(ctx);
-  if (target) dealDamageTo(ctx, target);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
 const incantation: SkillHandler = (ctx) => {
   const target = findTarget(ctx);
-  if (target) dealDamageTo(ctx, target);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
 const protect: SkillHandler = (ctx) => {
@@ -71,6 +71,10 @@ const forestVision: SkillHandler = (ctx) => {
   applyStatusTo(ctx.actor, 'forestVision', { turnsRemaining: 3 }, ctx.log, '투시');
 };
 
+const quickSwap: SkillHandler = (ctx) => {
+  applyStatusTo(ctx.actor, 'quickSwap', { turnsRemaining: 3 }, ctx.log, '빠른교체');
+};
+
 export const COMMON_HANDLERS: Record<string, SkillHandler> = {
   fist,
   power_strike: powerStrike,
@@ -87,4 +91,5 @@ export const COMMON_HANDLERS: Record<string, SkillHandler> = {
   climb,
   far_sight: farSight,
   forest_vision: forestVision,
+  quick_swap: quickSwap,
 };

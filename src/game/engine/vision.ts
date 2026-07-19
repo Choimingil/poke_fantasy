@@ -1,4 +1,6 @@
 import type { BattleMap, Character, GridPos } from '../types';
+import { getWeapon } from '../data/weapons';
+import { hasTier5Passive } from '../data/promotions';
 import { manhattan } from './grid';
 import type { TimeOfDay } from './daytime';
 import type { Weather } from './weather';
@@ -34,10 +36,14 @@ function nearBurningTile(map: BattleMap, pos: GridPos): boolean {
 export function effectiveSight(c: Character, map: BattleMap, cond?: SightConditions): number {
   let base = c.sight + (c.statusEffects.some((s) => s.type === 'farSight') ? 1 : 0);
   if (map.tiles[c.position.y][c.position.x].terrain === 'hill') base += 1; // 언덕 위 시야 +1
+  const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
+  if (inst && getWeapon(inst.templateId).kind === 'bow' && hasTier5Passive(c, 'bow', 'hawkeye')) base += 1; // 매의눈
   return Math.max(1, base + envSightModifier(cond)); // 시야는 최소 1
 }
 
 export function isVisibleTo(viewer: Character, target: Character, map: BattleMap, cond?: SightConditions): boolean {
+  // 은신 중인 대상은 보이지 않는다
+  if (target.statusEffects.some((s) => s.type === 'hidden')) return false;
   // 불타는 타일 주변은 시야와 무관하게 확인 가능
   if (nearBurningTile(map, target.position)) return true;
   const dist = manhattan(viewer.position, target.position);

@@ -1,9 +1,12 @@
-import { SKILLS } from '../../data/skills';
+import type { StatusEffectType } from '../../types';
 import { aliveUnitsInRadius } from './helpers';
 import type { SkillHandler } from './context';
 
+const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'stunned', 'immobilized'];
+
+// 치료: 주변 1칸 아군 체력을 시전자 지력의 1/5만큼 회복.
 const tomeHeal: SkillHandler = (ctx) => {
-  const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 2);
+  const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 1);
   const healAmount = Math.max(1, Math.round(ctx.actor.baseStats.magicAttack / 5));
   for (const ally of allies) {
     const before = ally.currentHp;
@@ -12,31 +15,32 @@ const tomeHeal: SkillHandler = (ctx) => {
   }
 };
 
-const tomeRefresh: SkillHandler = (ctx) => {
-  const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 2).filter((u) => u.id !== ctx.actor.id);
+// 정화: 주변 1칸 아군에게 적용된 디버프를 각각 1개씩 제거.
+const tomePurify: SkillHandler = (ctx) => {
+  const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 1);
   for (const ally of allies) {
-    let refreshed = false;
-    for (const [skillId, remaining] of Object.entries(ally.skillUses)) {
-      const skillDef = SKILLS.find((s) => s.id === skillId);
-      if (skillDef?.maxUses !== undefined && remaining < skillDef.maxUses) {
-        ally.skillUses[skillId] = remaining + 1;
-        refreshed = true;
-      }
+    const idx = ally.statusEffects.findIndex((s) => DEBUFF_TYPES.includes(s.type));
+    if (idx >= 0) {
+      const removed = ally.statusEffects.splice(idx, 1)[0];
+      ctx.log.push(`${ally.name}의 ${removed.type} 디버프가 정화되었다.`);
+    } else if (ally.elementOverride) {
+      ally.elementOverride = undefined;
+      ctx.log.push(`${ally.name}의 약화가 정화되었다.`);
     }
-    if (refreshed) ctx.log.push(`${ally.name}의 기술 사용 횟수가 회복되었다.`);
   }
 };
 
+// 재행동: 주변 1칸 아군 1명을 재행동시킴(자신·이미 재행동한 아군 제외).
 const tomeRecast: SkillHandler = (ctx) => {
-  const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 2).filter((u) => u.id !== ctx.actor.id);
-  for (const ally of allies) {
-    ctx.onBonusAction(ally.id);
-    ctx.log.push(`${ally.name}가 재행동한다!`);
-  }
+  const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 1);
+  const target = allies.find((a) => a.id !== ctx.actor.id && !a.bonusActionPending);
+  if (!target) return;
+  ctx.onBonusAction(target.id);
+  ctx.log.push(`${target.name}가 재행동한다!`);
 };
 
 export const TOME_HANDLERS: Record<string, SkillHandler> = {
   tome_heal: tomeHeal,
-  tome_refresh: tomeRefresh,
+  tome_purify: tomePurify,
   tome_recast: tomeRecast,
 };

@@ -1,7 +1,6 @@
 import type { Character, Element, Skill, WeaponTemplate } from '../types';
 import { TIER1_BONUS, hasTier5Passive, masteryTier } from '../data/promotions';
 import { elementMultiplier } from './elements';
-import { getStatus } from './status';
 
 export interface DamageContext {
   attacker: Character;
@@ -18,8 +17,16 @@ export interface DamageContext {
   defenderDefense?: number;
   /** 창 관통: 방어력을 완전히 무시 */
   ignoreDefense?: boolean;
+  /** 철갑사격: 방어력의 일부(0~1)만 무시 */
+  ignoreDefenseRatio?: number;
   /** 석궁/급소 등 무기 부가효과로 인한 크리티컬 */
   weaponCrit?: boolean;
+  /** 검 질주: 일반 이동 2칸 이상 후 공격(위력 스킬 ×1.2) */
+  movedAtLeast2?: boolean;
+  /** 창 전열 유지: 인접 아군이 있음(위력 스킬 ×1.2) */
+  adjacentAlly?: boolean;
+  /** 쇄상 등 최종 위력 배수(디버프 대상 1.3배). */
+  finalPowerMult?: number;
   rng?: () => number;
 }
 
@@ -33,18 +40,15 @@ function masteryRandomFloor(tier: number): number {
   return 0.5 + (tier / 6) * 0.5;
 }
 
-function bluntUnityMultiplier(defender: Character): number {
-  const status = getStatus(defender, 'bluntUnity');
-  return status ? (status.magnitude ?? 1.2) : 1;
-}
-
 export function calculateDamage(ctx: DamageContext): DamageResult {
   const rng = ctx.rng ?? Math.random;
-  const { attacker, defender, skill, weapon } = ctx;
+  const { attacker, skill, weapon } = ctx;
 
+  // 마법부여: 주스탯 = 높은 능력치 + 낮은 능력치의 50%
   const stat =
     ctx.statSource === 'combined'
-      ? attacker.baseStats.attack + attacker.baseStats.magicAttack
+      ? Math.max(attacker.baseStats.attack, attacker.baseStats.magicAttack) +
+        0.5 * Math.min(attacker.baseStats.attack, attacker.baseStats.magicAttack)
       : ctx.statSource === 'magic'
         ? attacker.baseStats.magicAttack
         : attacker.baseStats.attack;
@@ -55,23 +59,27 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
   const masteryRoll = floor + rng() * (1 - floor);
   const skillPower = skill.power / 100;
 
-  // 최종공격력 = (주스탯/6 + 무기 공격력) x 숙련도~100% 랜덤값 x 기술위력 (+ 티어1 위력 보너스)
-  const attackPower = (stat / 6 + ctx.weaponPower) * (1 + tier1PowerBonus / 100) * masteryRoll * skillPower;
-
-  const defense = ctx.ignoreDefense ? 0 : (ctx.defenderDefense ?? 0) * bluntUnityMultiplier(defender);
-
-  let elementMult = elementMultiplier(ctx.attackerElement, ctx.defenderElement);
-  if (elementMult === 0.7 && hasTier5Passive(defender, 'staff', 'elementalWard')) elementMult = 1;
-
-  const critStatus = getStatus(attacker, 'bowCrit');
-  const crit = !!ctx.weaponCrit || (!!critStatus && rng() < (critStatus.magnitude ?? 0.3));
-
-  let lowHpBonus = 1;
-  if (weapon.kind === 'sword' && hasTier5Passive(attacker, 'sword', 'lowHpPowerSurge') && attacker.currentHp / attacker.baseStats.hp <= 0.3) {
-    lowHpBonus = 1.2;
+  // 위력 있는 공격 기술에만 붙는 패시브/조건부 위력 배수(0% 보조기술엔 미적용).
+  let passivePowerMult = 1;
+  if (skill.power > 0) {
+    if (weapon.kind === 'sword' && ctx.movedAtLeast2 && hasTier5Passive(attacker, 'sword', 'sprint')) passivePowerMult *= 1.2;
+    if (weapon.kind === 'spear' && ctx.adjacentAlly && hasTier5Passive(attacker, 'spear', 'frontline')) passivePowerMult *= 1.2;
+    passivePowerMult *= ctx.finalPowerMult ?? 1;
   }
 
+  // 최종공격력 = (주스탯/6 + 무기 공격력) x 숙련도~100% 랜덤값 x 기술위력 (+ 티어1 위력 보너스)
+  const attackPower = (stat / 6 + ctx.weaponPower) * (1 + tier1PowerBonus / 100) * masteryRoll * skillPower * passivePowerMult;
+
+  const rawDefense = ctx.defenderDefense ?? 0;
+  const defense = ctx.ignoreDefense ? 0 : rawDefense * (1 - (ctx.ignoreDefenseRatio ?? 0));
+
+  let elementMult = elementMultiplier(ctx.attackerElement, ctx.defenderElement);
+  // 지팡이 증폭: 약점(1.3배)을 1.6배로 강화
+  if (elementMult === 1.3 && hasTier5Passive(attacker, 'staff', 'amplify')) elementMult = 1.6;
+
+  const crit = !!ctx.weaponCrit;
+
   // 최종데미지 = 최종공격력 - 방어력
-  const total = (attackPower - defense) * elementMult * (crit ? 1.5 : 1) * lowHpBonus;
+  const total = (attackPower - defense) * elementMult * (crit ? 1.5 : 1);
   return { damage: Math.max(1, Math.round(total)), crit };
 }

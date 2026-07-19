@@ -3,7 +3,7 @@ import type { StatKey } from '../game/types';
 import { ROSTER, getRosterCharacter } from '../game/data/roster';
 import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, weaponPower } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
-import { getSkill, skillTypeLabel } from '../game/data/skills';
+import { getSkill, skillDisplayName, skillTypeLabel } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
 import { equipArmor, equipShield, equipWeapon, unequipArmor, unequipShield } from '../game/engine/inventory';
 import { carryCapacityKg, meetsEquipLevel, totalEquipmentWeightKg } from '../game/engine/equipment';
@@ -24,7 +24,8 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
   const [selectedId, setSelectedId] = useState(ROSTER[0].id);
   const c = getRosterCharacter(selectedId);
 
-  const equippedWeapon = getWeapon(c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!.templateId);
+  const equippedInstance = c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!;
+  const equippedWeapon = getWeapon(equippedInstance.templateId);
   const weaponPool = getUsableSkillIds(c, equippedWeapon.kind);
 
   const setWeapon = (instanceId: string) => {
@@ -171,7 +172,7 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
                   <label>
                     <input type="checkbox" checked={on} disabled={full} onChange={() => toggleSkill(id)} />
                     <span className="skill-name">
-                      {skill.name} <span className={`skill-type type-${skillTypeLabel(skill)}`}>{skillTypeLabel(skill)}</span>
+                      {skillDisplayName(skill, equippedInstance.element)} <span className={`skill-type type-${skillTypeLabel(skill)}`}>{skillTypeLabel(skill)}</span>
                     </span>
                     <span className="skill-meta">
                       {skill.power > 0 ? `위력 ${skill.power}%` : skill.category} · 명중 {skill.accuracy}

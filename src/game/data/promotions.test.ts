@@ -17,29 +17,29 @@ describe('getUsableSkillIds', () => {
     const c = makeSwordCharacter();
     const ids = getUsableSkillIds(c, 'sword');
     expect(ids).toContain('power_strike');
-    expect(ids).not.toContain('sword_draw');
+    expect(ids).not.toContain('sword_crescent');
   });
 
   it('티어 2에서 초급 전용기술이 해금된다', () => {
     const c = makeSwordCharacter();
     c.weaponMastery.sword = 2;
     const ids = getUsableSkillIds(c, 'sword');
-    expect(ids).toContain('sword_draw');
-    expect(ids).not.toContain('sword_awaken');
-    expect(ids).not.toContain('sword_flurry');
+    expect(ids).toContain('sword_crescent');
+    expect(ids).not.toContain('sword_flash');
+    expect(ids).not.toContain('sword_blink');
   });
 
   it('티어 4에서는 초급+중급이, 티어 6에서는 전부 해금된다', () => {
     const c = makeSwordCharacter();
     c.weaponMastery.sword = 4;
     let ids = getUsableSkillIds(c, 'sword');
-    expect(ids).toContain('sword_draw');
-    expect(ids).toContain('sword_awaken');
-    expect(ids).not.toContain('sword_flurry');
+    expect(ids).toContain('sword_crescent');
+    expect(ids).toContain('sword_flash');
+    expect(ids).not.toContain('sword_blink');
 
     c.weaponMastery.sword = 6;
     ids = getUsableSkillIds(c, 'sword');
-    expect(ids).toContain('sword_flurry');
+    expect(ids).toContain('sword_blink');
   });
 });
 

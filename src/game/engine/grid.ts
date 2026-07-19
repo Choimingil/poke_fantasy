@@ -1,5 +1,13 @@
 import type { BattleMap, Character, GridPos, TerrainType } from '../types';
+import { getWeapon } from '../data/weapons';
+import { hasTier5Passive } from '../data/promotions';
 import { weatherMoveModifier, type Weather } from './weather';
+
+/** 단검 적응력: 자연지형 이동감소 무시 + 바위 통과(정지 불가). */
+function hasAdaptation(c: Character): boolean {
+  const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
+  return !!inst && getWeapon(inst.templateId).kind === 'dagger' && hasTier5Passive(c, 'dagger', 'adaptation');
+}
 
 export function chebyshev(a: GridPos, b: GridPos): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -38,16 +46,18 @@ export function baseMoveFromEndurance(endurance: number): { shown: number; exces
  */
 export function effectiveMove(c: Character, map: BattleMap, weather: Weather = 'clear'): number {
   const raw = c.baseStats.endurance / END_PER_MOVE + 1;
+  const adapt = hasAdaptation(c);
   let bonus = 0;
   let penalty = 0;
   const legHit = c.statusEffects.find((s) => s.type === 'legHit');
   if (legHit) penalty += Math.abs(legHit.magnitude ?? 0.5);
   const onWater = map.tiles[c.position.y][c.position.x].terrain === 'water';
   if (onWater) {
-    penalty += WATER_MOVE_PENALTY; // 물 위에서는 이동력 감소
+    if (!adapt) penalty += WATER_MOVE_PENALTY; // 물 위에서는 이동력 감소(적응력은 무시)
     if (c.statusEffects.some((s) => s.type === 'riverSurge')) bonus += 1; // 급류로 상쇄
   }
-  penalty += Math.abs(Math.min(0, weatherMoveModifier(c, weather)));
+  // 눈(자연지형)으로 인한 이동감소는 적응력이 무시한다. 비(방어구 무게)는 그대로 적용.
+  if (!(adapt && weather === 'snow')) penalty += Math.abs(Math.min(0, weatherMoveModifier(c, weather)));
 
   const total = raw + bonus;
   const excess = Math.max(0, total - MOVE_CAP); // 5를 넘는 초과분(a)
@@ -78,7 +88,7 @@ const NEIGHBOR_OFFSETS: GridPos[] = [
 export function canEnterTile(map: BattleMap, mover: Character, pos: GridPos, allUnits: Character[]): boolean {
   if (!inBounds(map, pos)) return false;
   const terrain = tileAt(map, pos).terrain;
-  if (terrain === 'rock') return false; // 바위는 장애물(진입 불가)
+  if (terrain === 'rock' && !hasAdaptation(mover)) return false; // 바위는 장애물(적응력은 통과 가능)
   const occupied = allUnits.some((u) => u.id !== mover.id && u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
   if (occupied) return false;
   return true;
@@ -111,7 +121,8 @@ export function computeReachableTiles(map: BattleMap, mover: Character, allUnits
     .map((key) => {
       const [x, y] = key.split(',').map(Number);
       return { x, y };
-    });
+    })
+    .filter((p) => tileAt(map, p).terrain !== 'rock'); // 바위에는 정지할 수 없다(적응력도 통과만)
 }
 
 /** from→to 직선 경로(양 끝 제외)에 바위 타일이 있으면 true. 원거리·마법 공격이 바위를 넘지 못하게 하는 데 쓴다. */

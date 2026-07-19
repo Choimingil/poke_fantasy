@@ -66,18 +66,21 @@ export function pickAiAction(
 
   const attackSkills = usableIds
     .map((id) => getSkill(id))
-    .filter((s) => s.category === 'attack' && (s.targetMode === 'enemy' || s.targetMode === 'anyInSight'));
+    .filter((s) => s.category === 'attack' && (s.targetMode === 'enemy' || s.targetMode === 'anyInSight' || s.targetMode === 'tile'));
   // 사용 가능한 공격 스킬이 없으면 기본 공격(주먹)으로 대체.
   if (attackSkills.length === 0) attackSkills.push(getSkill(FALLBACK_SKILL_ID));
 
+  const onHill = map.tiles[bestTile.y][bestTile.x].terrain === 'hill';
   for (const skill of attackSkills) {
     const ignoresRange = skill.ignoresRange || skill.targetMode === 'anyInSight';
-    const range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
+    let range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
+    if (skill.hillRangeBonus && onHill) range += skill.hillRangeBonus; // 천궁
     const blockedByRock = isRangedOrMagicKind(weapon.kind) && lineCrossesRock(map, bestTile, target.position);
     const inRange = (ignoresRange ? isVisibleTo(unit, target, map, cond) : manhattan(bestTile, target.position) <= range) && !blockedByRock;
     if (inRange) {
       action.skillId = skill.id;
-      action.targetId = target.id;
+      if (skill.targetMode === 'tile') action.targetPos = target.position;
+      else action.targetId = target.id;
       break;
     }
   }

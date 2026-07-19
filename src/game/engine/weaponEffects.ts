@@ -19,9 +19,9 @@ function resolveWeaponEffect(attacker: Character, weaponKind: WeaponKind): ProcE
   return FIXED_KIND_EFFECT[weaponKind] ?? null;
 }
 
-/** 공격자의 장착 무기 종류에 해당하는 부가효과가 이번 공격에 발동하는지(30% 확률) 판정한다. */
-export function rollWeaponProc(attacker: Character, weaponKind: WeaponKind, rng: () => number): ProcEffect | null {
+/** 공격자의 장착 무기 종류에 해당하는 부가효과가 이번 공격에 발동하는지(기본 30% × chanceMult) 판정한다. */
+export function rollWeaponProc(attacker: Character, weaponKind: WeaponKind, rng: () => number, chanceMult = 1): ProcEffect | null {
   const effect = resolveWeaponEffect(attacker, weaponKind);
   if (!effect) return null;
-  return rng() < WEAPON_PROC_CHANCE ? effect : null;
+  return rng() < WEAPON_PROC_CHANCE * chanceMult ? effect : null;
 }

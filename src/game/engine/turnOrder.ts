@@ -1,13 +1,10 @@
 import type { Character } from '../types';
 import { getWeapon } from '../data/weapons';
-import { getStatus } from './status';
 
 export function effectiveSpeed(c: Character): number {
   const instance = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
   const weapon = getWeapon(instance!.templateId);
-  const awaken = getStatus(c, 'swordAwaken');
-  const speedMult = awaken ? (awaken.magnitude ?? 1.2) : 1;
-  return c.baseStats.speed * speedMult + weapon.baseSpeed;
+  return c.baseStats.speed + weapon.baseSpeed;
 }
 
 /**

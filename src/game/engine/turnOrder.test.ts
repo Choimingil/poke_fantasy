@@ -29,14 +29,6 @@ describe('determineTurnOrder', () => {
     expect(order.map((u) => u.id)).toEqual(['alive']);
   });
 
-  it('각성 상태(swordAwaken)는 스피드를 magnitude배로 증가시킨다', () => {
-    const awakened = makeUnit('awakened', 10);
-    awakened.statusEffects.push({ type: 'swordAwaken', turnsRemaining: 3, magnitude: 1.2 });
-    const other = makeUnit('other', 11); // 10*1.2 + weaponSpeed(20) = 32 > 11+20=31
-    const order = determineTurnOrder([other, awakened]);
-    expect(order[0].id).toBe('awakened');
-  });
-
   it('완전 동률이면 rng로 순서를 정한다(결정적)', () => {
     const a = makeUnit('a', 10);
     const b = makeUnit('b', 10);

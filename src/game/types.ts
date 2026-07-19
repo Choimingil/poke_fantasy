@@ -42,18 +42,21 @@ export interface GridPos {
 
 export type StatusEffectType =
   | 'guarding' // 보호: redirects attacks on nearby allies to self
+  | 'guardWide' // 광역보호: 경호 반경 2·라운드당 2회로 강화
   | 'taunted' // 도발: AI must target sourceId
   | 'elementEnchant' // 마법부여: attacks carry `element`, stat source becomes combined
   | 'riverSurge' // 급류: +1 move while standing on water
   | 'climbing' // 등반: hill tiles become enterable
   | 'farSight' // 천리안: +1 sight
   | 'forestVision' // 투시: can see into forest beyond concealment radius
-  | 'swordAwaken' // 각성: speed x1.2, no-stack
-  | 'bluntUnity' // 단결: defense x1.2, no-stack
-  | 'bowCrit' // 급소(스킬): chance to crit
-  | 'focused' // 집중 (reserved for a later weapon phase)
+  | 'focused' // 집중 (활 부가효과: 회피 무시)
   | 'legHit' // 다리 타격: move penalty
+  | 'immobilized' // 봉쇄: 이동 불가
+  | 'hidden' // 은신: 투명(공격·범위피격 시 해제)
+  | 'shadowClone' // 분신: 직접공격 후 0.3배 추가타
+  | 'quickSwap' // 빠른교체: 무기 교체가 턴을 소모하지 않음
   | 'bleeding' // 출혈(검 부가효과): 매 턴 최대체력 1/8 피해
+  | 'poisoned' // 맹독(투척 기술): 출혈과 동일 지속피해, 출혈과 중복
   | 'stunned'; // 기절(둔기 부가효과): 매 턴 30% 확률로 행동 불가
 
 export interface ActiveStatus {
@@ -66,7 +69,7 @@ export interface ActiveStatus {
 
 type DamageType = 'physical' | 'magic' | 'none';
 type SkillCategory = 'attack' | 'buff' | 'debuff' | 'heal' | 'utility' | 'guard';
-type TargetMode = 'enemy' | 'ally' | 'self' | 'tile' | 'selfRadius' | 'anyInSight';
+type TargetMode = 'enemy' | 'ally' | 'self' | 'tile' | 'selfRadius' | 'anyInSight' | 'allyAdjacentTile';
 
 export interface Skill {
   id: string;
@@ -76,15 +79,22 @@ export interface Skill {
   category: SkillCategory;
   damageType: DamageType;
   power: number; // percent, e.g. 100 = 100%
-  hits?: number; // multi-hit skills (고속연타 = 3, 연사-style)
+  hits?: number; // multi-hit skills
   accuracy: number; // 0-100
   element?: Element | 'weaponElement'; // 'weaponElement' resolves to the caster's staff element at cast time
   maxUses?: number; // absent = unlimited per battle
   range?: 'weapon' | number; // 'weapon' = equipped weapon's range
-  areaRadius?: number; // Chebyshev AoE radius from the target point (or self for selfRadius)
+  areaRadius?: number; // Manhattan AoE radius from the target point (or self for selfRadius)
   targetMode: TargetMode;
   ignoresRange?: boolean; // 저격
   requiresTerrain?: TerrainType; // 낙석 requires the caster to stand on 'hill'
+  fixedDamagePercent?: number; // 치명사격: 대상 최대체력 비율 고정피해(방어·속성·급소·위력 무시)
+  followupMoveRadius?: number; // 도약사격(1)·기습(2): 공격 후 추가 이동 반경
+  coneArc?: boolean; // 반월참: 대상 방향 전방 부채꼴(대상 + 인접 측면)
+  knockback?: boolean; // 일섬·밀쳐내기: 공격 방향으로 대상 1칸 밀어냄
+  pierceBehind?: boolean; // 꿰뚫기·관통사격: 대상 1칸 뒤 적에게 0.5배
+  ignoreDefenseRatio?: number; // 철갑사격: 대상 방어력의 일부 무시(0.2)
+  hillRangeBonus?: number; // 천궁: 언덕에서 사용 시 사거리 증가
 }
 
 export interface WeaponTemplate {
@@ -150,8 +160,10 @@ export interface Character {
   equippedArmorId?: string;
 
   statusEffects: ActiveStatus[];
-  elementOverride?: Element; // set by 지팡이 약화; persists until overwritten again
+  elementOverride?: Element; // set by 지팡이 약화
+  elementOverrideTurns?: number; // 약화 남은 턴(0이 되면 elementOverride 해제)
   skillUses: Record<string, number>; // battle-scoped remaining uses, keyed by skill id
   bonusActionPending?: boolean; // 재행동: acts again at the end of the round regardless of speed
+  movedStepsThisTurn?: number; // 이번 턴 일반 이동 칸 수(질주·정조준 판정용, 턴마다 리셋)
   skillLoadout: string[]; // 전투에 들고 갈 스킬(최대 4). 비어있으면 사용 가능한 스킬 앞 4개를 자동 사용.
 }

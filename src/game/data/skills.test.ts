@@ -9,17 +9,18 @@ describe('skillTypeLabel', () => {
     expect(skillTypeLabel(getSkill('tome_heal'))).toBe('마법');
   });
 
-  it('그 외 위력이 있는 기술은 물리', () => {
+  it('그 외 위력이 있는 기술은 물리(고정 피해 포함)', () => {
     expect(skillTypeLabel(getSkill('power_strike'))).toBe('물리');
     expect(skillTypeLabel(getSkill('fist'))).toBe('물리');
     expect(skillTypeLabel(getSkill('rockfall'))).toBe('물리');
-    expect(skillTypeLabel(getSkill('bow_flame'))).toBe('물리');
+    expect(skillTypeLabel(getSkill('bow_skyshot'))).toBe('물리');
+    expect(skillTypeLabel(getSkill('xbow_lethal'))).toBe('물리'); // 고정 피해도 물리
   });
 
   it('그 외 위력이 없는 기술은 변화', () => {
     expect(skillTypeLabel(getSkill('protect'))).toBe('변화');
     expect(skillTypeLabel(getSkill('taunt'))).toBe('변화');
     expect(skillTypeLabel(getSkill('far_sight'))).toBe('변화');
-    expect(skillTypeLabel(getSkill('sword_awaken'))).toBe('변화');
+    expect(skillTypeLabel(getSkill('spear_lock'))).toBe('변화');
   });
 });

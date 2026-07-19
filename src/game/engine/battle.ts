@@ -1,12 +1,12 @@
-import type { BattleMap, Character, GridPos, WeaponKind } from '../types';
+import type { BattleMap, Character, GridPos, StatusEffectType, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
 import { effectiveWeaponPower, getWeapon, isRangedOrMagicKind } from '../data/weapons';
-import { FALLBACK_SKILL_ID, getUsableSkillIds, masteryTier, TIER1_BONUS } from '../data/promotions';
+import { FALLBACK_SKILL_ID, getUsableSkillIds, hasTier5Passive, masteryTier, TIER1_BONUS } from '../data/promotions';
 import { resolveSkill } from './skills';
 import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
 import { isVisibleTo, isVisibleToTeam } from './vision';
 import { determineTurnOrder } from './turnOrder';
-import { applyBleedDamage, applyTileBurnDamage, rollStunned, tickMapStatus, tickStatusAtTurnStart } from './status';
+import { applyBleedDamage, applyPoisonDamage, applyTileBurnDamage, isImmobilized, rollStunned, tickMapStatus, tickStatusAtTurnStart } from './status';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
 import { weatherTurnStartDamage, type Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -20,6 +20,8 @@ export interface UnitAction {
   targetPos?: GridPos;
   switchWeaponTo?: string;
   switchArmorTo?: string;
+  /** 도약사격·기습 후속 이동 목적지(플레이어 지정). 없으면 AI가 자동 결정. */
+  followupMoveTo?: GridPos;
 }
 
 export interface KillEvent {
@@ -28,6 +30,15 @@ export interface KillEvent {
 }
 
 const GUARD_DEFAULT_RADIUS = 1;
+
+/** 지속 중에는 재사용할 수 없는 자가 버프(스킬 id → 상태 타입). */
+const NO_RECAST_WHILE_ACTIVE: Record<string, StatusEffectType> = {
+  protect: 'guarding',
+  river_surge: 'riverSurge',
+  climb: 'climbing',
+  far_sight: 'farSight',
+  forest_vision: 'forestVision',
+};
 
 export class GridBattle {
   map: BattleMap;
@@ -43,7 +54,14 @@ export class GridBattle {
   levelUpEvents: LevelUpResult[] = [];
   finished = false;
   winner: Side | null = null;
-  negatedShields = new Set<string>();
+  /** 무력화된 방패 instanceId → 남은 라운드 수(돌진: 3턴). */
+  negatedShields = new Map<string, number>();
+  /** 라운드당 반응(경호·협공) 발동 횟수. beginRound에서 리셋. */
+  private reactionCountThisRound = new Map<string, number>();
+  /** 이번 라운드에 이미 재행동한 유닛(중복 재행동 방지). */
+  private recastedThisRound = new Set<string>();
+  /** 공격 후 추가 이동/행동 대기 상태(UI/AI가 해소). */
+  pendingFollowup: { unitId: string; kind: 'move' | 'action'; radius: number } | null = null;
   /** 각 진영이 마지막으로 확인한 상대 유닛 위치(현재 시야 밖이어도 유지) — 시야 밖일 때 이동 판단에 사용 */
   knownEnemyPositions: Record<Side, Record<string, GridPos>> = { A: {}, B: {} };
   private rng: () => number;
@@ -75,7 +93,22 @@ export class GridBattle {
   private beginRound(): void {
     this.round += 1;
     this.log.push(`--- ${this.round}라운드 ---`);
+    this.reactionCountThisRound.clear();
+    this.recastedThisRound.clear();
+    // 방패 무력화(돌진) 라운드 만료 처리
+    for (const [id, remaining] of [...this.negatedShields.entries()]) {
+      if (remaining <= 1) this.negatedShields.delete(id);
+      else this.negatedShields.set(id, remaining - 1);
+    }
     this.roundQueue = determineTurnOrder(this.allUnits(), this.rng);
+  }
+
+  /** 경호(둔기)·협공(투척) 반응을 라운드당 한도 내에서 소모. 성공 시 true. */
+  private consumeReaction(unitId: string, limit = 1): boolean {
+    const used = this.reactionCountThisRound.get(unitId) ?? 0;
+    if (used >= limit) return false;
+    this.reactionCountThisRound.set(unitId, used + 1);
+    return true;
   }
 
   currentUnit(): Character | null {
@@ -116,16 +149,24 @@ export class GridBattle {
     }
   }
 
-  /** 보호 상태의 아군이 근처에 있으면 공격을 그 아군에게 대신 돌린다 */
+  /** 보호(스킬)·광역보호·경호(패시브) 순으로 공격을 아군에게 대신 돌린다 */
   private resolveGuardRedirect(target: Character): Character {
-    const guardian = this.ownTeamOf(target).find(
-      (ally) =>
-        ally.id !== target.id &&
-        ally.currentHp > 0 &&
-        ally.statusEffects.some((s) => s.type === 'guarding') &&
-        manhattan(ally.position, target.position) <= (ally.statusEffects.find((s) => s.type === 'guarding')?.magnitude ?? GUARD_DEFAULT_RADIUS),
+    const allies = this.ownTeamOf(target).filter((a) => a.id !== target.id && a.currentHp > 0);
+    // 1) 활성 보호(보호 스킬): 지속 중 무제한 리다이렉트
+    const active = allies.find((a) => {
+      const g = a.statusEffects.find((s) => s.type === 'guarding');
+      return g && manhattan(a.position, target.position) <= (g.magnitude ?? GUARD_DEFAULT_RADIUS);
+    });
+    if (active) return active;
+    // 2) 광역보호 상태: 반경 2, 라운드당 2회
+    const wide = allies.find((a) => a.statusEffects.some((s) => s.type === 'guardWide') && manhattan(a.position, target.position) <= 2);
+    if (wide && this.consumeReaction(wide.id, 2)) return wide;
+    // 3) 경호 패시브(둔기 T5): 인접 1칸, 라운드당 1회
+    const passive = allies.find(
+      (a) => this.weaponKindOf(a) === 'blunt' && hasTier5Passive(a, 'blunt', 'guardian') && manhattan(a.position, target.position) <= 1,
     );
-    return guardian ?? target;
+    if (passive && this.consumeReaction(passive.id, 1)) return passive;
+    return target;
   }
 
   takeTurn(action: UnitAction): void {
@@ -142,9 +183,11 @@ export class GridBattle {
 
     let stunnedThisTurn = false;
     if (fromRoundQueue) {
-      // 출혈 피해와 기절 판정은 상태 지속시간이 깎이기 전(적용된 턴부터 정확히 2턴)에 확인한다.
+      // 출혈·맹독 피해와 기절 판정은 상태 지속시간이 깎이기 전(적용된 턴부터 정확히 2턴)에 확인한다.
       const bleed = applyBleedDamage(unit);
       if (bleed > 0) this.log.push(`${unit.name}는 출혈로 ${bleed}의 데미지를 입었다.`);
+      const poison = applyPoisonDamage(unit);
+      if (poison > 0) this.log.push(`${unit.name}는 맹독으로 ${poison}의 데미지를 입었다.`);
       stunnedThisTurn = rollStunned(unit, this.rng);
 
       const tick = tickStatusAtTurnStart(unit);
@@ -166,12 +209,16 @@ export class GridBattle {
       }
     }
 
+    unit.movedStepsThisTurn = 0;
+    let swappedThisTurn = false;
     if (action.switchWeaponTo) {
       const newInstance = unit.inventory.find((w) => w.instanceId === action.switchWeaponTo);
       if (newInstance) {
         const kind = getWeapon(newInstance.templateId).kind;
-        const free = masteryTier(unit, kind) >= 3;
+        // 티어3 무료교체 또는 빠른교체 상태면 턴을 소모하지 않는다.
+        const free = masteryTier(unit, kind) >= 3 || unit.statusEffects.some((s) => s.type === 'quickSwap');
         unit.equippedWeaponId = newInstance.instanceId;
+        swappedThisTurn = true;
         this.log.push(`${unit.name}가 무기를 교체했다.`);
         if (!free) {
           this.afterAction();
@@ -189,10 +236,13 @@ export class GridBattle {
     }
 
     let steppedOntoHill = false;
-    if (action.moveTo) {
+    if (action.moveTo && isImmobilized(unit)) {
+      this.log.push(`${unit.name}는 봉쇄되어 이동할 수 없다.`);
+    } else if (action.moveTo) {
       const budget = moveStepsForRound(effectiveMove(unit, this.map, this.weather), this.round);
       const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget);
       if (reachable.some((p) => p.x === action.moveTo!.x && p.y === action.moveTo!.y)) {
+        unit.movedStepsThisTurn = manhattan(unit.position, action.moveTo);
         unit.position = action.moveTo;
         this.log.push(`${unit.name}가 이동했다.`);
         // 언덕에 올라선 턴에는 (등반 상태가 아니면) 추가 행동을 할 수 없다.
@@ -206,7 +256,7 @@ export class GridBattle {
       if (steppedOntoHill) {
         this.log.push(`${unit.name}는 언덕에 올라 이번 턴에는 행동할 수 없다.`);
       } else {
-        this.resolveSkillAction(unit, action);
+        this.resolveSkillAction(unit, action, swappedThisTurn);
       }
     }
 
@@ -214,7 +264,14 @@ export class GridBattle {
     this.afterAction();
   }
 
-  private resolveSkillAction(unit: Character, action: UnitAction): void {
+  /** 스킬 사거리(천궁 언덕 보너스 포함). */
+  private skillRangeFor(unit: Character, skill: ReturnType<typeof getSkill>, weaponRange: number): number {
+    let range = skill.range === 'weapon' ? weaponRange : (skill.range ?? weaponRange);
+    if (skill.hillRangeBonus && this.map.tiles[unit.position.y][unit.position.x].terrain === 'hill') range += skill.hillRangeBonus;
+    return range;
+  }
+
+  private resolveSkillAction(unit: Character, action: UnitAction, swappedThisTurn = false): void {
     const skill = getSkill(action.skillId!);
     const weaponKind = this.weaponKindOf(unit);
     const weaponInstance = unit.inventory.find((w) => w.instanceId === unit.equippedWeaponId)!;
@@ -224,8 +281,19 @@ export class GridBattle {
       this.log.push(`${unit.name}는 ${skill.name}을(를) 사용할 수 없다.`);
       return;
     }
+    // 빠른교체로 이번 턴 무기를 바꿨으면 전용(무기) 기술은 사용할 수 없다.
+    if (swappedThisTurn && skill.weaponKind !== 'common') {
+      this.log.push(`${unit.name}는 교체한 턴에는 전용 기술을 사용할 수 없다.`);
+      return;
+    }
     if (skill.maxUses !== undefined && (unit.skillUses[skill.id] ?? 0) <= 0) {
       this.log.push(`${unit.name}는 ${skill.name}의 사용 횟수를 모두 소진했다.`);
+      return;
+    }
+    // 보호·급류·등반·천리안·투시는 효과 지속 중에는 재사용할 수 없다.
+    const activeStatus = NO_RECAST_WHILE_ACTIVE[skill.id];
+    if (activeStatus && unit.statusEffects.some((s) => s.type === activeStatus)) {
+      this.log.push(`${unit.name}의 ${skill.name}이(가) 이미 지속 중이다.`);
       return;
     }
     if (skill.requiresTerrain && this.map.tiles[unit.position.y][unit.position.x].terrain !== skill.requiresTerrain) {
@@ -247,29 +315,43 @@ export class GridBattle {
         this.log.push(`${unit.name}의 ${skill.name}이(가) 대상을 찾지 못했다.`);
         return;
       }
+      // 은신 중인 상대는 겨냥할 수 없다.
+      if (target.statusEffects.some((s) => s.type === 'hidden')) {
+        this.log.push(`${unit.name}의 ${skill.name}이(가) 대상을 찾지 못했다.`);
+        return;
+      }
+      const range = this.skillRangeFor(unit, skill, weapon.range);
       if (skill.ignoresRange || skill.targetMode === 'anyInSight') {
         if (!isVisibleTo(unit, target, this.map, { time: this.time, weather: this.weather })) {
           this.log.push(`${unit.name}의 시야 밖이라 ${skill.name}을(를) 사용할 수 없다.`);
           return;
         }
-      } else {
-        const range = skill.range === 'weapon' ? weapon.range : (skill.range ?? weapon.range);
-        if (manhattan(unit.position, target.position) > range) {
+        if (skill.range !== undefined && manhattan(unit.position, target.position) > range) {
           this.log.push(`${unit.name}의 ${skill.name}이(가) 사거리 밖이다.`);
           return;
         }
+      } else if (manhattan(unit.position, target.position) > range) {
+        this.log.push(`${unit.name}의 ${skill.name}이(가) 사거리 밖이다.`);
+        return;
       }
       target = this.resolveGuardRedirect(target);
       targetPos = target.position;
     } else if (skill.targetMode === 'tile') {
       if (action.targetPos) targetPos = action.targetPos;
       if (skill.range) {
-        const range = skill.range === 'weapon' ? weapon.range : skill.range;
+        const range = this.skillRangeFor(unit, skill, weapon.range);
         if (manhattan(unit.position, targetPos) > range) {
           this.log.push(`${unit.name}의 ${skill.name}이(가) 사거리 밖이다.`);
           return;
         }
       }
+    } else if (skill.targetMode === 'allyAdjacentTile') {
+      // 축지: 목적지는 시야 내 아군 인접 1칸의 빈 타일이어야 한다.
+      if (!action.targetPos || !this.isValidWarpTile(unit, action.targetPos)) {
+        this.log.push(`${unit.name}의 ${skill.name} 목적지가 올바르지 않다.`);
+        return;
+      }
+      targetPos = action.targetPos;
     }
 
     // 원거리·마법 공격은 바위 타일을 넘어서 타격할 수 없다.
@@ -279,7 +361,19 @@ export class GridBattle {
     }
 
     if (skill.maxUses !== undefined) {
-      unit.skillUses[skill.id] = (unit.skillUses[skill.id] ?? skill.maxUses) - 1;
+      // 명상(마법서 T5): 사용횟수 2회 이상 마법서 기술은 20% 확률로 사용횟수를 소모하지 않음(재행동 제외, 라운드당 1회).
+      const meditation =
+        weaponKind === 'tome' &&
+        skill.id !== 'tome_recast' &&
+        skill.maxUses >= 2 &&
+        hasTier5Passive(unit, 'tome', 'meditation') &&
+        this.rng() < 0.2 &&
+        this.consumeReaction(unit.id);
+      if (meditation) {
+        this.log.push(`${unit.name}의 명상으로 ${skill.name}의 사용 횟수가 소모되지 않았다.`);
+      } else {
+        unit.skillUses[skill.id] = (unit.skillUses[skill.id] ?? skill.maxUses) - 1;
+      }
     }
 
     const tier1Acc = masteryTier(unit, weaponKind) >= 1 ? (TIER1_BONUS[weaponKind]?.accuracyBonus ?? 0) : 0;
@@ -305,12 +399,73 @@ export class GridBattle {
       onKill: (killerId, victimId) => this.grantKillXp(killerId, victimId),
       onBonusAction: (unitId) => {
         const bonusUnit = this.allUnits().find((u) => u.id === unitId);
-        if (bonusUnit && bonusUnit.currentHp > 0 && !this.bonusQueue.includes(bonusUnit)) {
-          bonusUnit.bonusActionPending = true;
-          this.bonusQueue.push(bonusUnit);
+        if (bonusUnit) this.grantBonusAction(bonusUnit);
+      },
+      consumeReaction: (unitId) => this.consumeReaction(unitId),
+      requestFollowup: (unitId, opts) => {
+        const u = this.allUnits().find((x) => x.id === unitId);
+        if (!u || u.currentHp <= 0) return;
+        if (opts.kind === 'move') {
+          const radius = opts.radius ?? 1;
+          const dest = action.followupMoveTo;
+          if (dest && this.isReachableWithin(u, dest, radius)) {
+            u.position = { x: dest.x, y: dest.y };
+            this.log.push(`${u.name}가 추가로 이동했다.`);
+          } else if (!dest) {
+            // 지정된 목적지가 없으면(AI) 가장 가까운 적 쪽으로 자동 이동.
+            this.autoFollowupMove(u, radius);
+          }
+        } else {
+          this.grantBonusAction(u);
         }
       },
     });
+  }
+
+  private grantBonusAction(unit: Character): void {
+    if (unit.currentHp <= 0 || this.recastedThisRound.has(unit.id) || this.bonusQueue.includes(unit)) return;
+    this.recastedThisRound.add(unit.id);
+    unit.bonusActionPending = true;
+    this.bonusQueue.push(unit);
+  }
+
+  /** 도약사격·기습 후속 이동: 반경 내에서 가장 가까운 적 쪽으로 자동 이동(AI·기본 처리). */
+  private autoFollowupMove(unit: Character, radius: number): void {
+    const enemies = this.otherTeamOf(unit).filter((u) => u.currentHp > 0);
+    if (enemies.length === 0) return;
+    const reachable = computeReachableTiles(this.map, unit, this.allUnits(), radius);
+    if (reachable.length === 0) return;
+    const nearest = (pos: GridPos) => Math.min(...enemies.map((e) => manhattan(pos, e.position)));
+    let best = unit.position;
+    let bestDist = nearest(unit.position);
+    for (const p of reachable) {
+      const d = nearest(p);
+      if (d < bestDist) {
+        bestDist = d;
+        best = p;
+      }
+    }
+    if (best !== unit.position) {
+      unit.position = best;
+      this.log.push(`${unit.name}가 추가로 이동했다.`);
+    }
+  }
+
+  /** 후속 이동 목적지가 반경 내 실제로 도달 가능한 빈 타일인지 검증. */
+  private isReachableWithin(unit: Character, dest: GridPos, radius: number): boolean {
+    if (dest.x === unit.position.x && dest.y === unit.position.y) return true; // 제자리(이동 생략)
+    return computeReachableTiles(this.map, unit, this.allUnits(), radius).some((p) => p.x === dest.x && p.y === dest.y);
+  }
+
+  /** 축지 목적지 검증: 시야 내 다른 아군의 인접 1칸이며 비어 있는(바위·점유 아님) 타일 */
+  private isValidWarpTile(unit: Character, pos: GridPos): boolean {
+    if (pos.x < 0 || pos.y < 0 || pos.x >= this.map.width || pos.y >= this.map.height) return false;
+    if (this.map.tiles[pos.y][pos.x].terrain === 'rock') return false;
+    if (this.allUnits().some((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y)) return false;
+    const cond = { time: this.time, weather: this.weather };
+    return this.ownTeamOf(unit).some(
+      (a) => a.id !== unit.id && a.currentHp > 0 && isVisibleTo(unit, a, this.map, cond) && manhattan(a.position, pos) === 1,
+    );
   }
 
   private afterAction(): void {

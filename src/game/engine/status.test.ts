@@ -27,10 +27,10 @@ describe('applyStatus', () => {
 
   it('noStack 옵션이 있으면 이미 걸려있는 상태를 갱신하지 않는다', () => {
     const c = makeCharacter();
-    applyStatus(c, 'swordAwaken', { turnsRemaining: 1, magnitude: 1.2, noStack: true });
-    const secondApplied = applyStatus(c, 'swordAwaken', { turnsRemaining: 3, magnitude: 1.2, noStack: true });
+    applyStatus(c, 'legHit', { turnsRemaining: 1, magnitude: -1, noStack: true });
+    const secondApplied = applyStatus(c, 'legHit', { turnsRemaining: 3, magnitude: -1, noStack: true });
     expect(secondApplied).toBe(false);
-    expect(getStatus(c, 'swordAwaken')?.turnsRemaining).toBe(1);
+    expect(getStatus(c, 'legHit')?.turnsRemaining).toBe(1);
   });
 });
 

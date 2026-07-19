@@ -1,6 +1,7 @@
-import type { Character, Element, GridPos, StatusEffectType } from '../../types';
-import { getWeapon } from '../../data/weapons';
+import type { Character, Element, GridPos, Skill, StatusEffectType } from '../../types';
+import { getWeapon, effectiveWeaponPower } from '../../data/weapons';
 import { armorDefense, getArmor } from '../../data/armor';
+import { hasTier5Passive } from '../../data/promotions';
 import { manhattan } from '../grid';
 import { calculateDamage } from '../damage';
 import { applyStatus, type StatusApplyOptions } from '../status';
@@ -12,21 +13,26 @@ export function aliveUnitsInRadius(units: Character[], origin: GridPos, radius: 
   return units.filter((u) => u.currentHp > 0 && manhattan(u.position, origin) <= radius);
 }
 
-/** 마법부여가 활성화되어 있으면 그 속성이 우선, 아니면 스킬의 element 필드(weaponElement/고정 속성)를 해석 */
-function resolveAttackerElement(ctx: SkillContext): Element {
-  const enchant = ctx.actor.statusEffects.find((s) => s.type === 'elementEnchant');
+function attackerElementFor(attacker: Character, skill: Skill): Element {
+  const enchant = attacker.statusEffects.find((s) => s.type === 'elementEnchant');
   if (enchant?.element) return enchant.element;
-  if (ctx.skill.element === 'weaponElement') {
-    const instance = ctx.actor.inventory.find((w) => w.instanceId === ctx.actor.equippedWeaponId);
+  if (skill.element === 'weaponElement') {
+    const instance = attacker.inventory.find((w) => w.instanceId === attacker.equippedWeaponId);
     return instance?.element ?? 'none';
   }
-  if (ctx.skill.element) return ctx.skill.element;
+  if (skill.element) return skill.element;
   return 'none';
 }
 
-function resolveStatSource(ctx: SkillContext): 'attack' | 'magic' | 'combined' {
-  if (ctx.actor.statusEffects.some((s) => s.type === 'elementEnchant')) return 'combined';
-  return ctx.skill.damageType === 'magic' ? 'magic' : 'attack';
+function statSourceFor(attacker: Character, skill: Skill): 'attack' | 'magic' | 'combined' {
+  if (attacker.statusEffects.some((s) => s.type === 'elementEnchant')) return 'combined';
+  return skill.damageType === 'magic' ? 'magic' : 'attack';
+}
+
+function weaponCtxOf(attacker: Character): { kind: ReturnType<typeof getWeapon>['kind']; range: number; power: number } {
+  const instance = attacker.inventory.find((w) => w.instanceId === attacker.equippedWeaponId)!;
+  const weapon = getWeapon(instance.templateId);
+  return { kind: weapon.kind, range: weapon.range, power: effectiveWeaponPower(instance.level, weapon.kind, !!attacker.equippedShieldId) };
 }
 
 function shieldDefenseBonus(ctx: SkillContext, defender: Character): number {
@@ -58,40 +64,82 @@ export function applyDebuffTo(ctx: SkillContext, target: Character, type: Status
   applyStatusTo(target, type, options, ctx.log, label);
 }
 
-/** 단일 대상에게 데미지를 적용하고 로그를 남기며, 처치 시 onKill을 호출한다. 실제로 가한 데미지를 반환(회피 시 0). */
-export function dealDamageTo(ctx: SkillContext, defender: Character, powerOverride?: number): number {
-  const skill = powerOverride !== undefined ? { ...ctx.skill, power: powerOverride } : ctx.skill;
-  const weaponKind = ctx.weapon.kind;
-  const proc = rollWeaponProc(ctx.actor, weaponKind, ctx.rng);
+export function applyStatusTo(character: Character, type: StatusEffectType, options: StatusApplyOptions, log: string[], label: string): void {
+  const applied = applyStatus(character, type, options);
+  if (applied) log.push(`${character.name}는 ${label} 상태가 되었다.`);
+}
+
+export interface DealOptions {
+  powerOverride?: number; // 위력 % 강제
+  fixedDamagePercent?: number; // 치명사격: 최대체력 비율 고정피해
+  ignoreDefenseRatio?: number; // 철갑사격: 방어력 일부 무시
+  finalPowerMult?: number; // 쇄상: 최종 위력 배수
+  suppressProc?: boolean; // 부가효과·급소 모두 생략(2번째 대상·협공 등)
+  suppressCrit?: boolean; // 급소만 생략(분신 추가타)
+  triggersReactions?: boolean; // 협공/분신 발동 여부(직접 단일 공격만 true)
+}
+
+/** 은신 상태의 공격자는 공격을 실행하면 은신이 해제된다. */
+function breakHiddenOnAttack(attacker: Character, log: string[]): void {
+  if (attacker.statusEffects.some((s) => s.type === 'hidden')) {
+    attacker.statusEffects = attacker.statusEffects.filter((s) => s.type !== 'hidden');
+    log.push(`${attacker.name}의 은신이 해제되었다.`);
+  }
+}
+
+/** 임의의 공격자가 대상에게 피해를 준다. 실제로 가한 데미지를 반환(회피 시 0). */
+function applyAttack(ctx: SkillContext, attacker: Character, defender: Character, skill: Skill, opts: DealOptions): number {
+  const wc = weaponCtxOf(attacker);
+  const fixedPct = opts.fixedDamagePercent ?? skill.fixedDamagePercent;
+  const noMove = (attacker.movedStepsThisTurn ?? 0) === 0;
+  const procChanceMult = wc.kind === 'crossbow' && noMove && hasTier5Passive(attacker, 'crossbow', 'steadyAim') ? 2 : 1;
+  const proc = opts.suppressProc ? null : rollWeaponProc(attacker, wc.kind, ctx.rng, procChanceMult);
 
   // 활의 '집중'은 회피율을 무시한다. 그 외에는 정상적으로 회피 판정을 먼저 거친다.
   if (proc !== 'focus') {
-    const evasion = evasionChance(defender, ctx.actor);
-    if (ctx.rng() < evasion) {
+    if (ctx.rng() < evasionChance(defender, attacker)) {
       ctx.log.push(`${defender.name}가 공격을 회피했다!`);
       return 0;
     }
   }
 
+  if (fixedPct !== undefined) {
+    const dmg = Math.max(1, Math.floor(defender.baseStats.hp * (fixedPct / 100)));
+    defender.currentHp = Math.max(0, defender.currentHp - dmg);
+    ctx.log.push(`${defender.name}에게 ${dmg}의 고정 피해.`);
+    if (defender.currentHp <= 0) {
+      ctx.log.push(`${defender.name}가 쓰러졌다.`);
+      ctx.onKill(attacker.id, defender.id);
+    }
+    return dmg;
+  }
+
+  const effSkill = opts.powerOverride !== undefined ? { ...skill, power: opts.powerOverride } : skill;
+  const crit = proc === 'crit' && !opts.suppressCrit;
+  const allies = ctx.actorTeam;
   const result = calculateDamage({
-    attacker: ctx.actor,
+    attacker,
     defender,
-    skill,
-    weapon: ctx.weapon,
-    weaponPower: ctx.weaponPower,
-    attackerElement: resolveAttackerElement(ctx),
+    skill: effSkill,
+    weapon: getWeapon(attacker.inventory.find((w) => w.instanceId === attacker.equippedWeaponId)!.templateId),
+    weaponPower: wc.power,
+    attackerElement: attackerElementFor(attacker, effSkill),
     defenderElement: defender.elementOverride ?? 'none',
-    statSource: resolveStatSource(ctx),
+    statSource: statSourceFor(attacker, effSkill),
     defenderDefense: shieldDefenseBonus(ctx, defender) + armorDefenseBonus(defender),
     ignoreDefense: proc === 'pierce',
-    weaponCrit: proc === 'crit',
+    ignoreDefenseRatio: opts.ignoreDefenseRatio ?? skill.ignoreDefenseRatio,
+    weaponCrit: crit,
+    movedAtLeast2: (attacker.movedStepsThisTurn ?? 0) >= 2,
+    adjacentAlly: allies.some((a) => a.id !== attacker.id && a.currentHp > 0 && manhattan(a.position, attacker.position) === 1),
+    finalPowerMult: opts.finalPowerMult,
     rng: ctx.rng,
   });
   defender.currentHp = Math.max(0, defender.currentHp - result.damage);
   ctx.log.push(`${defender.name}에게 ${result.damage}의 데미지${result.crit ? ' (급소)' : ''}${proc === 'pierce' ? ' (관통)' : ''}.`);
   if (defender.currentHp <= 0) {
     ctx.log.push(`${defender.name}가 쓰러졌다.`);
-    ctx.onKill(ctx.actor.id, defender.id);
+    ctx.onKill(attacker.id, defender.id);
     return result.damage;
   }
 
@@ -101,7 +149,67 @@ export function dealDamageTo(ctx: SkillContext, defender: Character, powerOverri
   return result.damage;
 }
 
-export function applyStatusTo(character: Character, type: StatusEffectType, options: StatusApplyOptions, log: string[], label: string): void {
-  const applied = applyStatus(character, type, options);
-  if (applied) log.push(`${character.name}는 ${label} 상태가 되었다.`);
+/** 협공(투척 패시브)·분신(투척 기술) 추가타. 원래 시전자의 직접 단일 공격에서만 호출된다. */
+function processReactions(ctx: SkillContext, defender: Character): void {
+  if (defender.currentHp <= 0) return;
+  // 분신: 시전자가 직접공격 후 0.3배 추가타 1회(급소 없음, 추가 반응 미발동)
+  if (ctx.actor.statusEffects.some((s) => s.type === 'shadowClone')) {
+    ctx.log.push(`${ctx.actor.name}의 분신이 추가타를 날린다.`);
+    applyAttack(ctx, ctx.actor, defender, ctx.skill, { powerOverride: ctx.skill.power * 0.3, suppressCrit: true, triggersReactions: false });
+    if (defender.currentHp <= 0) return;
+  }
+  // 협공: 사거리 내 아군(투척+협공 패시브)이 대상을 0.5배로 추가공격(라운드당 1회)
+  for (const ally of ctx.actorTeam) {
+    if (ally.id === ctx.actor.id || ally.currentHp <= 0) continue;
+    const wc = weaponCtxOf(ally);
+    if (wc.kind !== 'thrown' || !hasTier5Passive(ally, 'thrown', 'pincer')) continue;
+    if (manhattan(ally.position, defender.position) > wc.range) continue;
+    if (!ctx.consumeReaction(ally.id)) continue;
+    ctx.log.push(`${ally.name}의 협공!`);
+    applyAttack(ctx, ally, defender, { ...ctx.skill, power: 50, weaponKind: 'thrown', element: undefined }, { powerOverride: 50, triggersReactions: false });
+    if (defender.currentHp <= 0) return;
+  }
+}
+
+/** 시전자가 대상에게 데미지를 적용한다(부가효과·회피·반응 포함). 실제 데미지 반환(회피 시 0). */
+export function dealDamageTo(ctx: SkillContext, defender: Character, opts: DealOptions = {}): number {
+  breakHiddenOnAttack(ctx.actor, ctx.log);
+  const dmg = applyAttack(ctx, ctx.actor, defender, ctx.skill, opts);
+  if (opts.triggersReactions) processReactions(ctx, defender);
+  return dmg;
+}
+
+// ---- 위치/지형 유틸 ----
+
+function isOccupied(ctx: SkillContext, pos: GridPos): boolean {
+  return [...ctx.actorTeam, ...ctx.enemyTeam].some((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
+}
+
+/** 유닛이 설 수 있는 빈 타일인가(경계 안, 바위 아님, 점유 안 됨) */
+export function isFreeTile(ctx: SkillContext, pos: GridPos): boolean {
+  if (pos.x < 0 || pos.y < 0 || pos.x >= ctx.map.width || pos.y >= ctx.map.height) return false;
+  if (ctx.map.tiles[pos.y][pos.x].terrain === 'rock') return false;
+  return !isOccupied(ctx, pos);
+}
+
+function stepDir(from: GridPos, to: GridPos): GridPos {
+  return { x: Math.sign(to.x - from.x), y: Math.sign(to.y - from.y) };
+}
+
+/** 공격 방향으로 대상을 1칸 밀어낸다. 밀려날 수 없으면 false. */
+export function knockbackTarget(ctx: SkillContext, target: Character): boolean {
+  const dir = stepDir(ctx.actor.position, target.position);
+  if (dir.x === 0 && dir.y === 0) return false;
+  const dest = { x: target.position.x + dir.x, y: target.position.y + dir.y };
+  if (!isFreeTile(ctx, dest)) return false;
+  target.position = dest;
+  return true;
+}
+
+/** 대상 1칸 뒤(공격 방향 연장선)에 있는 살아있는 적을 반환한다(꿰뚫기·관통사격). */
+export function enemyBehind(ctx: SkillContext, target: Character): Character | undefined {
+  const dir = stepDir(ctx.actor.position, target.position);
+  if (dir.x === 0 && dir.y === 0) return undefined;
+  const behind = { x: target.position.x + dir.x, y: target.position.y + dir.y };
+  return ctx.enemyTeam.find((u) => u.currentHp > 0 && u.position.x === behind.x && u.position.y === behind.y);
 }

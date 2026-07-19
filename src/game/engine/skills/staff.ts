@@ -3,13 +3,15 @@ import { mentalResistChance } from '../derivedStats';
 import { aliveUnitsInRadius, dealDamageTo } from './helpers';
 import type { SkillHandler } from './context';
 
+// 원소탄: 장착 지팡이 속성 단일 대상 공격.
 const staffBolt: SkillHandler = (ctx) => {
-  const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId);
-  if (target) dealDamageTo(ctx, target);
+  const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
+// 약화: 2턴 동안 대상 속성을 지팡이 속성의 약점 속성으로 변경.
 const staffWeaken: SkillHandler = (ctx) => {
-  const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId);
+  const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
   if (!target) return;
   const weaponInstance = ctx.actor.inventory.find((w) => w.instanceId === ctx.actor.equippedWeaponId);
   const staffElement = weaponInstance?.element;
@@ -19,16 +21,22 @@ const staffWeaken: SkillHandler = (ctx) => {
     return;
   }
   target.elementOverride = weaknessOf(staffElement);
-  ctx.log.push(`${target.name}의 속성이 ${target.elementOverride}(으)로 바뀌었다.`);
+  target.elementOverrideTurns = 2;
+  ctx.log.push(`${target.name}의 속성이 약화되었다.`);
 };
 
-const staffBurst: SkillHandler = (ctx) => {
-  const targets = aliveUnitsInRadius(ctx.enemyTeam, ctx.targetPos, ctx.skill.areaRadius ?? 1);
-  for (const target of targets) dealDamageTo(ctx, target);
+// 원소폭풍: 중심 대상 150%, 주변 1칸 적 100%.
+const staffMeteor: SkillHandler = (ctx) => {
+  const radius = ctx.skill.areaRadius ?? 1;
+  const targets = aliveUnitsInRadius(ctx.enemyTeam, ctx.targetPos, radius);
+  for (const target of targets) {
+    const isCenter = target.position.x === ctx.targetPos.x && target.position.y === ctx.targetPos.y;
+    dealDamageTo(ctx, target, { powerOverride: isCenter ? ctx.skill.power : 100, suppressProc: !isCenter });
+  }
 };
 
 export const STAFF_HANDLERS: Record<string, SkillHandler> = {
   staff_bolt: staffBolt,
   staff_weaken: staffWeaken,
-  staff_burst: staffBurst,
+  staff_meteor: staffMeteor,
 };

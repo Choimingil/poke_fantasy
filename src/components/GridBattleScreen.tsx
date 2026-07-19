@@ -3,7 +3,7 @@ import type { Character, GridPos } from '../game/types';
 import { GridBattle, type UnitAction } from '../game/engine/battle';
 import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/maps';
 import { prepareForBattle } from '../game/engine/characterFactory';
-import { getSkill, skillTypeLabel } from '../game/data/skills';
+import { getSkill, skillDisplayName, skillTypeLabel } from '../game/data/skills';
 import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getBattleSkillIds } from '../game/data/promotions';
 import { meetsEquipLevel } from '../game/engine/equipment';
@@ -36,6 +36,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [, setTick] = useState(0);
   const [pendingMoveTile, setPendingMoveTile] = useState<GridPos | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [pendingFollowup, setPendingFollowup] = useState<{ skillId: string; targetId: string; radius: number; origin: GridPos } | null>(null);
   const [pendingSwapTo, setPendingSwapTo] = useState<SwapCandidate | null>(null);
   const [swapMenuOpen, setSwapMenuOpen] = useState(false);
   const [inspectId, setInspectId] = useState<string | null>(null);
@@ -128,13 +129,14 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const resetPending = () => {
     setPendingMoveTile(null);
     setSelectedSkillId(null);
+    setPendingFollowup(null);
     setPendingSwapTo(null);
     setSwapMenuOpen(false);
     setInspectId(null);
   };
 
   // 실제 행동 실행: 대기 중인 이동(pendingMoveTile)과 함께 주어진 스킬/타겟(또는 무기·방어구 교체)을 즉시 실행한다.
-  const executeAction = (opts: { skillId?: string; targetId?: string; targetPos?: GridPos; swap?: SwapCandidate }) => {
+  const executeAction = (opts: { skillId?: string; targetId?: string; targetPos?: GridPos; swap?: SwapCandidate; followupMoveTo?: GridPos }) => {
     if (!currentUnit) return;
     const actorId = currentUnit.id;
     const action: UnitAction = {};
@@ -152,6 +154,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       action.skillId = opts.skillId;
       if (opts.targetId) action.targetId = opts.targetId;
       if (opts.targetPos) action.targetPos = opts.targetPos;
+      if (opts.followupMoveTo) action.followupMoveTo = opts.followupMoveTo;
     }
     const isAttack = opts.skillId ? getSkill(opts.skillId).category === 'attack' : false;
     battle.takeTurn(action);
@@ -209,7 +212,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
   const budget = moveStepsForRound(effectiveMove(currentUnit, battle.map, battle.weather), battle.round);
-  const reachable = pendingMoveTile ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
+  const reachable = pendingMoveTile || pendingFollowup ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
   const reachableTiles = new Set(reachable.map(posKey));
 
   const usableSkillIds = getBattleSkillIds(
@@ -222,29 +225,52 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   );
 
   const fromPos = pendingMoveTile ?? currentUnit.position;
+  const onHillNow = battle.map.tiles[fromPos.y][fromPos.x].terrain === 'hill';
   const rangedWeapon = isRangedOrMagicKind(weapon.kind);
   const selectedSkill = selectedSkillId ? getSkill(selectedSkillId) : null;
+  const skillRange = (s: NonNullable<typeof selectedSkill>) => {
+    let r = s.range === 'weapon' ? weapon.range : (s.range ?? weapon.range);
+    if (s.hillRangeBonus && onHillNow) r += s.hillRangeBonus; // 천궁
+    return r;
+  };
   const targetableUnitIds = new Set<string>();
   const targetableTiles = new Set<string>();
-  if (selectedSkill) {
+  const allUnits = [...battle.teamA, ...battle.teamB];
+  const occupied = (x: number, y: number) => allUnits.some((u) => u.currentHp > 0 && u.position.x === x && u.position.y === y);
+  if (selectedSkill && !pendingFollowup) {
     if (selectedSkill.targetMode === 'enemy' || selectedSkill.targetMode === 'anyInSight') {
+      const range = skillRange(selectedSkill);
       for (const enemy of battle.teamB.filter((u) => u.currentHp > 0)) {
         const rockBlocked = rangedWeapon && lineCrossesRock(battle.map, fromPos, enemy.position);
-        const inRange = (selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
-          ? isVisibleTo(currentUnit, enemy, battle.map, sightCond)
-          : manhattan(fromPos, enemy.position) <= (selectedSkill.range === 'weapon' ? weapon.range : (selectedSkill.range ?? weapon.range)) &&
-            isVisibleTo(currentUnit, enemy, battle.map, sightCond)) &&
-          !rockBlocked;
-        if (inRange) targetableUnitIds.add(enemy.id);
+        const inSightOrRange = selectedSkill.ignoresRange || selectedSkill.targetMode === 'anyInSight'
+          ? isVisibleTo(currentUnit, enemy, battle.map, sightCond) && (selectedSkill.range === undefined || manhattan(fromPos, enemy.position) <= range)
+          : manhattan(fromPos, enemy.position) <= range && isVisibleTo(currentUnit, enemy, battle.map, sightCond);
+        if (inSightOrRange && !rockBlocked) targetableUnitIds.add(enemy.id);
       }
     } else if (selectedSkill.targetMode === 'tile') {
-      const range = selectedSkill.range ? (selectedSkill.range === 'weapon' ? weapon.range : selectedSkill.range) : Math.max(battle.map.width, battle.map.height);
+      const range = selectedSkill.range ? skillRange(selectedSkill) : Math.max(battle.map.width, battle.map.height);
       for (let y = 0; y < battle.map.height; y++) {
         for (let x = 0; x < battle.map.width; x++) {
           if (manhattan(fromPos, { x, y }) <= range && !(rangedWeapon && lineCrossesRock(battle.map, fromPos, { x, y }))) targetableTiles.add(posKey({ x, y }));
         }
       }
+    } else if (selectedSkill.targetMode === 'allyAdjacentTile') {
+      // 축지: 시야 내 다른 아군의 인접 1칸이며 비어 있는 타일.
+      const allies = battle.teamA.filter((a) => a.id !== currentUnit.id && a.currentHp > 0 && isVisibleTo(currentUnit, a, battle.map, sightCond));
+      for (let y = 0; y < battle.map.height; y++) {
+        for (let x = 0; x < battle.map.width; x++) {
+          if (battle.map.tiles[y][x].terrain === 'rock' || occupied(x, y)) continue;
+          if (allies.some((a) => manhattan(a.position, { x, y }) === 1)) targetableTiles.add(posKey({ x, y }));
+        }
+      }
     }
+  }
+  // 도약사격·기습 후속 이동 선택 타일(원점 = 이동 후 위치, 반경 내 도달 가능 칸 + 제자리).
+  const followupTiles = new Set<string>();
+  if (pendingFollowup) {
+    followupTiles.add(posKey(pendingFollowup.origin));
+    const mover = { ...currentUnit, position: pendingFollowup.origin };
+    for (const t of computeReachableTiles(battle.map, mover, allUnits, pendingFollowup.radius)) followupTiles.add(posKey(t));
   }
 
   // 스킬은 즉시 발동, 장비교체는 모달로 처리하므로 확인 버튼은 이동 확정용. 없으면 '대기'(턴 종료).
@@ -277,8 +303,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           teamB={battle.teamB}
           currentUnitId={currentUnit.id}
           reachableTiles={reachableTiles}
-          targetableUnitIds={targetableUnitIds}
-          targetableTiles={targetableTiles}
+          targetableUnitIds={pendingFollowup ? new Set() : targetableUnitIds}
+          targetableTiles={pendingFollowup ? followupTiles : targetableTiles}
           revealedTiles={revealedTiles}
           exploredTiles={exploredRef.current}
           visibleEnemyIds={visibleEnemyIds}
@@ -288,14 +314,27 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           motionAttackerId={motion?.attackerId ?? null}
           motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
           onTileClick={(pos) => {
-            // 타겟을 누르면 즉시 기술 발동(확인 불필요).
-            if (selectedSkillId && selectedSkill?.targetMode === 'tile' && targetableTiles.has(posKey(pos))) {
+            // 후속 이동(도약사격·기습) 선택 중이면 해당 칸으로 이동 후 발동.
+            if (pendingFollowup) {
+              if (followupTiles.has(posKey(pos))) {
+                executeAction({ skillId: pendingFollowup.skillId, targetId: pendingFollowup.targetId, followupMoveTo: pos });
+              }
+              return;
+            }
+            // 타일/축지 목적지를 누르면 즉시 발동.
+            if (selectedSkillId && (selectedSkill?.targetMode === 'tile' || selectedSkill?.targetMode === 'allyAdjacentTile') && targetableTiles.has(posKey(pos))) {
               executeAction({ skillId: selectedSkillId, targetPos: pos });
               return;
             }
             const enemyAtTile = battle.teamB.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
             if (selectedSkillId && enemyAtTile && targetableUnitIds.has(enemyAtTile.id)) {
-              executeAction({ skillId: selectedSkillId, targetId: enemyAtTile.id });
+              // 후속 이동이 있는 공격(도약사격·기습)은 대상 지정 후 이동 칸을 고른다.
+              if (selectedSkill?.followupMoveRadius) {
+                setPendingFollowup({ skillId: selectedSkillId, targetId: enemyAtTile.id, radius: selectedSkill.followupMoveRadius, origin: pendingMoveTile ?? currentUnit.position });
+                setSelectedSkillId(null);
+              } else {
+                executeAction({ skillId: selectedSkillId, targetId: enemyAtTile.id });
+              }
               return;
             }
             // 캐릭터(아군 또는 보이는 적)를 누르면 정보 카드 표시/전환(현재 차례가 아닌 캐릭터 포함).
@@ -336,6 +375,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
         </div>
         <p className="action-bar-log-line">{battle.log[battle.log.length - 1]}</p>
         {moveWarning && <p className="action-bar-warning">{moveWarning}</p>}
+        {pendingFollowup && <p className="action-bar-warning">공격 후 이동할 칸을 선택하세요 (제자리 클릭 시 이동 생략).</p>}
+        {selectedSkill?.targetMode === 'allyAdjacentTile' && <p className="action-bar-warning">순간이동할 칸(아군 인접 빈칸)을 선택하세요.</p>}
         <div className="action-bar-row">
           <div className="skill-grid">
             {usableSkillIds.map((id) => {
@@ -357,7 +398,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
                     }
                   }}
                 >
-                  <span className="skill-btn-name">{skill.name}</span>
+                  <span className="skill-btn-name">{skillDisplayName(skill, weaponInstance.element)}</span>
                   <span className="skill-btn-meta"><span className={`skill-type type-${skillTypeLabel(skill)}`}>{skillTypeLabel(skill)}</span> · {uses}</span>
                 </button>
               );

@@ -1,29 +1,31 @@
-import { applyStatusTo, dealDamageTo } from './helpers';
-import type { SkillHandler } from './context';
+import { dealDamageTo } from './helpers';
+import type { SkillContext, SkillHandler } from './context';
 
-const TILE_BURN_TURNS = 2;
+function findEnemyTarget(ctx: SkillContext) {
+  return ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
+}
 
-const bowFlame: SkillHandler = (ctx) => {
-  const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId);
-  if (!target) return;
-  dealDamageTo(ctx, target);
-  const tile = ctx.map.tiles[target.position.y][target.position.x];
-  tile.status = { type: 'burning', turnsRemaining: TILE_BURN_TURNS };
-  if (tile.terrain === 'forest') tile.terrain = 'plain'; // 숲이 불타면 평지가 된다
-  ctx.log.push(`${target.name}가 있던 타일이 불타오른다.`);
+// 천궁: 사거리 보정(언덕 +1)은 battle 사거리 판정에서 처리한다. 효과는 일반 공격.
+const bowSkyshot: SkillHandler = (ctx) => {
+  const target = findEnemyTarget(ctx);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
-const bowPinpoint: SkillHandler = (ctx) => {
-  applyStatusTo(ctx.actor, 'bowCrit', { turnsRemaining: 2, magnitude: 0.3 }, ctx.log, '급소');
+// 도약사격: 공격 후 1칸 추가 이동(엔진에 후속 이동 요청).
+const bowLeapshot: SkillHandler = (ctx) => {
+  const target = findEnemyTarget(ctx);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
+  ctx.requestFollowup?.(ctx.actor.id, { kind: 'move', radius: ctx.skill.followupMoveRadius ?? 1 });
 };
 
+// 저격: 시야 내 최대 5칸(장애물 차단은 battle에서 판정). 일반 공격.
 const bowSnipe: SkillHandler = (ctx) => {
-  const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId);
-  if (target) dealDamageTo(ctx, target);
+  const target = findEnemyTarget(ctx);
+  if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
 export const BOW_HANDLERS: Record<string, SkillHandler> = {
-  bow_flame: bowFlame,
-  bow_pinpoint: bowPinpoint,
+  bow_skyshot: bowSkyshot,
+  bow_leapshot: bowLeapshot,
   bow_snipe: bowSnipe,
 };

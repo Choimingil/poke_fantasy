@@ -21,15 +21,28 @@ export const TIER1_BONUS: Partial<Record<WeaponKind, Tier1Bonus>> = {
   tome: { powerBonusPercent: 10 },
 };
 
-export type Tier5Passive = 'lowHpPowerSurge' | 'ironStance' | 'hawkeye' | 'elementalWard' | 'archiveOfKnowledge';
+export type Tier5Passive =
+  | 'sprint' // 검 질주: 일반 이동 2칸 이상 후 공격 시 기술 위력 1.2배
+  | 'guardian' // 둔기 경호: 인접 1칸 아군 피격 시 대신 피격(1회/라운드)
+  | 'frontline' // 창 전열 유지: 인접 아군이 있으면 공격 기술 위력 1.2배
+  | 'hawkeye' // 활 매의눈: 시야 +1
+  | 'steadyAim' // 석궁 정조준: 이번 턴 일반 이동을 안 했으면 급소 확률 2배
+  | 'meditation' // 마법서 명상: 사용횟수 2회 이상 마법서 기술 20% 미소모(1회/라운드)
+  | 'amplify' // 지팡이 증폭: 속성 약점 배율 1.3→1.6
+  | 'adaptation' // 단검 적응력: 자연지형 이동감소 무시, 바위 통과 가능(정지 불가)
+  | 'pincer'; // 투척 협공: 사거리 내 적이 다른 아군에게 직접공격당하면 0.5배 추가공격(1회/라운드)
 
-/** 티어5 무기별 전직 패시브. 명세에 없어 새로 설계한 placeholder. */
+/** 티어5 무기별 전직 패시브. */
 const TIER5_PASSIVES: Partial<Record<WeaponKind, Tier5Passive>> = {
-  sword: 'lowHpPowerSurge', // 체력 30% 이하일 때 검 스킬 위력 +20%
-  blunt: 'ironStance', // 둔기 장착 중 방어력 +15%
-  bow: 'hawkeye', // 활 장착 중 시야 +1
-  staff: 'elementalWard', // 방어 시 0.7배(속성 강점) 페널티 무시
-  tome: 'archiveOfKnowledge', // 마법서 스킬 최대 사용횟수 +1
+  sword: 'sprint',
+  blunt: 'guardian',
+  spear: 'frontline',
+  bow: 'hawkeye',
+  crossbow: 'steadyAim',
+  tome: 'meditation',
+  staff: 'amplify',
+  dagger: 'adaptation',
+  thrown: 'pincer',
 };
 
 export function masteryTier(c: Character, kind: WeaponKind): number {
@@ -82,11 +95,7 @@ export function initSkillUses(c: Character, equippedKind: WeaponKind): Record<st
   const uses: Record<string, number> = {};
   for (const id of getUsableSkillIds(c, equippedKind)) {
     const skill = SKILLS.find((s) => s.id === id)!;
-    let max = skill.maxUses;
-    if (max !== undefined && skill.weaponKind === 'tome' && hasTier5Passive(c, 'tome', 'archiveOfKnowledge')) {
-      max += 1;
-    }
-    if (max !== undefined) uses[id] = max;
+    if (skill.maxUses !== undefined) uses[id] = skill.maxUses;
   }
   return uses;
 }
