@@ -11,7 +11,10 @@ const tomeHeal: SkillHandler = (ctx) => {
   for (const ally of allies) {
     const before = ally.currentHp;
     ally.currentHp = Math.min(ally.baseStats.hp, ally.currentHp + healAmount);
-    if (ally.currentHp > before) ctx.log.push(`${ally.name}의 체력을 ${ally.currentHp - before} 회복했다.`);
+    if (ally.currentHp > before) {
+      ctx.log.push(`${ally.name}의 체력을 ${ally.currentHp - before} 회복했다.`);
+      ctx.combatEvents.push({ targetId: ally.id, kind: 'heal', amount: ally.currentHp - before });
+    }
   }
 };
 

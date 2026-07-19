@@ -99,6 +99,7 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   if (proc !== 'focus') {
     if (ctx.rng() < evasionChance(defender, attacker)) {
       ctx.log.push(`${defender.name}가 공격을 회피했다!`);
+      ctx.combatEvents.push({ targetId: defender.id, kind: 'miss' });
       return 0;
     }
   }
@@ -107,6 +108,7 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
     const dmg = Math.max(1, Math.floor(defender.baseStats.hp * (fixedPct / 100)));
     defender.currentHp = Math.max(0, defender.currentHp - dmg);
     ctx.log.push(`${defender.name}에게 ${dmg}의 고정 피해.`);
+    ctx.combatEvents.push({ targetId: defender.id, kind: 'damage', amount: dmg });
     if (defender.currentHp <= 0) {
       ctx.log.push(`${defender.name}가 쓰러졌다.`);
       ctx.onKill(attacker.id, defender.id);
@@ -137,6 +139,7 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   });
   defender.currentHp = Math.max(0, defender.currentHp - result.damage);
   ctx.log.push(`${defender.name}에게 ${result.damage}의 데미지${result.crit ? ' (급소)' : ''}${proc === 'pierce' ? ' (관통)' : ''}.`);
+  ctx.combatEvents.push({ targetId: defender.id, kind: 'damage', amount: result.damage, crit: result.crit });
   if (defender.currentHp <= 0) {
     ctx.log.push(`${defender.name}가 쓰러졌다.`);
     ctx.onKill(attacker.id, defender.id);

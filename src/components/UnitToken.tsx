@@ -11,6 +11,8 @@ export function UnitToken({
   posOverride,
   isAttacking = false,
   isHit = false,
+  float = null,
+  floatKey = 0,
 }: {
   character: Character;
   side: Side;
@@ -19,6 +21,8 @@ export function UnitToken({
   posOverride?: GridPos | null;
   isAttacking?: boolean;
   isHit?: boolean;
+  float?: { text: string; kind: string } | null;
+  floatKey?: number;
 }) {
   const pos = posOverride ?? character.position;
   const classes = [
@@ -37,6 +41,9 @@ export function UnitToken({
       style={{ gridColumn: pos.x + 1, gridRow: pos.y + 1 }}
       title={`${character.name} Lv.${character.level} (${character.currentHp}/${character.baseStats.hp})`}
     >
+      {float && (
+        <span key={floatKey} className={`combat-float combat-float-${float.kind}`}>{float.text}</span>
+      )}
       <TrainerSprite
         jobId={character.spriteJob}
         gender={character.gender}

@@ -40,6 +40,14 @@ export interface GridPos {
   y: number;
 }
 
+/** 피격 대상 위에 띄우는 전투 표시(데미지 숫자 / 빗나감 / 회복). */
+export interface CombatFloatEvent {
+  targetId: string;
+  kind: 'damage' | 'miss' | 'heal';
+  amount?: number;
+  crit?: boolean;
+}
+
 export type StatusEffectType =
   | 'guarding' // 보호: redirects attacks on nearby allies to self
   | 'guardWide' // 광역보호: 경호 반경 2·라운드당 2회로 강화

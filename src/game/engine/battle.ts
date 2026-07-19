@@ -1,4 +1,4 @@
-import type { BattleMap, Character, GridPos, StatusEffectType, WeaponKind } from '../types';
+import type { BattleMap, Character, CombatFloatEvent, GridPos, StatusEffectType, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
 import { effectiveWeaponPower, getWeapon, isRangedOrMagicKind } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getUsableSkillIds, hasTier5Passive, masteryTier, TIER1_BONUS } from '../data/promotions';
@@ -50,6 +50,8 @@ export class GridBattle {
   roundQueue: Character[] = [];
   bonusQueue: Character[] = [];
   log: string[] = [];
+  /** 직전 takeTurn 동안 발생한 전투 표시(데미지/빗나감/회복). UI가 피격 대상 위에 띄운다. */
+  lastTurnEvents: CombatFloatEvent[] = [];
   killEvents: KillEvent[] = [];
   levelUpEvents: LevelUpResult[] = [];
   finished = false;
@@ -171,6 +173,7 @@ export class GridBattle {
 
   takeTurn(action: UnitAction): void {
     if (this.finished) return;
+    this.lastTurnEvents = [];
     this.updateKnownPositions();
     const fromRoundQueue = this.roundQueue.length > 0;
     const unit = fromRoundQueue ? this.roundQueue.shift()! : this.bonusQueue.shift();
@@ -380,6 +383,7 @@ export class GridBattle {
     const hitRoll = this.rng() * 100;
     if (hitRoll >= skill.accuracy + tier1Acc) {
       this.log.push(`${unit.name}의 ${skill.name}이(가) 빗나갔다.`);
+      if (target) this.lastTurnEvents.push({ targetId: target.id, kind: 'miss' });
       return;
     }
 
@@ -395,6 +399,7 @@ export class GridBattle {
       targetPos,
       negatedShields: this.negatedShields,
       log: this.log,
+      combatEvents: this.lastTurnEvents,
       rng: this.rng,
       onKill: (killerId, victimId) => this.grantKillXp(killerId, victimId),
       onBonusAction: (unitId) => {

@@ -30,6 +30,8 @@ export function BoardGrid({
   previewPos,
   motionAttackerId,
   motionTargetIds,
+  floatByUnit,
+  floatKey = 0,
   onTileClick,
 }: {
   map: BattleMap;
@@ -47,6 +49,8 @@ export function BoardGrid({
   previewPos?: GridPos | null;
   motionAttackerId?: string | null;
   motionTargetIds?: Set<string>;
+  floatByUnit?: Record<string, { text: string; kind: string }> | null;
+  floatKey?: number;
   onTileClick: (pos: GridPos) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -111,6 +115,8 @@ export function BoardGrid({
             posOverride={c.id === previewUnitId ? previewPos : null}
             isAttacking={c.id === motionAttackerId}
             isHit={motionTargetIds?.has(c.id) ?? false}
+            float={floatByUnit?.[c.id] ?? null}
+            floatKey={floatKey}
           />
         ))}
         {/* 적 유닛은 플레이어 시야에 들어온 경우에만 표시(안개/숲 은폐) */}
@@ -123,6 +129,8 @@ export function BoardGrid({
             isSelectedTarget={targetableUnitIds.has(c.id)}
             isAttacking={c.id === motionAttackerId}
             isHit={motionTargetIds?.has(c.id) ?? false}
+            float={floatByUnit?.[c.id] ?? null}
+            floatKey={floatKey}
           />
         ))}
       </div>

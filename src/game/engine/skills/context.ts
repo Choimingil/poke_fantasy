@@ -1,4 +1,4 @@
-import type { BattleMap, Character, GridPos, Skill, WeaponTemplate } from '../../types';
+import type { BattleMap, Character, CombatFloatEvent, GridPos, Skill, WeaponTemplate } from '../../types';
 
 export interface SkillContext {
   map: BattleMap;
@@ -16,6 +16,8 @@ export interface SkillContext {
   /** 무력화된 방패 instanceId → 남은 라운드 수(돌진: 3턴). */
   negatedShields: Map<string, number>;
   log: string[];
+  /** 피격 대상 위에 띄울 전투 표시(데미지/빗나감/회복)를 누적한다. */
+  combatEvents: CombatFloatEvent[];
   rng: () => number;
   /** 처치 발생 시 배틀 엔진에 통지 — XP/레벨업 지급은 엔진이 담당 */
   onKill: (killerId: string, victimId: string) => void;

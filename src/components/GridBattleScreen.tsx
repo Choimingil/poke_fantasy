@@ -41,13 +41,37 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   const [swapMenuOpen, setSwapMenuOpen] = useState(false);
   const [inspectId, setInspectId] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
+  const [floatBatch, setFloatBatch] = useState<{ key: number; byUnit: Record<string, { text: string; kind: string }> } | null>(null);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
+  const floatKeyRef = useRef(0);
   const exploredRef = useRef<Set<string>>(new Set()); // 한 번이라도 시야로 밝혔던 타일(탐사 완료)
 
   const triggerMotion = (attackerId: string, targetIds: string[]) => {
     motionKeyRef.current += 1;
     setMotion({ attackerId, targetIds, key: motionKeyRef.current });
+  };
+
+  // 직전 턴의 전투 표시(데미지/빗나감/회복)를 대상별로 모아 피격 유닛 위에 띄운다.
+  const showFloats = (battle: GridBattle) => {
+    const events = battle.lastTurnEvents;
+    if (!events || events.length === 0) return;
+    const agg: Record<string, { damage: number; crit: boolean; heal: number; miss: boolean }> = {};
+    for (const e of events) {
+      const g = (agg[e.targetId] ??= { damage: 0, crit: false, heal: 0, miss: false });
+      if (e.kind === 'damage') { g.damage += e.amount ?? 0; g.crit = g.crit || !!e.crit; }
+      else if (e.kind === 'heal') g.heal += e.amount ?? 0;
+      else if (e.kind === 'miss') g.miss = true;
+    }
+    const byUnit: Record<string, { text: string; kind: string }> = {};
+    for (const [id, g] of Object.entries(agg)) {
+      if (g.damage > 0) byUnit[id] = { text: `${g.damage}${g.crit ? '!' : ''}`, kind: g.crit ? 'crit' : 'damage' };
+      else if (g.heal > 0) byUnit[id] = { text: `+${g.heal}`, kind: 'heal' };
+      else if (g.miss) byUnit[id] = { text: '빗나감', kind: 'miss' };
+    }
+    if (Object.keys(byUnit).length === 0) return;
+    floatKeyRef.current += 1;
+    setFloatBatch({ key: floatKeyRef.current, byUnit });
   };
 
   if (!battleRef.current) {
@@ -102,6 +126,13 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     return () => clearTimeout(t);
   }, [motion]);
 
+  // 데미지/빗나감 표시는 애니메이션 후 해제한다.
+  useEffect(() => {
+    if (!floatBatch) return;
+    const t = setTimeout(() => setFloatBatch(null), 1000);
+    return () => clearTimeout(t);
+  }, [floatBatch]);
+
   useEffect(() => {
     if (battle.finished) {
       onFinished(battle);
@@ -116,6 +147,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time, battle.knownEnemyPositions[unit.side!], battle.round);
       battle.takeTurn(action);
       if (action.skillId && action.targetId) triggerMotion(unit.id, [action.targetId]);
+      showFloats(battle);
       aiBusyRef.current = false;
       forceRerender();
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,6 +177,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
       if (opts.swap.kind === 'weapon') action.switchWeaponTo = opts.swap.instanceId;
       else action.switchArmorTo = opts.swap.instanceId;
       battle.takeTurn(action);
+      showFloats(battle);
       resetPending();
       forceRerender();
       return;
@@ -159,6 +192,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const isAttack = opts.skillId ? getSkill(opts.skillId).category === 'attack' : false;
     battle.takeTurn(action);
     if (isAttack) triggerMotion(actorId, opts.targetId ? [opts.targetId] : []);
+    showFloats(battle);
     resetPending();
     forceRerender();
   };
@@ -190,6 +224,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
             focusPos={focusPos}
             motionAttackerId={motion?.attackerId ?? null}
             motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
+            floatByUnit={floatBatch?.byUnit ?? null}
+            floatKey={floatBatch?.key ?? 0}
             onTileClick={(pos) => {
               // 캐릭터(아군 또는 보이는 적)를 누르면 상세 팝업 전환, 빈 타일이면 닫힘.
               const at = [...battle.teamA, ...battle.teamB].find(
@@ -313,6 +349,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
           previewPos={pendingMoveTile}
           motionAttackerId={motion?.attackerId ?? null}
           motionTargetIds={motion ? new Set(motion.targetIds) : undefined}
+          floatByUnit={floatBatch?.byUnit ?? null}
+          floatKey={floatBatch?.key ?? 0}
           onTileClick={(pos) => {
             // 후속 이동(도약사격·기습) 선택 중이면 해당 칸으로 이동 후 발동.
             if (pendingFollowup) {
