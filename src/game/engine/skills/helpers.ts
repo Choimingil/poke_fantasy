@@ -118,7 +118,6 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
 
   const effSkill = opts.powerOverride !== undefined ? { ...skill, power: opts.powerOverride } : skill;
   const crit = proc === 'crit' && !opts.suppressCrit;
-  const allies = ctx.actorTeam;
   const result = calculateDamage({
     attacker,
     defender,
@@ -133,7 +132,6 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
     ignoreDefenseRatio: opts.ignoreDefenseRatio ?? skill.ignoreDefenseRatio,
     weaponCrit: crit,
     movedAtLeast2: (attacker.movedStepsThisTurn ?? 0) >= 2,
-    adjacentAlly: allies.some((a) => a.id !== attacker.id && a.currentHp > 0 && manhattan(a.position, attacker.position) === 1),
     finalPowerMult: opts.finalPowerMult,
     rng: ctx.rng,
   });
@@ -174,11 +172,34 @@ function processReactions(ctx: SkillContext, defender: Character): void {
   }
 }
 
+/** 반격(창 패시브) 등에 쓰는 기본 공격 정의(위력 100%, 물리). */
+const BASIC_ATTACK: Skill = { id: '__basic', name: '기본 공격', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy' };
+
+/**
+ * 반격(창 T5): 창 사거리 내 적의 직접공격에 피해를 입으면 공격자에게 기본 공격 0.5배로 반격(라운드당 1회).
+ * 범위 공격/사거리 밖/경호로 다른 아군이 대신 피격한 경우엔 호출되지 않는다(직접 단일 공격에서만 호출).
+ * 반격은 전용기술·협공·분신 등 추가 공격을 발동시키지 않는다(triggersReactions=false).
+ */
+function processCounter(ctx: SkillContext, defender: Character, damageTaken: number): void {
+  if (damageTaken <= 0 || defender.currentHp <= 0) return;
+  const dwc = weaponCtxOf(defender);
+  if (dwc.kind !== 'spear' || !hasTier5Passive(defender, 'spear', 'counter')) return;
+  const attacker = ctx.actor;
+  if (attacker.currentHp <= 0) return;
+  if (manhattan(defender.position, attacker.position) > dwc.range) return;
+  if (!ctx.consumeReaction(defender.id)) return;
+  ctx.log.push(`${defender.name}의 반격!`);
+  applyAttack(ctx, defender, attacker, BASIC_ATTACK, { powerOverride: 50, triggersReactions: false });
+}
+
 /** 시전자가 대상에게 데미지를 적용한다(부가효과·회피·반응 포함). 실제 데미지 반환(회피 시 0). */
 export function dealDamageTo(ctx: SkillContext, defender: Character, opts: DealOptions = {}): number {
   breakHiddenOnAttack(ctx.actor, ctx.log);
   const dmg = applyAttack(ctx, ctx.actor, defender, ctx.skill, opts);
-  if (opts.triggersReactions) processReactions(ctx, defender);
+  if (opts.triggersReactions) {
+    processReactions(ctx, defender);
+    processCounter(ctx, defender, dmg);
+  }
   return dmg;
 }
 

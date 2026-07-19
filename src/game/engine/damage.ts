@@ -23,8 +23,6 @@ export interface DamageContext {
   weaponCrit?: boolean;
   /** 검 질주: 일반 이동 2칸 이상 후 공격(위력 스킬 ×1.2) */
   movedAtLeast2?: boolean;
-  /** 창 전열 유지: 인접 아군이 있음(위력 스킬 ×1.2) */
-  adjacentAlly?: boolean;
   /** 쇄상 등 최종 위력 배수(디버프 대상 1.3배). */
   finalPowerMult?: number;
   rng?: () => number;
@@ -63,7 +61,6 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
   let passivePowerMult = 1;
   if (skill.power > 0) {
     if (weapon.kind === 'sword' && ctx.movedAtLeast2 && hasTier5Passive(attacker, 'sword', 'sprint')) passivePowerMult *= 1.2;
-    if (weapon.kind === 'spear' && ctx.adjacentAlly && hasTier5Passive(attacker, 'spear', 'frontline')) passivePowerMult *= 1.2;
     passivePowerMult *= ctx.finalPowerMult ?? 1;
   }
 

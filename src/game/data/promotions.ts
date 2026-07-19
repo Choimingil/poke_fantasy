@@ -24,7 +24,7 @@ export const TIER1_BONUS: Partial<Record<WeaponKind, Tier1Bonus>> = {
 export type Tier5Passive =
   | 'sprint' // 검 질주: 일반 이동 2칸 이상 후 공격 시 기술 위력 1.2배
   | 'guardian' // 둔기 경호: 인접 1칸 아군 피격 시 대신 피격(1회/라운드)
-  | 'frontline' // 창 전열 유지: 인접 아군이 있으면 공격 기술 위력 1.2배
+  | 'counter' // 창 반격: 사거리 내 적의 직접공격에 피해를 입으면 기본 공격 0.5배로 반격(1회/라운드)
   | 'hawkeye' // 활 매의눈: 시야 +1
   | 'steadyAim' // 석궁 정조준: 이번 턴 일반 이동을 안 했으면 급소 확률 2배
   | 'meditation' // 마법서 명상: 사용횟수 2회 이상 마법서 기술 20% 미소모(1회/라운드)
@@ -36,7 +36,7 @@ export type Tier5Passive =
 const TIER5_PASSIVES: Partial<Record<WeaponKind, Tier5Passive>> = {
   sword: 'sprint',
   blunt: 'guardian',
-  spear: 'frontline',
+  spear: 'counter',
   bow: 'hawkeye',
   crossbow: 'steadyAim',
   tome: 'meditation',

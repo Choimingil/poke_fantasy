@@ -68,6 +68,30 @@ describe('무기 전용기술 통합', () => {
     expect(enemy.currentHp).toBeLessThan(100);
   });
 
+  it('반격(창 T5): 사거리 내 적의 직접공격에 피해를 입으면 공격자에게 반격한다', () => {
+    const map = makeMap();
+    const attacker = makeUnit('atk', 'sword_short', 0, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 40, endurance: 10 } });
+    const spearman = makeUnit('spear', 'spear_a', 6, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 5, endurance: 10 } });
+    prepareForBattle(attacker, { x: 0, y: 0 }, 'A');
+    prepareForBattle(spearman, { x: 1, y: 0 }, 'B'); // 창 사거리 1 이내(인접)
+    const battle = new GridBattle(map, [attacker], [spearman], () => 0.5);
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'spear' });
+    expect(spearman.currentHp).toBeLessThan(100); // 창병이 피해를 입고
+    expect(attacker.currentHp).toBeLessThan(100); // 공격자가 반격을 맞는다
+  });
+
+  it('반격: 공격자가 창 사거리 밖(원거리)이면 발동하지 않는다', () => {
+    const map = makeMap();
+    const archer = makeUnit('archer', 'bow_long', 0, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 40, endurance: 10 } });
+    const spearman = makeUnit('spear', 'spear_a', 6, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 5, endurance: 10 } });
+    prepareForBattle(archer, { x: 0, y: 0 }, 'A');
+    prepareForBattle(spearman, { x: 2, y: 0 }, 'B'); // 활 사거리 2, 창 사거리 1 밖
+    const battle = new GridBattle(map, [archer], [spearman], () => 0.5);
+    battle.takeTurn({ skillId: 'power_strike', targetId: 'spear' });
+    expect(spearman.currentHp).toBeLessThan(100);
+    expect(archer.currentHp).toBe(100); // 창 사거리 밖이라 반격 없음
+  });
+
   it('봉쇄: 대상에게 이동 불가 상태를 부여한다', () => {
     const map = makeMap();
     const spearman = makeUnit('spear', 'spear_a', 6, { baseStats: { hp: 100, attack: 50, magicAttack: 10, speed: 30, endurance: 10 } });

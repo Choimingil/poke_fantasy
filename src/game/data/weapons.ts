@@ -54,8 +54,8 @@ const WEAPONS: WeaponTemplate[] = [
   { id: 'blunt_mace', name: '철퇴', kind: 'blunt', range: 1, baseSpeed: 16, handedness: 'oneHanded' },
   { id: 'blunt_maul', name: '대곤', kind: 'blunt', range: 1, baseSpeed: 10, handedness: 'twoHanded' },
 
-  // 창 (range 2, 리치가 긴 양손 무기)
-  { id: 'spear_a', name: '창', kind: 'spear', range: 2, baseSpeed: 14, handedness: 'twoHanded' },
+  // 창 (range 1, 양손 무기)
+  { id: 'spear_a', name: '창', kind: 'spear', range: 1, baseSpeed: 14, handedness: 'twoHanded' },
 
   // 활 (range 2, 항상 양손)
   { id: 'bow_short', name: '각궁', kind: 'bow', range: 2, baseSpeed: 16, handedness: 'twoHanded' },
