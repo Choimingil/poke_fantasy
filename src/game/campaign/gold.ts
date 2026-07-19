@@ -7,3 +7,8 @@ export function battleGold(o: BattleOutcome): number {
   if (o.bossDefeated) g += 100;
   return g;
 }
+
+/** 장비 판매가(착용 레벨 기반, 최소 1). */
+export function sellValue(level: number): number {
+  return Math.max(1, Math.round(level * 4));
+}

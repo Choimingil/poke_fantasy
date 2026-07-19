@@ -1085,3 +1085,19 @@ button:disabled {
 .quality-veteran { background: #275a3a; color: #c7f0d6; }
 .quality-elite { background: #274a86; color: #cfe0ff; }
 .quality-hero { background: #6a4a12; color: #ffe6a6; }
+
+/* ===== 상점 탭 ===== */
+.shop-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.shop-card { border: 1px solid #39415e; border-radius: 10px; padding: 12px; background: #232838; display: flex; flex-direction: column; gap: 6px; }
+.shop-card.shop-rare { border-color: #b98a2e; box-shadow: 0 0 0 1px rgba(255, 200, 90, 0.35) inset; }
+.shop-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shop-slot { color: #9aa3bd; font-size: 0.82rem; margin-left: auto; }
+.shop-spec { font-size: 0.82rem; color: #cfd3e0; }
+.shop-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.rare-tag { font-size: 0.7rem; font-weight: 800; padding: 1px 6px; border-radius: 999px; background: #6a4a12; color: #ffe6a6; }
+
+/* 보관함 장착/판매 버튼 */
+.stash-actions { display: inline-flex; gap: 6px; }
+.stash-actions button { padding: 4px 10px; font-size: 0.85em; }
+.sell-button { background: #7a3c3c; }
+.sell-button:hover { background: #632f2f; }

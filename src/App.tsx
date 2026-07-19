@@ -13,6 +13,7 @@ import type { Character, WeaponKind } from './game/types';
 import type { Campaign } from './game/campaign/types';
 import { loadCampaign, saveCampaign, clearCampaign } from './game/campaign/storage';
 import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle } from './game/campaign/state';
+import { buyShopItem, equipStashArmor, equipStashWeapon, sellStashArmor, sellStashWeapon } from './game/campaign/stash';
 import { generateEnemyParty } from './game/campaign/enemyParty';
 
 type Screen =
@@ -119,6 +120,11 @@ function App() {
         onStartBattle={startCampaignBattle}
         onSave={() => campaign && saveCampaign(campaign)}
         onRecruit={(id) => persist(recruitFromCandidate(campaign, id))}
+        onBuy={(id) => persist(buyShopItem(campaign, id))}
+        onEquipStashWeapon={(charId, id) => persist(equipStashWeapon(campaign, charId, id))}
+        onEquipStashArmor={(charId, id) => persist(equipStashArmor(campaign, charId, id))}
+        onSellStashWeapon={(id) => persist(sellStashWeapon(campaign, id))}
+        onSellStashArmor={(id) => persist(sellStashArmor(campaign, id))}
       />
     );
   }

@@ -6,6 +6,7 @@ import { themeForRound, isBossRound, enemyLevelForRound, enemyCountForRound } fr
 import { getWeapon } from '../game/data/weapons';
 import { InventoryScreen } from './InventoryScreen';
 import { RecruitTab } from './RecruitTab';
+import { ShopTab } from './ShopTab';
 
 type Tab = 'party' | 'inventory' | 'recruit' | 'shop';
 
@@ -27,12 +28,22 @@ export function BarracksScreen({
   onStartBattle,
   onSave,
   onRecruit,
+  onBuy,
+  onEquipStashWeapon,
+  onEquipStashArmor,
+  onSellStashWeapon,
+  onSellStashArmor,
 }: {
   campaign: Campaign;
   onSetDeployed: (ids: string[]) => void;
   onStartBattle: () => void;
   onSave: () => void;
   onRecruit: (id: string) => void;
+  onBuy: (id: string) => void;
+  onEquipStashWeapon: (charId: string, instanceId: string) => void;
+  onEquipStashArmor: (charId: string, instanceId: string) => void;
+  onSellStashWeapon: (instanceId: string) => void;
+  onSellStashArmor: (instanceId: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>('party');
   const theme = themeForRound(campaign.round);
@@ -93,7 +104,15 @@ export function BarracksScreen({
         )}
 
         {tab === 'inventory' && (
-          <InventoryScreen characters={campaign.roster} onChange={onSave} />
+          <InventoryScreen
+            characters={campaign.roster}
+            onChange={onSave}
+            stash={campaign.stash}
+            onEquipStashWeapon={onEquipStashWeapon}
+            onEquipStashArmor={onEquipStashArmor}
+            onSellStashWeapon={onSellStashWeapon}
+            onSellStashArmor={onSellStashArmor}
+          />
         )}
 
         {tab === 'recruit' && (
@@ -101,7 +120,7 @@ export function BarracksScreen({
         )}
 
         {tab === 'shop' && (
-          <div className="tab-placeholder"><p>상점은 다음 업데이트에서 제공됩니다.</p></div>
+          <ShopTab campaign={campaign} onBuy={onBuy} />
         )}
       </div>
     </div>

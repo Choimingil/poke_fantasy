@@ -97,3 +97,8 @@ export const PLAYABLE_WEAPON_KINDS: WeaponKind[] = ['sword', 'blunt', 'spear', '
 export function weaponTemplatesForKind(kind: WeaponKind): WeaponTemplate[] {
   return WEAPONS.filter((w) => w.kind === kind);
 }
+
+/** 방패 템플릿 목록. */
+export function shieldTemplates(): WeaponTemplate[] {
+  return WEAPONS.filter((w) => w.kind === 'shield');
+}

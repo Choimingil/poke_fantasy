@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Character, StatKey } from '../game/types';
+import type { ArmorInstance, Character, StatKey, WeaponInstance } from '../game/types';
 import { ROSTER } from '../game/data/roster';
 import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, weaponPower } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
@@ -20,7 +20,15 @@ const STAT_ROWS: { key: StatKey; label: string }[] = [
   { key: 'endurance', label: '지구력' },
 ];
 
-export function InventoryScreen({ characters, onChange, onBack }: { characters?: Character[]; onChange: () => void; onBack?: () => void }) {
+interface StashProps {
+  stash?: { weapons: WeaponInstance[]; armor: ArmorInstance[] };
+  onEquipStashWeapon?: (charId: string, instanceId: string) => void;
+  onEquipStashArmor?: (charId: string, instanceId: string) => void;
+  onSellStashWeapon?: (instanceId: string) => void;
+  onSellStashArmor?: (instanceId: string) => void;
+}
+
+export function InventoryScreen({ characters, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor }: { characters?: Character[]; onChange: () => void; onBack?: () => void } & StashProps) {
   const roster = characters ?? ROSTER;
   const [selectedId, setSelectedId] = useState(roster[0].id);
   const c = roster.find((x) => x.id === selectedId) ?? roster[0];
@@ -184,6 +192,42 @@ export function InventoryScreen({ characters, onChange, onBack }: { characters?:
               );
             })}
           </ul>
+
+          {stash && (
+            <>
+              <h3>보관함 (상점 구매·해제 장비)</h3>
+              <p className="inventory-hint">보관함 장비를 선택한 캐릭터에 장착하거나 판매할 수 있습니다. (현재 캐릭터: {c.name})</p>
+              <ul className="inventory-weapon-list">
+                {stash.weapons.length === 0 && stash.armor.length === 0 && <li><span>보관함이 비어 있습니다.</span></li>}
+                {stash.weapons.map((w) => {
+                  const t = getWeapon(w.templateId);
+                  const canEquip = meetsEquipLevel(c, w.level);
+                  return (
+                    <li key={w.instanceId}>
+                      <span>{weaponInstanceName(w)} Lv.{w.level} <em>({t.kind})</em></span>
+                      <span className="stash-actions">
+                        <button type="button" disabled={!canEquip} onClick={() => onEquipStashWeapon?.(c.id, w.instanceId)}>{canEquip ? '장착' : `Lv.${w.level} 필요`}</button>
+                        <button type="button" className="sell-button" onClick={() => onSellStashWeapon?.(w.instanceId)}>판매</button>
+                      </span>
+                    </li>
+                  );
+                })}
+                {stash.armor.map((a) => {
+                  const t = getArmor(a.templateId);
+                  const canEquip = meetsEquipLevel(c, a.level);
+                  return (
+                    <li key={a.instanceId}>
+                      <span>{t.name} Lv.{a.level} <em>({t.kind})</em></span>
+                      <span className="stash-actions">
+                        <button type="button" disabled={!canEquip} onClick={() => onEquipStashArmor?.(c.id, a.instanceId)}>{canEquip ? '장착' : `Lv.${a.level} 필요`}</button>
+                        <button type="button" className="sell-button" onClick={() => onSellStashArmor?.(a.instanceId)}>판매</button>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </section>
       </div>
     </div>

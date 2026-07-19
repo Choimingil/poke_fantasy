@@ -30,8 +30,8 @@ export interface RecruitCandidate {
   cost: number;
 }
 
-/** 상점 상품(장비 인스턴스 + 가격). (상점 단계에서 확장) */
-interface ShopItem {
+/** 상점 상품(장비 인스턴스 + 가격). */
+export interface ShopItem {
   id: string;
   slot: 'weapon' | 'armor' | 'shield';
   templateId: string;

@@ -4,13 +4,15 @@ import type { BattleOutcome, Campaign } from './types';
 import { CAMPAIGN_VERSION, MAX_ROSTER } from './types';
 import { generateCharacter } from './generateCharacter';
 import { rollRecruits } from './recruit';
+import { rollShop } from './shop';
 import { roundReputationGain } from './reputation';
 import { battleGold } from './gold';
 
 /** 선택한 직업으로 주인공 1명을 만들어 새 캠페인을 시작한다(레벨 10, 초급 전용기술 보유). */
 export function newCampaign(heroKind: WeaponKind, rng: () => number = Math.random): Campaign {
   const hero = generateCharacter(heroKind, 10, { id: 'hero', name: '주인공', rng });
-  const { recruits, nextId } = rollRecruits(0, 1, rng);
+  const rolledRecruits = rollRecruits(0, 1, rng);
+  const rolledShop = rollShop(1, rolledRecruits.nextId, rng);
   return {
     version: CAMPAIGN_VERSION,
     heroKind,
@@ -20,9 +22,9 @@ export function newCampaign(heroKind: WeaponKind, rng: () => number = Math.rando
     roster: [hero],
     deployedIds: ['hero'],
     stash: { weapons: [], armor: [] },
-    recruits,
-    shop: [],
-    nextId,
+    recruits: rolledRecruits.recruits,
+    shop: rolledShop.shop,
+    nextId: rolledShop.nextId,
   };
 }
 
@@ -69,11 +71,13 @@ export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: ()
     gold: campaign.gold + goldGained,
     round: outcome.won ? campaign.round + 1 : campaign.round,
   };
-  // 승리로 라운드가 진행되면 새 명성 기준으로 모집 후보를 갱신(지나간 후보는 사라진다).
+  // 승리로 라운드가 진행되면 새 명성 기준으로 모집 후보·상점 상품을 갱신(지나간 것은 사라진다).
   if (outcome.won) {
-    const rolled = rollRecruits(reputation, campaign.nextId, rng);
-    next.recruits = rolled.recruits;
-    next.nextId = rolled.nextId;
+    const rolledRecruits = rollRecruits(reputation, campaign.nextId, rng);
+    const rolledShop = rollShop(next.round, rolledRecruits.nextId, rng);
+    next.recruits = rolledRecruits.recruits;
+    next.shop = rolledShop.shop;
+    next.nextId = rolledShop.nextId;
   }
   return { campaign: next, reputationGained, goldGained };
 }
