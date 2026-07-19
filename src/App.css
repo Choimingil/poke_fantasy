@@ -1017,3 +1017,54 @@ button:disabled {
 .unit-token-teamB .hp-bar-fill {
   background: #e53935;
 }
+
+/* ===== 캠페인 화면 ===== */
+.title-screen { align-items: center; text-align: center; }
+.title-sub { max-width: 520px; color: #b9c0d4; }
+.title-actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; min-width: 260px; }
+
+.class-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.class-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  text-align: left;
+  border-radius: 10px;
+  border: 1px solid #39415e;
+  background: #232838;
+  color: #f4f6ee;
+  cursor: pointer;
+}
+.class-card:hover { border-color: #6f86ff; background: #2b3247; }
+.class-card strong { font-size: 1.05rem; }
+.class-card-desc { font-size: 0.8rem; color: #b9c0d4; }
+
+.barracks-screen { gap: 14px; }
+.barracks-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.barracks-resources { display: flex; gap: 16px; font-weight: 700; }
+.barracks-tabs { display: flex; gap: 6px; border-bottom: 1px solid #39415e; }
+.barracks-tabs button {
+  background: none; border: none; color: #b9c0d4; padding: 8px 14px; cursor: pointer;
+  border-bottom: 2px solid transparent; font-size: 0.95rem;
+}
+.barracks-tabs button.tab-active { color: #fff; border-bottom-color: #6f86ff; }
+.barracks-body { flex: 1; overflow-y: auto; }
+.barracks-hint { color: #b9c0d4; margin: 4px 0; }
+.boss-warning { color: #ff7a5c; font-weight: 800; }
+
+.deploy-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.deploy-list li { border: 1px solid #39415e; border-radius: 8px; padding: 8px 12px; background: #232838; }
+.deploy-list li.deploy-on { border-color: #6f86ff; background: #2b3247; }
+.deploy-list label { display: flex; align-items: center; gap: 8px; cursor: pointer; flex-wrap: wrap; }
+.deploy-stats { color: #9aa3bd; font-size: 0.82rem; margin-left: auto; }
+.start-battle-button { margin-top: 14px; font-size: 1.05rem; padding: 12px 18px; }
+.tab-placeholder { padding: 40px; text-align: center; color: #9aa3bd; }
+
+.result-reward { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-weight: 800; margin: 8px 0 16px; }
+.result-retry-note { color: #ffcf8f; font-weight: 400; font-size: 0.85rem; flex-basis: 100%; text-align: center; }

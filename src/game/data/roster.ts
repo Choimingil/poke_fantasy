@@ -75,7 +75,7 @@ const ROSTER_DEFS: CreateCharacterOptions[] = [
 // 세션 동안 유지되는 편집 가능한 캐릭터 인스턴스(인벤토리에서 무기/스킬 등을 여기서 직접 수정).
 export const ROSTER: Character[] = ROSTER_DEFS.map((entry) => createCharacter(entry));
 
-export function getRosterCharacter(id: string): Character {
+function getRosterCharacter(id: string): Character {
   const c = ROSTER.find((e) => e.id === id);
   if (!c) throw new Error(`Unknown roster entry: ${id}`);
   return c;

@@ -118,7 +118,7 @@ export interface WeaponTemplate {
 /** 무기 종류별 30% 확률 부가효과. 마법서/투척무기는 인스턴스마다 하나를 선택해 지닌다(그 외 종류는 kind로 고정 매핑). */
 export type ProcEffect = 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit';
 
-interface WeaponInstance {
+export interface WeaponInstance {
   instanceId: string;
   templateId: string;
   level: number; // 10 단위 등급(10~100). 공격력은 이 값으로 계산한다.
@@ -134,7 +134,7 @@ export interface ArmorTemplate {
   kind: ArmorKind;
 }
 
-interface ArmorInstance {
+export interface ArmorInstance {
   instanceId: string;
   templateId: string;
   level: number; // 10 단위 등급(10~100). 방어력은 이 값으로 계산한다.
@@ -160,6 +160,7 @@ export interface Character {
   currentHp: number;
   position: GridPos;
   side?: 'A' | 'B'; // assigned by battle setup, not persisted on the roster
+  isBoss?: boolean; // 보스: 고정피해 감소·강력 상태효과 저항
 
   inventory: WeaponInstance[];
   equippedWeaponId: string;

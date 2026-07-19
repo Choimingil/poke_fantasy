@@ -8,19 +8,35 @@ export function ResultScreen({
   levelUpEvents,
   allUnits,
   onRestart,
+  reward,
+  onContinue,
 }: {
   winner: Side | null;
   killEvents: KillEvent[];
   levelUpEvents: LevelUpResult[];
   allUnits: Character[];
-  onRestart: () => void;
+  onRestart?: () => void;
+  reward?: { reputationGained: number; goldGained: number; won: boolean };
+  onContinue?: () => void;
 }) {
   const nameOf = (id: string) => allUnits.find((u) => u.id === id)?.name ?? id;
+  const playerWon = winner === 'A';
 
   return (
     <div className="app-shell setup-screen">
       <h1>전투 종료</h1>
-      <p className="result-winner">{winner ? `${winner === 'A' ? 'A팀' : 'B팀'} 승리!` : '무승부'}</p>
+      {reward ? (
+        <p className="result-winner">{playerWon ? '승리!' : '패배...'}</p>
+      ) : (
+        <p className="result-winner">{winner ? `${winner === 'A' ? 'A팀' : 'B팀'} 승리!` : '무승부'}</p>
+      )}
+      {reward && (
+        <div className="result-reward">
+          <span>🏅 명성 +{reward.reputationGained}</span>
+          <span>💰 골드 +{reward.goldGained}</span>
+          {!reward.won && <span className="result-retry-note">패배 시 라운드는 진행되지 않습니다. 정비 후 재도전하세요.</span>}
+        </div>
+      )}
       <div className="result-panel">
         <h2>처치 기록</h2>
         {killEvents.length === 0 ? (
@@ -45,9 +61,11 @@ export function ResultScreen({
           </ul>
         )}
       </div>
-      <button type="button" onClick={onRestart}>
-        다시 하기
-      </button>
+      {onContinue ? (
+        <button type="button" onClick={onContinue}>정비로 →</button>
+      ) : (
+        <button type="button" onClick={onRestart}>다시 하기</button>
+      )}
     </div>
   );
 }

@@ -13,6 +13,10 @@ const staffBolt: SkillHandler = (ctx) => {
 const staffWeaken: SkillHandler = (ctx) => {
   const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
   if (!target) return;
+  if (target.isBoss) {
+    ctx.log.push('보스에게는 약화 효과가 통하지 않는다.');
+    return;
+  }
   const weaponInstance = ctx.actor.inventory.find((w) => w.instanceId === ctx.actor.equippedWeaponId);
   const staffElement = weaponInstance?.element;
   if (!staffElement || staffElement === 'none') return;

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import type { StatKey } from '../game/types';
-import { ROSTER, getRosterCharacter } from '../game/data/roster';
+import type { Character, StatKey } from '../game/types';
+import { ROSTER } from '../game/data/roster';
 import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, weaponPower } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getSkill, skillDisplayName, skillTypeLabel } from '../game/data/skills';
@@ -20,9 +20,10 @@ const STAT_ROWS: { key: StatKey; label: string }[] = [
   { key: 'endurance', label: '지구력' },
 ];
 
-export function InventoryScreen({ onChange, onBack }: { onChange: () => void; onBack: () => void }) {
-  const [selectedId, setSelectedId] = useState(ROSTER[0].id);
-  const c = getRosterCharacter(selectedId);
+export function InventoryScreen({ characters, onChange, onBack }: { characters?: Character[]; onChange: () => void; onBack?: () => void }) {
+  const roster = characters ?? ROSTER;
+  const [selectedId, setSelectedId] = useState(roster[0].id);
+  const c = roster.find((x) => x.id === selectedId) ?? roster[0];
 
   const equippedInstance = c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!;
   const equippedWeapon = getWeapon(equippedInstance.templateId);
@@ -66,14 +67,14 @@ export function InventoryScreen({ onChange, onBack }: { onChange: () => void; on
   return (
     <div className="app-shell inventory-screen">
       <div className="inventory-header">
-        <button type="button" className="link-button" onClick={onBack}>← 홈으로</button>
+        {onBack && <button type="button" className="link-button" onClick={onBack}>← 뒤로</button>}
         <h1>인벤토리 · 캐릭터 세팅</h1>
       </div>
 
       <label className="inventory-select">
         캐릭터
         <select value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
-          {ROSTER.map((r) => (
+          {roster.map((r) => (
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>

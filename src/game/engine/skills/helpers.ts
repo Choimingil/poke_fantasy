@@ -58,8 +58,15 @@ function resistedByMentalStrength(target: Character, rng: () => number, log: str
   return false;
 }
 
-/** 상대에게 디버프/부가효과를 걸 때 반드시 이 함수를 거친다(정신력 저항 판정 포함). */
+/** 보스가 저항하는 강력한 상태이상(기절·봉쇄). */
+const BOSS_RESISTED: StatusEffectType[] = ['stunned', 'immobilized'];
+
+/** 상대에게 디버프/부가효과를 걸 때 반드시 이 함수를 거친다(정신력 저항 + 보스 강력CC 저항). */
 export function applyDebuffTo(ctx: SkillContext, target: Character, type: StatusEffectType, options: StatusApplyOptions, label: string): void {
+  if (target.isBoss && BOSS_RESISTED.includes(type)) {
+    ctx.log.push(`보스에게는 ${label} 효과가 통하지 않는다.`);
+    return;
+  }
   if (resistedByMentalStrength(target, ctx.rng, ctx.log, label)) return;
   applyStatusTo(target, type, options, ctx.log, label);
 }
@@ -105,7 +112,9 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   }
 
   if (fixedPct !== undefined) {
-    const dmg = Math.max(1, Math.floor(defender.baseStats.hp * (fixedPct / 100)));
+    // 보스는 고정 피해가 절반으로 감소한다.
+    const effPct = defender.isBoss ? fixedPct / 2 : fixedPct;
+    const dmg = Math.max(1, Math.floor(defender.baseStats.hp * (effPct / 100)));
     defender.currentHp = Math.max(0, defender.currentHp - dmg);
     ctx.log.push(`${defender.name}에게 ${dmg}의 고정 피해.`);
     ctx.combatEvents.push({ targetId: defender.id, kind: 'damage', amount: dmg });

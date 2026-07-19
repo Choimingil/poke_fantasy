@@ -89,3 +89,11 @@ export function getWeapon(templateId: string): WeaponTemplate {
   if (!weapon) throw new Error(`Unknown weapon template: ${templateId}`);
   return weapon;
 }
+
+/** 플레이 가능한 무기 종류(방패 제외) — 직업 선택·생성에 사용. */
+export const PLAYABLE_WEAPON_KINDS: WeaponKind[] = ['sword', 'blunt', 'spear', 'bow', 'crossbow', 'dagger', 'thrown', 'staff', 'tome'];
+
+/** 특정 종류의 무기 템플릿 목록. */
+export function weaponTemplatesForKind(kind: WeaponKind): WeaponTemplate[] {
+  return WEAPONS.filter((w) => w.kind === kind);
+}

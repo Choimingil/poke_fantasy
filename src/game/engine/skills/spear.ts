@@ -28,7 +28,8 @@ const spearCharge: SkillHandler = (ctx) => {
   const target = findEnemyTarget(ctx);
   if (!target) return;
   dealDamageTo(ctx, target, { triggersReactions: true });
-  if (target.currentHp > 0 && target.equippedShieldId && ctx.rng() < CHARGE_NEGATE_CHANCE) {
+  // 보스는 방패 무력화에 저항한다.
+  if (target.currentHp > 0 && !target.isBoss && target.equippedShieldId && ctx.rng() < CHARGE_NEGATE_CHANCE) {
     ctx.negatedShields.set(target.equippedShieldId, 3);
     ctx.log.push(`${target.name}의 방패가 무력화되었다!`);
   }
