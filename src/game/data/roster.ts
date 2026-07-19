@@ -1,76 +1,74 @@
 import { createCharacter, type CreateCharacterOptions } from '../engine/characterFactory';
 import type { Character } from '../types';
 
-// 능력치 5종(체력/근력/지력/스피드/지구력)은 전원 기본 5에서 시작해 레벨업마다 3포인트씩 분배된다.
-// 로스터는 레벨 10(9회 레벨업 = 27포인트)으로 시작하므로 각 캐릭터의 5개 능력치 합은 5x5+27=52.
+// 테스트 로스터: 캐릭터별로 서로 다른 무기를 하나씩 들고, 그 무기를 6차 전직(티어6)한 레벨 30.
+// 능력치 5종은 전원 기본 5에서 시작해 레벨업마다 3포인트씩 분배 → 레벨 30(29회) = 87포인트,
+// 각 캐릭터의 5개 능력치 합은 5x5 + 87 = 112(주스탯은 무기에 맞춤). 장비·전직도 레벨 30 기준.
+const LV = 30;
 const ROSTER_DEFS: CreateCharacterOptions[] = [
   {
-    id: 'sword_a', name: '환도무사', spriteJob: 'east_duelist', gender: 'male', level: 10,
-    baseStats: { hp: 14, attack: 15, magicAttack: 5, speed: 10, endurance: 8 }, sight: 5,
-    starterWeaponTemplateId: 'sword_short', starterShieldTemplateId: 'shield_round', starterArmorKind: 'mail',
-    // blunt_mace는 Lv.20(캐릭터 레벨 10 미만) — 인벤토리에서 착용 레벨 잠금 UI 테스트용.
-    extraWeaponTemplateIds: [{ templateId: 'blunt_mace', level: 20 }],
-    extraArmorTemplateIds: [{ kind: 'leather' }],
+    id: 'sword', name: '강도현', spriteJob: 'east_duelist', gender: 'male', level: LV,
+    baseStats: { hp: 30, attack: 40, magicAttack: 5, speed: 20, endurance: 17 }, sight: 5,
+    starterWeaponTemplateId: 'sword_short', starterWeaponLevel: LV,
+    starterShieldTemplateId: 'shield_round', starterShieldLevel: LV, starterArmorKind: 'mail', starterArmorLevel: LV,
+    weaponMastery: { sword: 6 }, skillLoadout: ['power_strike', 'sword_crescent', 'sword_flash', 'sword_blink'],
+    // 상위 레벨(Lv.40) 무기 — 인벤토리 착용 레벨 잠금 UI 테스트용.
+    extraWeaponTemplateIds: [{ templateId: 'blunt_mace', level: 40 }],
   },
   {
-    id: 'sword_b', name: '대검전사', spriteJob: 'west_berserker', gender: 'male', level: 10,
-    baseStats: { hp: 16, attack: 18, magicAttack: 5, speed: 6, endurance: 7 }, sight: 5,
-    starterWeaponTemplateId: 'sword_great', starterArmorKind: 'plate',
-    extraWeaponTemplateIds: [{ templateId: 'blunt_maul' }],
-    extraArmorTemplateIds: [{ kind: 'leather' }],
+    id: 'blunt', name: '백건우', spriteJob: 'west_knight', gender: 'male', level: LV,
+    baseStats: { hp: 34, attack: 38, magicAttack: 5, speed: 15, endurance: 20 }, sight: 5,
+    starterWeaponTemplateId: 'blunt_maul', starterWeaponLevel: LV, starterArmorKind: 'plate', starterArmorLevel: LV,
+    weaponMastery: { blunt: 6 }, skillLoadout: ['power_strike', 'blunt_leghit', 'blunt_shove', 'blunt_wideguard'],
   },
   {
-    id: 'blunt_a', name: '철퇴호위', spriteJob: 'west_knight', gender: 'male', level: 10,
-    // 판금(5kg)+방패(1kg)+무기(1kg)만으로 이미 7kg — 근력을 높여 적재량을 확보하고 여분 방어구는 뺐다.
-    baseStats: { hp: 18, attack: 17, magicAttack: 5, speed: 7, endurance: 5 }, sight: 5,
-    starterWeaponTemplateId: 'blunt_mace', starterShieldTemplateId: 'shield_tower', starterArmorKind: 'plate',
-    extraWeaponTemplateIds: [{ templateId: 'sword_short' }],
+    id: 'spear', name: '서지훈', spriteJob: 'east_general', gender: 'male', level: LV,
+    baseStats: { hp: 28, attack: 42, magicAttack: 5, speed: 20, endurance: 17 }, sight: 5,
+    starterWeaponTemplateId: 'spear_a', starterWeaponLevel: LV, starterArmorKind: 'mail', starterArmorLevel: LV,
+    weaponMastery: { spear: 6 }, skillLoadout: ['power_strike', 'spear_pierce', 'spear_lock', 'spear_charge'],
   },
   {
-    id: 'blunt_b', name: '대곤파괴자', spriteJob: 'east_general', gender: 'male', level: 10,
-    baseStats: { hp: 17, attack: 16, magicAttack: 5, speed: 5, endurance: 9 }, sight: 5,
-    starterWeaponTemplateId: 'blunt_maul', starterArmorKind: 'mail',
-    extraWeaponTemplateIds: [{ templateId: 'sword_great' }],
-    extraArmorTemplateIds: [{ kind: 'leather' }],
+    id: 'bow', name: '윤재하', spriteJob: 'east_archer', gender: 'male', level: LV,
+    baseStats: { hp: 20, attack: 40, magicAttack: 5, speed: 32, endurance: 15 }, sight: 5,
+    starterWeaponTemplateId: 'bow_long', starterWeaponLevel: LV, starterArmorKind: 'leather', starterArmorLevel: LV,
+    weaponMastery: { bow: 6 }, skillLoadout: ['power_strike', 'bow_skyshot', 'bow_leapshot', 'bow_snipe'],
+    extraWeaponTemplateIds: [{ templateId: 'bow_short', level: LV }],
   },
   {
-    id: 'bow_a', name: '각궁사수', spriteJob: 'east_archer', gender: 'male', level: 10,
-    baseStats: { hp: 10, attack: 14, magicAttack: 5, speed: 15, endurance: 8 }, sight: 5,
-    starterWeaponTemplateId: 'bow_short', starterArmorKind: 'leather',
-    extraWeaponTemplateIds: [{ templateId: 'bow_long' }, { templateId: 'sword_short' }],
+    id: 'crossbow', name: '한도영', spriteJob: 'west_berserker', gender: 'male', level: LV,
+    baseStats: { hp: 24, attack: 44, magicAttack: 5, speed: 24, endurance: 15 }, sight: 5,
+    starterWeaponTemplateId: 'crossbow_a', starterWeaponLevel: LV, starterArmorKind: 'leather', starterArmorLevel: LV,
+    weaponMastery: { crossbow: 6 }, skillLoadout: ['power_strike', 'xbow_ap', 'xbow_pierceshot', 'xbow_lethal'],
   },
   {
-    id: 'bow_b', name: '장궁저격수', spriteJob: 'west_ranger', gender: 'female', level: 10,
-    baseStats: { hp: 9, attack: 13, magicAttack: 5, speed: 17, endurance: 8 }, sight: 5,
-    starterWeaponTemplateId: 'bow_long', starterArmorKind: 'leather',
-    extraWeaponTemplateIds: [{ templateId: 'bow_short' }],
-    extraArmorTemplateIds: [{ kind: 'cloth' }],
+    id: 'dagger', name: '류시아', spriteJob: 'west_ranger', gender: 'female', level: LV,
+    baseStats: { hp: 20, attack: 38, magicAttack: 5, speed: 37, endurance: 12 }, sight: 5,
+    starterWeaponTemplateId: 'dagger_a', starterWeaponLevel: LV, starterArmorKind: 'leather', starterArmorLevel: LV,
+    weaponMastery: { dagger: 6 }, skillLoadout: ['power_strike', 'dagger_ambush', 'dagger_stealth', 'dagger_warp'],
   },
   {
-    id: 'staff_a', name: '화염술사', spriteJob: 'west_witch', gender: 'female', level: 10,
-    baseStats: { hp: 10, attack: 5, magicAttack: 19, speed: 10, endurance: 8 }, sight: 5,
-    starterWeaponTemplateId: 'staff_east', starterWeaponElement: 'fire', starterArmorKind: 'cloth',
-    extraWeaponTemplateIds: [{ templateId: 'tome_east' }],
-    extraArmorTemplateIds: [{ kind: 'leather' }],
+    id: 'thrown', name: '오세준', spriteJob: 'east_strategist', gender: 'male', level: LV,
+    baseStats: { hp: 22, attack: 40, magicAttack: 5, speed: 30, endurance: 15 }, sight: 5,
+    starterWeaponTemplateId: 'thrown_a', starterWeaponLevel: LV, starterWeaponProcEffect: 'bleed', starterArmorKind: 'leather', starterArmorLevel: LV,
+    weaponMastery: { thrown: 6 }, skillLoadout: ['power_strike', 'thrown_poison', 'thrown_clone', 'thrown_chain'],
   },
   {
-    id: 'staff_b', name: '대지술사', spriteJob: 'east_shaman', gender: 'male', level: 10,
-    baseStats: { hp: 11, attack: 5, magicAttack: 17, speed: 8, endurance: 11 }, sight: 5,
-    starterWeaponTemplateId: 'staff_west', starterWeaponElement: 'earth', starterArmorKind: 'cloth',
-    extraWeaponTemplateIds: [{ templateId: 'tome_west' }],
-    extraArmorTemplateIds: [{ kind: 'leather' }],
+    id: 'staff_fire', name: '임하늘', spriteJob: 'west_witch', gender: 'female', level: LV,
+    baseStats: { hp: 22, attack: 5, magicAttack: 45, speed: 20, endurance: 20 }, sight: 5,
+    starterWeaponTemplateId: 'staff_east', starterWeaponLevel: LV, starterWeaponElement: 'fire', starterArmorKind: 'cloth', starterArmorLevel: LV,
+    weaponMastery: { staff: 6 }, skillLoadout: ['incantation', 'staff_bolt', 'staff_weaken', 'staff_meteor'],
   },
   {
-    id: 'tome_a', name: '사제', spriteJob: 'west_priest', gender: 'female', level: 10,
-    baseStats: { hp: 11, attack: 5, magicAttack: 16, speed: 11, endurance: 9 }, sight: 5,
-    starterWeaponTemplateId: 'tome_east', starterWeaponProcEffect: 'crit', starterArmorKind: 'cloth',
-    extraWeaponTemplateIds: [{ templateId: 'staff_east' }],
+    id: 'staff_water', name: '문서준', spriteJob: 'east_shaman', gender: 'male', level: LV,
+    baseStats: { hp: 24, attack: 5, magicAttack: 43, speed: 20, endurance: 20 }, sight: 5,
+    starterWeaponTemplateId: 'staff_west', starterWeaponLevel: LV, starterWeaponElement: 'water', starterArmorKind: 'cloth', starterArmorLevel: LV,
+    weaponMastery: { staff: 6 }, skillLoadout: ['incantation', 'staff_bolt', 'staff_weaken', 'staff_meteor'],
   },
   {
-    id: 'tome_b', name: '현자', spriteJob: 'east_strategist', gender: 'male', level: 10,
-    baseStats: { hp: 9, attack: 5, magicAttack: 18, speed: 11, endurance: 9 }, sight: 5,
-    starterWeaponTemplateId: 'tome_west', starterWeaponProcEffect: 'focus', starterArmorKind: 'leather',
-    extraWeaponTemplateIds: [{ templateId: 'staff_west' }],
+    id: 'tome', name: '정유안', spriteJob: 'west_priest', gender: 'female', level: LV,
+    baseStats: { hp: 24, attack: 5, magicAttack: 42, speed: 22, endurance: 19 }, sight: 5,
+    starterWeaponTemplateId: 'tome_east', starterWeaponLevel: LV, starterWeaponProcEffect: 'crit', starterArmorKind: 'cloth', starterArmorLevel: LV,
+    weaponMastery: { tome: 6 }, skillLoadout: ['incantation', 'tome_heal', 'tome_purify', 'tome_recast'],
   },
 ];
 

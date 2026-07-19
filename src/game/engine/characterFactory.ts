@@ -38,6 +38,10 @@ export interface CreateCharacterOptions {
   extraWeaponTemplateIds?: ExtraWeaponSpec[];
   /** 추가로 소지한(미장착) 방어구 */
   extraArmorTemplateIds?: ExtraArmorSpec[];
+  /** 무기별 전직 티어(0~6). 지정하지 않으면 전부 0. */
+  weaponMastery?: Character['weaponMastery'];
+  /** 기본 로드아웃(사용 가능한 스킬로 필터됨). 미지정 시 사용 가능한 스킬 앞 4개. */
+  skillLoadout?: string[];
 }
 
 export function createCharacter(opts: CreateCharacterOptions): Character {
@@ -89,7 +93,7 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     xp: 0,
     unspentPromotions: 0,
     unspentStatPoints: 0,
-    weaponMastery: {},
+    weaponMastery: { ...(opts.weaponMastery ?? {}) },
     baseStats: { ...opts.baseStats },
     sight: opts.sight,
     currentHp: opts.baseStats.hp,
@@ -104,8 +108,9 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     bonusActionPending: false,
     skillLoadout: [],
   };
-  // 기본 로드아웃: 장착 무기로 사용 가능한 스킬의 앞 4개(공통 공격/버프 위주).
-  character.skillLoadout = getUsableSkillIds(character, getWeapon(weaponInstance.templateId).kind).slice(0, MAX_LOADOUT);
+  // 기본 로드아웃: 지정되면 그것(사용 가능한 스킬로 필터), 아니면 사용 가능한 스킬의 앞 4개.
+  const usable = getUsableSkillIds(character, getWeapon(weaponInstance.templateId).kind);
+  character.skillLoadout = (opts.skillLoadout ? opts.skillLoadout.filter((id) => usable.includes(id)) : usable).slice(0, MAX_LOADOUT);
   return character;
 }
 
