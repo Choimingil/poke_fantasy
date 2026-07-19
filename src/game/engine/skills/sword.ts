@@ -1,5 +1,5 @@
 import { manhattan } from '../grid';
-import { dealDamageTo, knockbackTarget, isFreeTile } from './helpers';
+import { dealDamageTo, dashThroughTarget, isFreeTile } from './helpers';
 import type { SkillContext, SkillHandler } from './context';
 
 function findEnemy(ctx: SkillContext) {
@@ -22,15 +22,15 @@ const swordCrescent: SkillHandler = (ctx) => {
   }
 };
 
-// 일섬: 공격 후 대상을 공격 방향으로 1칸 밀어낸다.
+// 일섬: 대상은 제자리, 시전자가 공격 후 대상을 관통해 그 1칸 뒤로 이동한다.
 const swordFlash: SkillHandler = (ctx) => {
   const target = findEnemy(ctx);
   if (!target) return;
   dealDamageTo(ctx, target, { triggersReactions: true });
-  if (target.currentHp > 0 && knockbackTarget(ctx, target)) ctx.log.push(`${target.name}가 밀려났다.`);
+  if (dashThroughTarget(ctx, target)) ctx.log.push(`${ctx.actor.name}가 일섬으로 파고들었다.`);
 };
 
-// 섬광참: 대상 인접 빈칸까지 돌진한 뒤 공격.
+// 섬광참: 사거리 2. 대상 앞(대상 인접, 시전자에서 가장 가까운 빈칸)까지 이동한 뒤 공격.
 const swordBlink: SkillHandler = (ctx) => {
   const target = findEnemy(ctx);
   if (!target) return;

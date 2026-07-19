@@ -206,6 +206,16 @@ export function knockbackTarget(ctx: SkillContext, target: Character): boolean {
   return true;
 }
 
+/** 시전자가 대상을 관통해 그 1칸 뒤(공격 방향 연장선)로 이동한다. 대상은 제자리. 이동했으면 true. */
+export function dashThroughTarget(ctx: SkillContext, target: Character): boolean {
+  const dir = stepDir(ctx.actor.position, target.position);
+  if (dir.x === 0 && dir.y === 0) return false;
+  const dest = { x: target.position.x + dir.x, y: target.position.y + dir.y };
+  if (!isFreeTile(ctx, dest)) return false;
+  ctx.actor.position = dest;
+  return true;
+}
+
 /** 대상 1칸 뒤(공격 방향 연장선)에 있는 살아있는 적을 반환한다(꿰뚫기·관통사격). */
 export function enemyBehind(ctx: SkillContext, target: Character): Character | undefined {
   const dir = stepDir(ctx.actor.position, target.position);

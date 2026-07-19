@@ -38,7 +38,7 @@ const COMMON_SKILLS: Skill[] = [
 // 검(r1): 반월참 / 일섬 / 섬광참
 const SWORD_SKILLS: Skill[] = [
   { id: 'sword_crescent', name: '반월참', weaponKind: 'sword', requiredTier: 2, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', coneArc: true, maxUses: 3 },
-  { id: 'sword_flash', name: '일섬', weaponKind: 'sword', requiredTier: 4, category: 'attack', damageType: 'physical', power: 120, accuracy: 95, targetMode: 'enemy', range: 'weapon', knockback: true, maxUses: 3 },
+  { id: 'sword_flash', name: '일섬', weaponKind: 'sword', requiredTier: 4, category: 'attack', damageType: 'physical', power: 120, accuracy: 95, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
   { id: 'sword_blink', name: '섬광참', weaponKind: 'sword', requiredTier: 6, category: 'attack', damageType: 'physical', power: 150, accuracy: 90, targetMode: 'enemy', range: 2, maxUses: 2 },
 ];
 

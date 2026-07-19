@@ -42,6 +42,32 @@ describe('무기 전용기술 통합', () => {
     expect(back.currentHp).toBeLessThan(100); // 뒤의 적도 0.5배 피해
   });
 
+  it('일섬: 대상은 제자리, 시전자가 대상 뒤(관통)로 이동한다', () => {
+    const map = makeMap();
+    const sword = makeUnit('sword', 'sword_short', 6, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 30, endurance: 10 } });
+    const enemy = makeUnit('enemy', 'sword_short', 0);
+    prepareForBattle(sword, { x: 0, y: 0 }, 'A');
+    prepareForBattle(enemy, { x: 1, y: 0 }, 'B'); // 시전자 우측 인접
+    const battle = new GridBattle(map, [sword], [enemy], () => 0.5);
+    battle.takeTurn({ skillId: 'sword_flash', targetId: 'enemy' });
+    expect(enemy.position).toEqual({ x: 1, y: 0 }); // 대상은 그대로
+    expect(sword.position).toEqual({ x: 2, y: 0 }); // 시전자는 대상 뒤로 관통
+    expect(enemy.currentHp).toBeLessThan(100);
+  });
+
+  it('섬광참: 2칸 떨어진 대상 앞(인접)까지 이동한 뒤 공격한다', () => {
+    const map = makeMap();
+    const sword = makeUnit('sword', 'sword_short', 6, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 30, endurance: 10 } });
+    const enemy = makeUnit('enemy', 'sword_short', 0);
+    prepareForBattle(sword, { x: 0, y: 0 }, 'A');
+    prepareForBattle(enemy, { x: 2, y: 0 }, 'B'); // 2칸 거리
+    const battle = new GridBattle(map, [sword], [enemy], () => 0.5);
+    battle.takeTurn({ skillId: 'sword_blink', targetId: 'enemy' });
+    expect(sword.position).toEqual({ x: 1, y: 0 }); // 대상 앞(인접)으로 이동
+    expect(enemy.position).toEqual({ x: 2, y: 0 }); // 대상은 그대로
+    expect(enemy.currentHp).toBeLessThan(100);
+  });
+
   it('봉쇄: 대상에게 이동 불가 상태를 부여한다', () => {
     const map = makeMap();
     const spearman = makeUnit('spear', 'spear_a', 6, { baseStats: { hp: 100, attack: 50, magicAttack: 10, speed: 30, endurance: 10 } });
