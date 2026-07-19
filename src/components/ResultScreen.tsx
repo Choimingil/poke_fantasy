@@ -16,7 +16,7 @@ export function ResultScreen({
   levelUpEvents: LevelUpResult[];
   allUnits: Character[];
   onRestart?: () => void;
-  reward?: { reputationGained: number; goldGained: number; won: boolean };
+  reward?: { reputationGained: number; goldGained: number; won: boolean; bossDefeated: boolean };
   onContinue?: () => void;
 }) {
   const nameOf = (id: string) => allUnits.find((u) => u.id === id)?.name ?? id;
@@ -32,6 +32,7 @@ export function ResultScreen({
       )}
       {reward && (
         <div className="result-reward">
+          {reward.bossDefeated && <span className="boss-warning">👑 보스 처치!</span>}
           <span>🏅 명성 +{reward.reputationGained}</span>
           <span>💰 골드 +{reward.goldGained}</span>
           {!reward.won && <span className="result-retry-note">패배 시 라운드는 진행되지 않습니다. 정비 후 재도전하세요.</span>}

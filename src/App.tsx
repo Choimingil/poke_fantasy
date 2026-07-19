@@ -31,6 +31,7 @@ interface Reward {
   reputationGained: number;
   goldGained: number;
   won: boolean;
+  bossDefeated: boolean;
 }
 
 function App() {
@@ -69,7 +70,10 @@ function App() {
 
   const startCampaignBattle = () => {
     if (!campaign) return;
-    const deployed = campaign.roster.filter((c) => campaign.deployedIds.includes(c.id));
+    // 출전 순서(deployedIds)를 그대로 스폰 슬롯 순서로 사용한다(파티 편성에서 지정한 위치).
+    const deployed = campaign.deployedIds
+      .map((id) => campaign.roster.find((c) => c.id === id))
+      .filter((c): c is NonNullable<typeof c> => !!c);
     if (deployed.length === 0) return;
     const { units } = generateEnemyParty(campaign.round);
     setBattleTeamA(deployed);
@@ -83,7 +87,7 @@ function App() {
     const outcome = outcomeFromBattle(battle, campaign.round);
     const settled = settleBattle(campaign, outcome);
     persist(settled.campaign);
-    setReward({ reputationGained: settled.reputationGained, goldGained: settled.goldGained, won: outcome.won });
+    setReward({ reputationGained: settled.reputationGained, goldGained: settled.goldGained, won: outcome.won, bossDefeated: outcome.bossDefeated });
     setFinishedBattle(battle);
     setScreen('campaign-result');
   };

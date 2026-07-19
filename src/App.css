@@ -1101,3 +1101,16 @@ button:disabled {
 .stash-actions button { padding: 4px 10px; font-size: 0.85em; }
 .sell-button { background: #7a3c3c; }
 .sell-button:hover { background: #632f2f; }
+
+/* ===== 파티 편성 심화 ===== */
+.formation-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; margin: 6px 0 12px; }
+.formation-list li { border: 1px solid #6f86ff; border-radius: 8px; padding: 8px 12px; background: #2b3247; }
+.formation-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.formation-slot { font-weight: 800; color: #ffd45e; min-width: 34px; }
+.formation-name { flex: 1; }
+.formation-controls { display: inline-flex; gap: 4px; }
+.formation-controls button { padding: 4px 9px; font-size: 0.85em; }
+.party-detail { margin-top: 6px; font-size: 0.82rem; color: #b9c0d4; }
+.party-skills { color: #9aa3bd; }
+.deploy-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.deploy-list li > span { display: flex; flex-direction: column; }

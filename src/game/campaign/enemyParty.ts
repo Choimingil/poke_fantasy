@@ -33,22 +33,28 @@ export function isBossRound(round: number): boolean {
   return round % BOSS_ROUND_INTERVAL === 0;
 }
 
-/** 라운드에 맞는 적 파티를 생성한다(테마·레벨·인원 스케일, 보스 라운드엔 보스 포함). */
+/** 후반 라운드 능력치 스케일 배수(8라운드 이후 라운드당 +4%). */
+export function enemyStatMult(round: number): number {
+  return 1 + Math.max(0, round - 8) * 0.04;
+}
+
+/** 라운드에 맞는 적 파티를 생성한다(테마·레벨·인원·후반 스케일, 보스 라운드엔 보스 포함). */
 export function generateEnemyParty(round: number, rng: () => number = Math.random): { units: Character[]; theme: EnemyTheme } {
   const theme = themeForRound(round);
   const level = enemyLevelForRound(round);
   const count = enemyCountForRound(round);
+  const statMult = enemyStatMult(round);
   const kinds = THEME_KINDS[theme];
   const units: Character[] = [];
 
   if (isBossRound(round)) {
-    units.push(generateCharacter(kinds[0], level + 5, { id: `enemy-${round}-boss`, name: `${randomName(rng)} (보스)`, rng, isBoss: true }));
+    units.push(generateCharacter(kinds[0], level + 5, { id: `enemy-${round}-boss`, name: `${randomName(rng)} (보스)`, rng, isBoss: true, statMult }));
     for (let i = 1; i < count; i++) {
-      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng }));
+      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, statMult }));
     }
   } else {
     for (let i = 0; i < count; i++) {
-      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng }));
+      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, statMult }));
     }
   }
   return { units, theme };

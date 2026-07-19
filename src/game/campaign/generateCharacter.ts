@@ -83,6 +83,8 @@ export interface GenerateOptions {
   name?: string;
   rng?: () => number;
   isBoss?: boolean;
+  /** 후반 라운드 난이도 스케일(능력치 배수, 기본 1). */
+  statMult?: number;
 }
 
 /** 무기 종류·레벨에 맞춰 능력치·장비·전직·로드아웃을 갖춘 캐릭터를 생성한다. */
@@ -94,6 +96,13 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
   const procEffect = kind === 'tome' || kind === 'thrown' ? PROCS[Math.floor(rng() * PROCS.length)] : undefined;
   const tier = masteryTierForLevel(level);
   const stats = generateStats(kind, level);
+  const mult = opts.statMult ?? 1;
+  if (mult !== 1) {
+    stats.hp = Math.round(stats.hp * mult);
+    stats.attack = Math.round(stats.attack * mult);
+    stats.magicAttack = Math.round(stats.magicAttack * mult);
+    stats.speed = Math.round(stats.speed * mult);
+  }
   if (opts.isBoss) {
     stats.hp = Math.round(stats.hp * 2.2); // 보스는 체력이 크게 높다
     stats.attack = Math.round(stats.attack * 1.2);
