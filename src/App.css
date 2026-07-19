@@ -1068,3 +1068,20 @@ button:disabled {
 
 .result-reward { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; font-weight: 800; margin: 8px 0 16px; }
 .result-retry-note { color: #ffcf8f; font-weight: 400; font-size: 0.85rem; flex-basis: 100%; text-align: center; }
+
+/* ===== 동료 모집 탭 ===== */
+.recruit-list { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.recruit-card { border: 1px solid #39415e; border-radius: 10px; padding: 12px; background: #232838; display: flex; flex-direction: column; gap: 6px; }
+.recruit-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.recruit-head strong { font-size: 1.05rem; }
+.recruit-class { color: #b9c0d4; font-size: 0.85rem; margin-left: auto; }
+.recruit-stats { font-size: 0.82rem; color: #cfd3e0; }
+.recruit-gear { font-size: 0.82rem; color: #9aa3bd; }
+.recruit-passive { color: #ffe6a6; }
+.recruit-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+.recruit-cost { font-weight: 800; color: #ffd45e; }
+.quality-tag { font-size: 0.72rem; font-weight: 800; padding: 1px 7px; border-radius: 999px; }
+.quality-recruit { background: #3a4152; color: #cfd6e6; }
+.quality-veteran { background: #275a3a; color: #c7f0d6; }
+.quality-elite { background: #274a86; color: #cfe0ff; }
+.quality-hero { background: #6a4a12; color: #ffe6a6; }

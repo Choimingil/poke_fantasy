@@ -5,6 +5,7 @@ import { ENEMY_THEME_LABEL } from '../game/campaign/types';
 import { themeForRound, isBossRound, enemyLevelForRound, enemyCountForRound } from '../game/campaign/enemyParty';
 import { getWeapon } from '../game/data/weapons';
 import { InventoryScreen } from './InventoryScreen';
+import { RecruitTab } from './RecruitTab';
 
 type Tab = 'party' | 'inventory' | 'recruit' | 'shop';
 
@@ -25,11 +26,13 @@ export function BarracksScreen({
   onSetDeployed,
   onStartBattle,
   onSave,
+  onRecruit,
 }: {
   campaign: Campaign;
   onSetDeployed: (ids: string[]) => void;
   onStartBattle: () => void;
   onSave: () => void;
+  onRecruit: (id: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>('party');
   const theme = themeForRound(campaign.round);
@@ -94,7 +97,7 @@ export function BarracksScreen({
         )}
 
         {tab === 'recruit' && (
-          <div className="tab-placeholder"><p>동료 모집은 다음 업데이트에서 제공됩니다.</p></div>
+          <RecruitTab campaign={campaign} onRecruit={onRecruit} />
         )}
 
         {tab === 'shop' && (

@@ -45,6 +45,17 @@ const TIER5_PASSIVES: Partial<Record<WeaponKind, Tier5Passive>> = {
   thrown: 'pincer',
 };
 
+const PASSIVE_LABEL: Record<Tier5Passive, string> = {
+  sprint: '질주', guardian: '경호', counter: '반격', hawkeye: '매의눈', steadyAim: '정조준',
+  meditation: '명상', amplify: '증폭', adaptation: '적응력', pincer: '협공',
+};
+
+/** 무기 종류의 티어5 전직 패시브 한글 이름(없으면 null). */
+export function weaponPassiveLabel(kind: WeaponKind): string | null {
+  const p = TIER5_PASSIVES[kind];
+  return p ? PASSIVE_LABEL[p] : null;
+}
+
 export function masteryTier(c: Character, kind: WeaponKind): number {
   return c.weaponMastery[kind] ?? 0;
 }

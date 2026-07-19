@@ -1,7 +1,14 @@
 import type { ArmorInstance, Character, Element, ProcEffect, WeaponInstance, WeaponKind } from '../types';
 
-/** 동료 품질 등급(명성에 따라 결정). 일반병사 → 숙련병 → 엘리트 → 영웅급. (모집 단계에서 확장) */
-type Quality = 'recruit' | 'veteran' | 'elite' | 'hero';
+/** 동료 품질 등급(명성에 따라 결정). 일반병사 → 숙련병 → 엘리트 → 영웅급. */
+export type Quality = 'recruit' | 'veteran' | 'elite' | 'hero';
+
+export const QUALITY_LABEL: Record<Quality, string> = {
+  recruit: '일반 병사',
+  veteran: '숙련병',
+  elite: '엘리트',
+  hero: '영웅급',
+};
 
 /** 적 파티 라운드별 테마. */
 export type EnemyTheme = 'spear' | 'archer' | 'mage' | 'heavy' | 'assassin' | 'element';
@@ -15,8 +22,8 @@ export const ENEMY_THEME_LABEL: Record<EnemyTheme, string> = {
   element: '속성 특화',
 };
 
-/** 모집 후보(생성된 캐릭터 + 모집 비용). (모집 단계에서 확장) */
-interface RecruitCandidate {
+/** 모집 후보(생성된 캐릭터 + 모집 비용). */
+export interface RecruitCandidate {
   id: string;
   character: Character;
   quality: Quality;
@@ -60,6 +67,7 @@ export interface BattleOutcome {
 }
 
 export const CAMPAIGN_VERSION = 1;
+export const MAX_ROSTER = 30;
 export const MAX_DEPLOY = 4;
 /** 보스 라운드 주기(이 배수 라운드에 보스 등장). */
 export const BOSS_ROUND_INTERVAL = 5;

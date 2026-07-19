@@ -12,7 +12,7 @@ import type { GridBattle } from './game/engine/battle';
 import type { Character, WeaponKind } from './game/types';
 import type { Campaign } from './game/campaign/types';
 import { loadCampaign, saveCampaign, clearCampaign } from './game/campaign/storage';
-import { newCampaign, outcomeFromBattle, settleBattle } from './game/campaign/state';
+import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle } from './game/campaign/state';
 import { generateEnemyParty } from './game/campaign/enemyParty';
 
 type Screen =
@@ -118,6 +118,7 @@ function App() {
         onSetDeployed={(ids) => persist({ ...campaign, deployedIds: ids })}
         onStartBattle={startCampaignBattle}
         onSave={() => campaign && saveCampaign(campaign)}
+        onRecruit={(id) => persist(recruitFromCandidate(campaign, id))}
       />
     );
   }
