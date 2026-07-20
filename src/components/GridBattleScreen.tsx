@@ -144,7 +144,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const timer = setTimeout(() => {
       const ownTeam = unit.side === 'A' ? battle.teamA : battle.teamB;
       const enemyTeam = unit.side === 'A' ? battle.teamB : battle.teamA;
-      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time, battle.knownEnemyPositions[unit.side!], battle.round);
+      const action = pickAiAction(unit, ownTeam, enemyTeam, battle.map, battle.weather, battle.time, battle.knownEnemyPositions[unit.side!]);
       battle.takeTurn(action);
       if (action.skillId && action.targetId) triggerMotion(unit.id, [action.targetId]);
       showFloats(battle);
@@ -247,7 +247,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
   const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
-  const budget = moveStepsForRound(effectiveMove(currentUnit, battle.map, battle.weather), battle.round);
+  const budget = moveStepsForRound(effectiveMove(currentUnit, battle.map, battle.weather));
   const reachable = pendingMoveTile || pendingFollowup ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
   const reachableTiles = new Set(reachable.map(posKey));
 

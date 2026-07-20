@@ -2,7 +2,7 @@ import type { Character, StatKey } from '../game/types';
 import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { baseMoveFromEndurance } from '../game/engine/grid';
-import { mentalResistChance } from '../game/engine/derivedStats';
+import { mentalResistChance, maxHp } from '../game/engine/derivedStats';
 import { TrainerSprite } from './TrainerSprite';
 import { StatusChips } from './StatusChips';
 
@@ -34,7 +34,7 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
         <div>
           <p className="inspect-name"><strong>{unit.name}</strong> · Lv.{unit.level}</p>
           <p className="inspect-sub">{weaponName}{shield ? ` + ${shield.name}` : ''}{armor ? ` · ${armor.name}` : ''}</p>
-          <p className="inspect-hp">HP {unit.currentHp} / {unit.baseStats.hp}</p>
+          <p className="inspect-hp">HP {unit.currentHp} / {maxHp(unit)}</p>
         </div>
       </div>
       <div className="inspect-stats">

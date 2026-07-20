@@ -5,7 +5,7 @@ import { hasTier5Passive } from '../../data/promotions';
 import { manhattan } from '../grid';
 import { calculateDamage } from '../damage';
 import { applyStatus, type StatusApplyOptions } from '../status';
-import { mentalResistChance, evasionChance } from '../derivedStats';
+import { mentalResistChance, evasionChance, maxHp } from '../derivedStats';
 import { rollWeaponProc } from '../weaponEffects';
 import type { SkillContext } from './context';
 
@@ -104,7 +104,7 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
 
   // 활의 '집중'은 회피율을 무시한다. 그 외에는 정상적으로 회피 판정을 먼저 거친다.
   if (proc !== 'focus') {
-    if (ctx.rng() < evasionChance(defender, attacker)) {
+    if (ctx.rng() < evasionChance(defender)) {
       ctx.log.push(`${defender.name}가 공격을 회피했다!`);
       ctx.combatEvents.push({ targetId: defender.id, kind: 'miss' });
       return 0;
@@ -114,7 +114,7 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   if (fixedPct !== undefined) {
     // 보스는 고정 피해가 절반으로 감소한다.
     const effPct = defender.isBoss ? fixedPct / 2 : fixedPct;
-    const dmg = Math.max(1, Math.floor(defender.baseStats.hp * (effPct / 100)));
+    const dmg = Math.max(1, Math.floor(maxHp(defender) * (effPct / 100)));
     defender.currentHp = Math.max(0, defender.currentHp - dmg);
     ctx.log.push(`${defender.name}에게 ${dmg}의 고정 피해.`);
     ctx.combatEvents.push({ targetId: defender.id, kind: 'damage', amount: dmg });

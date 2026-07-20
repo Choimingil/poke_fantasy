@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createCharacter } from './characterFactory';
-import { rollWeaponProc, WEAPON_PROC_CHANCE } from './weaponEffects';
+import { rollWeaponProc, PROC_CHANCE } from './weaponEffects';
 
 function makeCharacter(weaponTemplateId: string, procEffect?: 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit') {
   return createCharacter({
@@ -43,7 +43,14 @@ describe('rollWeaponProc', () => {
     expect(rollWeaponProc(makeCharacter('shield_round'), 'shield', () => 0)).toBeNull();
   });
 
-  it('발동 확률은 30%다', () => {
-    expect(WEAPON_PROC_CHANCE).toBe(0.3);
+  it('부가효과별 발동 확률: 검 출혈·창 관통·활 집중 30%, 둔기 충격·석궁 급소 20%', () => {
+    expect(PROC_CHANCE.bleed).toBe(0.3);
+    expect(PROC_CHANCE.pierce).toBe(0.3);
+    expect(PROC_CHANCE.focus).toBe(0.3);
+    expect(PROC_CHANCE.stun).toBe(0.2);
+    expect(PROC_CHANCE.crit).toBe(0.2);
+    // 둔기 충격(20%)은 0.25에서 실패, 검 출혈(30%)은 0.25에서 발동한다.
+    expect(rollWeaponProc(makeCharacter('blunt_mace'), 'blunt', () => 0.25)).toBeNull();
+    expect(rollWeaponProc(makeCharacter('sword_short'), 'sword', () => 0.25)).toBe('bleed');
   });
 });

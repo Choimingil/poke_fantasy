@@ -1,5 +1,6 @@
 import type { ArmorKind, Character } from '../types';
 import { getArmor } from '../data/armor';
+import { maxHp } from './derivedStats';
 
 export type Weather = 'clear' | 'rain' | 'snow' | 'heatwave';
 
@@ -41,7 +42,7 @@ function heatResistChance(c: Character): number {
 export function weatherTurnStartDamage(c: Character, weather: Weather, rng: () => number): number {
   if (weather !== 'heatwave') return 0;
   if (rng() < heatResistChance(c)) return 0;
-  const damage = Math.max(1, Math.round(c.baseStats.hp / 16));
+  const damage = Math.max(1, Math.round(maxHp(c) / 16));
   c.currentHp = Math.max(0, c.currentHp - damage);
   return damage;
 }

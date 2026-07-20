@@ -3,6 +3,7 @@ import { MAX_ROSTER, QUALITY_LABEL } from '../game/campaign/types';
 import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { masteryTier, weaponPassiveLabel } from '../game/data/promotions';
+import { maxHp } from '../game/engine/derivedStats';
 import type { WeaponKind } from '../game/types';
 
 const KIND_LABEL: Record<WeaponKind, string> = {
@@ -37,7 +38,7 @@ export function RecruitTab({ campaign, onRecruit }: { campaign: Campaign; onRecr
                   <span className="recruit-class">{KIND_LABEL[kind]} · Lv.{c.level}</span>
                 </div>
                 <div className="recruit-stats">
-                  HP {c.baseStats.hp} · 근력 {c.baseStats.attack} · 지력 {c.baseStats.magicAttack} · 스피드 {c.baseStats.speed} · 지구력 {c.baseStats.endurance}
+                  HP {maxHp(c)} · 근력 {c.baseStats.attack} · 지력 {c.baseStats.magicAttack} · 스피드 {c.baseStats.speed} · 지구력 {c.baseStats.endurance}
                 </div>
                 <div className="recruit-gear">
                   🗡 {weaponInstanceName(weaponInst)} · 🛡 {armor ? armor.name : '없음'}

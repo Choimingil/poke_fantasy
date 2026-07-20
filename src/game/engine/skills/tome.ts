@@ -1,5 +1,6 @@
 import type { StatusEffectType } from '../../types';
 import { aliveUnitsInRadius } from './helpers';
+import { maxHp } from '../derivedStats';
 import type { SkillHandler } from './context';
 
 const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'stunned', 'immobilized'];
@@ -10,7 +11,7 @@ const tomeHeal: SkillHandler = (ctx) => {
   const healAmount = Math.max(1, Math.round(ctx.actor.baseStats.magicAttack / 5));
   for (const ally of allies) {
     const before = ally.currentHp;
-    ally.currentHp = Math.min(ally.baseStats.hp, ally.currentHp + healAmount);
+    ally.currentHp = Math.min(maxHp(ally), ally.currentHp + healAmount);
     if (ally.currentHp > before) {
       ctx.log.push(`${ally.name}의 체력을 ${ally.currentHp - before} 회복했다.`);
       ctx.combatEvents.push({ targetId: ally.id, kind: 'heal', amount: ally.currentHp - before });

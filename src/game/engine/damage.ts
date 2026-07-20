@@ -33,6 +33,11 @@ export interface DamageResult {
   crit: boolean;
 }
 
+/** 피해 배수(속성·급소·조건부 위력)의 상한. */
+const DAMAGE_MULT_CAP = 2.5;
+/** 최소 데미지 보장: 방어를 무시한 기술 피해의 이 비율만큼은 항상 들어간다. */
+const MIN_DAMAGE_RATIO = 0.1;
+
 /** 숙련도 티어(0~6)에 따른 랜덤 배율 하한. 명세에 구체 수치가 없어 새로 설계한 placeholder(티어0=50% ~ 티어6=100%). */
 function masteryRandomFloor(tier: number): number {
   return 0.5 + (tier / 6) * 0.5;
@@ -64,8 +69,8 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
     passivePowerMult *= ctx.finalPowerMult ?? 1;
   }
 
-  // 최종공격력 = (주스탯/6 + 무기 공격력) x 숙련도~100% 랜덤값 x 기술위력 (+ 티어1 위력 보너스)
-  const attackPower = (stat / 6 + ctx.weaponPower) * (1 + tier1PowerBonus / 100) * masteryRoll * skillPower * passivePowerMult;
+  // 기본 공격력 = (주스탯/6 + 무기 공격력) x 숙련도~100% 랜덤값 x 기술위력 (+ 티어1 위력 보너스)
+  const baseAttack = (stat / 6 + ctx.weaponPower) * (1 + tier1PowerBonus / 100) * masteryRoll * skillPower;
 
   const rawDefense = ctx.defenderDefense ?? 0;
   const defense = ctx.ignoreDefense ? 0 : rawDefense * (1 - (ctx.ignoreDefenseRatio ?? 0));
@@ -76,7 +81,12 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
 
   const crit = !!ctx.weaponCrit;
 
-  // 최종데미지 = 최종공격력 - 방어력
-  const total = (attackPower - defense) * elementMult * (crit ? 1.5 : 1);
+  // 피해 배수(속성·급소·질주·쇄상 등)는 최대 2.5배로 제한한다.
+  const powerMult = Math.min(DAMAGE_MULT_CAP, passivePowerMult * elementMult * (crit ? 1.5 : 1));
+
+  // 최종데미지 = (기본 공격력 - 방어력) x 피해 배수. 방어를 무시한 기술 피해의 10%가 최소 보장된다.
+  const afterDefense = (baseAttack - defense) * powerMult;
+  const minDamage = baseAttack * powerMult * MIN_DAMAGE_RATIO;
+  const total = Math.max(minDamage, afterDefense);
   return { damage: Math.max(1, Math.round(total)), crit };
 }

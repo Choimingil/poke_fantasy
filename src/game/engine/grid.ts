@@ -66,10 +66,9 @@ export function effectiveMove(c: Character, map: BattleMap, weather: Weather = '
   return Math.max(0, cappedBase - remainingPenalty);
 }
 
-/** 이동력이 1 미만이면 2턴에 1칸만 이동 가능(라운드가 홀수일 때만). effectiveMove 결과를 실제 이동 칸 수로 변환한다. */
-export function moveStepsForRound(effectiveMoveValue: number, round: number): number {
-  if (effectiveMoveValue >= 1) return Math.floor(effectiveMoveValue);
-  return round % 2 === 1 ? 1 : 0;
+/** effectiveMove 결과를 실제 이동 칸 수로 변환한다. 이동력이 낮아도 최소 1칸은 이동할 수 있다. */
+export function moveStepsForRound(effectiveMoveValue: number): number {
+  return Math.max(1, Math.floor(effectiveMoveValue));
 }
 
 /** 물·언덕은 진입은 가능하지만 그 칸을 넘어서 계속 이동할 수 없다(경로 종착 전용). */

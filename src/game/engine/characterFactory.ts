@@ -2,6 +2,7 @@ import type { ArmorKind, Character, Element, GridPos, ProcEffect, SpriteGender, 
 import { getUsableSkillIds, initSkillUses, MAX_LOADOUT } from '../data/promotions';
 import { getWeapon } from '../data/weapons';
 import { armorTemplateForKind } from '../data/armor';
+import { maxHp } from './derivedStats';
 import type { Side } from './battle';
 
 const DEFAULT_STARTING_LEVEL = 10;
@@ -96,7 +97,7 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
     weaponMastery: { ...(opts.weaponMastery ?? {}) },
     baseStats: { ...opts.baseStats },
     sight: opts.sight,
-    currentHp: opts.baseStats.hp,
+    currentHp: 0,
     position: { x: 0, y: 0 },
     inventory,
     equippedWeaponId: weaponInstance.instanceId,
@@ -111,12 +112,13 @@ export function createCharacter(opts: CreateCharacterOptions): Character {
   // 기본 로드아웃: 지정되면 그것(사용 가능한 스킬로 필터), 아니면 사용 가능한 스킬의 앞 4개.
   const usable = getUsableSkillIds(character, getWeapon(weaponInstance.templateId).kind);
   character.skillLoadout = (opts.skillLoadout ? opts.skillLoadout.filter((id) => usable.includes(id)) : usable).slice(0, MAX_LOADOUT);
+  character.currentHp = maxHp(character);
   return character;
 }
 
 /** 전투 시작 시 배틀-스코프 상태만 초기화한다(레벨/인벤토리/숙련도는 유지) */
 export function prepareForBattle(c: Character, spawnPos: GridPos, side: Side): void {
-  c.currentHp = c.baseStats.hp;
+  c.currentHp = maxHp(c);
   c.position = spawnPos;
   c.side = side;
   c.statusEffects = [];

@@ -242,7 +242,7 @@ export class GridBattle {
     if (action.moveTo && isImmobilized(unit)) {
       this.log.push(`${unit.name}는 봉쇄되어 이동할 수 없다.`);
     } else if (action.moveTo) {
-      const budget = moveStepsForRound(effectiveMove(unit, this.map, this.weather), this.round);
+      const budget = moveStepsForRound(effectiveMove(unit, this.map, this.weather));
       const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget);
       if (reachable.some((p) => p.x === action.moveTo!.x && p.y === action.moveTo!.y)) {
         unit.movedStepsThisTurn = manhattan(unit.position, action.moveTo);

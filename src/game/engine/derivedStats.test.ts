@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createCharacter } from './characterFactory';
-import { mentalResistChance, evasionChance } from './derivedStats';
+import { mentalResistChance, evasionChance, maxHp } from './derivedStats';
 
-function makeCharacter(magicAttack: number, speed: number, level = 10) {
+function makeCharacter(magicAttack: number, speed: number, level = 10, hp = 5) {
   return createCharacter({
     id: 'c1',
     name: '테스터',
     level,
-    baseStats: { hp: 5, attack: 5, magicAttack, speed, endurance: 5 },
+    baseStats: { hp, attack: 5, magicAttack, speed, endurance: 5 },
     sight: 3,
     starterWeaponTemplateId: 'sword_short',
   });
@@ -26,23 +26,20 @@ describe('mentalResistChance', () => {
 });
 
 describe('evasionChance', () => {
-  it('같은 레벨끼리는 스피드만으로 회피율이 결정된다', () => {
-    const attacker = makeCharacter(5, 5, 10);
-    const defender = makeCharacter(5, 305, 10);
-    expect(evasionChance(defender, attacker)).toBeCloseTo(0.5); // (305/305)/2
+  it('회피율 = 스피드 / 1000 (스피드 1당 0.1%p), 레벨차는 반영하지 않는다', () => {
+    const defender = makeCharacter(5, 200, 10);
+    expect(evasionChance(defender)).toBeCloseTo(0.2); // 200/1000
   });
 
-  it('레벨차가 크면 회피율이 늘어나거나 줄어든다', () => {
-    const lowLevelAttacker = makeCharacter(5, 5, 1);
-    const highLevelDefender = makeCharacter(5, 5, 50);
-    const chance = evasionChance(highLevelDefender, lowLevelAttacker);
-    expect(chance).toBeGreaterThan(0.4); // 레벨차(49)/100 만큼 가산
+  it('최대 30%로 제한된다', () => {
+    const fast = makeCharacter(5, 500, 10);
+    expect(evasionChance(fast)).toBe(0.3); // 500/1000=0.5 이지만 상한 0.3
   });
+});
 
-  it('0~1 범위로 클램프된다', () => {
-    const attacker = makeCharacter(5, 5, 1);
-    const defender = makeCharacter(5, 5, 100);
-    expect(evasionChance(defender, attacker)).toBeLessThanOrEqual(1);
-    expect(evasionChance(attacker, defender)).toBeGreaterThanOrEqual(0);
+describe('maxHp', () => {
+  it('최대 체력 = 20 + 체력 × 3 + 레벨 × 2', () => {
+    const c = makeCharacter(5, 5, 10, 30);
+    expect(maxHp(c)).toBe(20 + 30 * 3 + 10 * 2); // 130
   });
 });

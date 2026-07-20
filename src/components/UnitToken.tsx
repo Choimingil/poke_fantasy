@@ -1,5 +1,6 @@
 import type { Character, GridPos } from '../game/types';
 import type { Side } from '../game/engine/battle';
+import { maxHp } from '../game/engine/derivedStats';
 import { TrainerSprite } from './TrainerSprite';
 import { HpBar } from './HpBar';
 
@@ -39,7 +40,7 @@ export function UnitToken({
     <div
       className={classes}
       style={{ gridColumn: pos.x + 1, gridRow: pos.y + 1 }}
-      title={`${character.name} Lv.${character.level} (${character.currentHp}/${character.baseStats.hp})`}
+      title={`${character.name} Lv.${character.level} (${character.currentHp}/${maxHp(character)})`}
     >
       {float && (
         <span key={floatKey} className={`combat-float combat-float-${float.kind}`}>{float.text}</span>

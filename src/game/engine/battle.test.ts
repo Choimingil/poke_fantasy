@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BattleMap, Character } from '../types';
 import { createCharacter, prepareForBattle } from './characterFactory';
+import { maxHp } from './derivedStats';
 import { GridBattle } from './battle';
 
 function makeMap(): BattleMap {
@@ -35,7 +36,7 @@ describe('GridBattle', () => {
 
     expect(battle.currentUnit()?.id).toBe('a');
     battle.takeTurn({ skillId: 'power_strike', targetId: 'b' });
-    expect(b.currentHp).toBeLessThan(100);
+    expect(b.currentHp).toBeLessThan(maxHp(b));
   });
 
   it('보호: 마름모 1칸(직교 인접) 아군을 향한 공격을 시전자가 대신 받는다', () => {
@@ -51,8 +52,8 @@ describe('GridBattle', () => {
     guardian.statusEffects.push({ type: 'guarding', turnsRemaining: 2, magnitude: 1 });
 
     battle.takeTurn({ skillId: 'power_strike', targetId: 'ally' }); // 적이 ally 공격
-    expect(ally.currentHp).toBe(100); // ally는 무피해
-    expect(guardian.currentHp).toBeLessThan(100); // 시전자가 대신 받음
+    expect(ally.currentHp).toBe(maxHp(ally)); // ally는 무피해
+    expect(guardian.currentHp).toBeLessThan(maxHp(guardian)); // 시전자가 대신 받음
   });
 
   it('사거리 밖의 적은 공격할 수 없다', () => {
@@ -63,7 +64,7 @@ describe('GridBattle', () => {
     prepareForBattle(b, { x: 4, y: 4 }, 'B');
     const battle = new GridBattle(map, [a], [b], () => 0.5);
     battle.takeTurn({ skillId: 'power_strike', targetId: 'b' });
-    expect(b.currentHp).toBe(100);
+    expect(b.currentHp).toBe(maxHp(b));
   });
 
   it('이동 예산을 벗어난 타일로는 이동할 수 없다', () => {
@@ -106,12 +107,12 @@ describe('GridBattle', () => {
     const battle = new GridBattle(map, [a], [b], () => 0.5);
     battle.takeTurn({ switchWeaponTo: 'a-bow', skillId: 'power_strike', targetId: 'b' });
     expect(a.equippedWeaponId).toBe('a-bow');
-    expect(b.currentHp).toBeLessThan(100); // 같은 턴에 공격까지 적중
+    expect(b.currentHp).toBeLessThan(maxHp(b)); // 같은 턴에 공격까지 적중
   });
 
   it('처치 시 처치한 캐릭터만 경험치를 얻는다', () => {
     const map = makeMap();
-    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, speed: 20, endurance: 10 } });
+    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 5000, magicAttack: 10, speed: 20, endurance: 10 } });
     const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, speed: 5, endurance: 5 } });
     prepareForBattle(a, { x: 0, y: 0 }, 'A');
     prepareForBattle(b, { x: 1, y: 0 }, 'B');
@@ -124,7 +125,7 @@ describe('GridBattle', () => {
 
   it('한 팀의 유닛이 모두 쓰러지면 전투가 종료되고 승자가 기록된다', () => {
     const map = makeMap();
-    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 500, magicAttack: 10, speed: 20, endurance: 10 } });
+    const a = makeUnit('a', 20, { baseStats: { hp: 100, attack: 5000, magicAttack: 10, speed: 20, endurance: 10 } });
     const b = makeUnit('b', 5, { baseStats: { hp: 10, attack: 5, magicAttack: 5, speed: 5, endurance: 5 } });
     prepareForBattle(a, { x: 0, y: 0 }, 'A');
     prepareForBattle(b, { x: 1, y: 0 }, 'B');
@@ -164,7 +165,7 @@ describe('GridBattle', () => {
 
     const battle = new GridBattle(map, [a], [guardian, target], () => 0.5);
     battle.takeTurn({ skillId: 'power_strike', targetId: 'target' });
-    expect(target.currentHp).toBe(100);
-    expect(guardian.currentHp).toBeLessThan(100);
+    expect(target.currentHp).toBe(maxHp(target));
+    expect(guardian.currentHp).toBeLessThan(maxHp(guardian));
   });
 });

@@ -58,15 +58,15 @@ describe('applyTileBurnDamage', () => {
     const map = makeMap('plain');
     map.tiles[0][0].status = { type: 'burning', turnsRemaining: 2 };
     const damage = applyTileBurnDamage(c, map);
-    expect(damage).toBe(40); // 160/4
-    expect(c.currentHp).toBe(120);
+    expect(damage).toBe(130); // 최대체력 520(=20+160*3+10*2)의 1/4
+    expect(c.currentHp).toBe(390);
   });
 
   it('화염 타일이 아니면 피해가 없다', () => {
     const c = makeCharacter();
     const map = makeMap('plain');
     expect(applyTileBurnDamage(c, map)).toBe(0);
-    expect(c.currentHp).toBe(160);
+    expect(c.currentHp).toBe(520);
   });
 });
 
@@ -74,8 +74,8 @@ describe('applyBleedDamage', () => {
   it('출혈 상태의 캐릭터는 매 턴 최대체력의 1/8만큼 피해를 입는다', () => {
     const c = makeCharacter();
     applyStatus(c, 'bleeding', { turnsRemaining: 2 });
-    expect(applyBleedDamage(c)).toBe(20); // 160/8
-    expect(c.currentHp).toBe(140);
+    expect(applyBleedDamage(c)).toBe(65); // 최대체력 520의 1/8
+    expect(c.currentHp).toBe(455);
   });
 
   it('출혈이 아니면 피해가 없다', () => {

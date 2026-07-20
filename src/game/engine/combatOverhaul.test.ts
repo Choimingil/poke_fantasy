@@ -5,6 +5,7 @@ import { initSkillUses } from '../data/promotions';
 import { getWeapon, weaponPower as calcWeaponPower } from '../data/weapons';
 import { getSkill } from '../data/skills';
 import { calculateDamage } from './damage';
+import { maxHp } from './derivedStats';
 import { applyPoisonDamage, applyStatus } from './status';
 import { GridBattle } from './battle';
 
@@ -38,8 +39,8 @@ describe('무기 전용기술 통합', () => {
     prepareForBattle(back, { x: 2, y: 0 }, 'B');
     const battle = new GridBattle(map, [spearman], [front, back], () => 0.5);
     battle.takeTurn({ skillId: 'spear_pierce', targetId: 'front' });
-    expect(front.currentHp).toBeLessThan(100);
-    expect(back.currentHp).toBeLessThan(100); // 뒤의 적도 0.5배 피해
+    expect(front.currentHp).toBeLessThan(maxHp(front));
+    expect(back.currentHp).toBeLessThan(maxHp(back)); // 뒤의 적도 0.5배 피해
   });
 
   it('일섬: 대상은 제자리, 시전자가 대상 뒤(관통)로 이동한다', () => {
@@ -52,7 +53,7 @@ describe('무기 전용기술 통합', () => {
     battle.takeTurn({ skillId: 'sword_flash', targetId: 'enemy' });
     expect(enemy.position).toEqual({ x: 1, y: 0 }); // 대상은 그대로
     expect(sword.position).toEqual({ x: 2, y: 0 }); // 시전자는 대상 뒤로 관통
-    expect(enemy.currentHp).toBeLessThan(100);
+    expect(enemy.currentHp).toBeLessThan(maxHp(enemy));
   });
 
   it('섬광참: 2칸 떨어진 대상 앞(인접)까지 이동한 뒤 공격한다', () => {
@@ -65,7 +66,7 @@ describe('무기 전용기술 통합', () => {
     battle.takeTurn({ skillId: 'sword_blink', targetId: 'enemy' });
     expect(sword.position).toEqual({ x: 1, y: 0 }); // 대상 앞(인접)으로 이동
     expect(enemy.position).toEqual({ x: 2, y: 0 }); // 대상은 그대로
-    expect(enemy.currentHp).toBeLessThan(100);
+    expect(enemy.currentHp).toBeLessThan(maxHp(enemy));
   });
 
   it('반격(창 T5): 사거리 내 적의 직접공격에 피해를 입으면 공격자에게 반격한다', () => {
@@ -76,8 +77,8 @@ describe('무기 전용기술 통합', () => {
     prepareForBattle(spearman, { x: 1, y: 0 }, 'B'); // 창 사거리 1 이내(인접)
     const battle = new GridBattle(map, [attacker], [spearman], () => 0.5);
     battle.takeTurn({ skillId: 'power_strike', targetId: 'spear' });
-    expect(spearman.currentHp).toBeLessThan(100); // 창병이 피해를 입고
-    expect(attacker.currentHp).toBeLessThan(100); // 공격자가 반격을 맞는다
+    expect(spearman.currentHp).toBeLessThan(maxHp(spearman)); // 창병이 피해를 입고
+    expect(attacker.currentHp).toBeLessThan(maxHp(attacker)); // 공격자가 반격을 맞는다
   });
 
   it('반격: 공격자가 창 사거리 밖(원거리)이면 발동하지 않는다', () => {
@@ -88,8 +89,8 @@ describe('무기 전용기술 통합', () => {
     prepareForBattle(spearman, { x: 2, y: 0 }, 'B'); // 활 사거리 2, 창 사거리 1 밖
     const battle = new GridBattle(map, [archer], [spearman], () => 0.5);
     battle.takeTurn({ skillId: 'power_strike', targetId: 'spear' });
-    expect(spearman.currentHp).toBeLessThan(100);
-    expect(archer.currentHp).toBe(100); // 창 사거리 밖이라 반격 없음
+    expect(spearman.currentHp).toBeLessThan(maxHp(spearman));
+    expect(archer.currentHp).toBe(maxHp(archer)); // 창 사거리 밖이라 반격 없음
   });
 
   it('봉쇄: 대상에게 이동 불가 상태를 부여한다', () => {
@@ -110,8 +111,9 @@ describe('무기 전용기술 통합', () => {
     prepareForBattle(xbow, { x: 0, y: 0 }, 'A');
     prepareForBattle(enemy, { x: 2, y: 0 }, 'B'); // 석궁 사거리 2
     const battle = new GridBattle(map, [xbow], [enemy], () => 0.5);
+    const before = enemy.currentHp;
     battle.takeTurn({ skillId: 'xbow_lethal', targetId: 'enemy' });
-    expect(enemy.currentHp).toBe(100); // 200의 50% = 100 고정피해
+    expect(enemy.currentHp).toBe(before - Math.floor(before * 0.5)); // 최대체력의 50% 고정피해
   });
 
   it('빠른교체: 상태 중에는 교체가 턴을 소모하지 않지만 교체한 턴엔 전용기술을 못 쓴다', () => {
@@ -126,7 +128,7 @@ describe('무기 전용기술 통합', () => {
     // 무기 교체 + 공통 기술(강타)은 같은 턴에 가능(빠른교체 무료).
     battle.takeTurn({ switchWeaponTo: 'a-bow', skillId: 'power_strike', targetId: 'b' });
     expect(a.equippedWeaponId).toBe('a-bow');
-    expect(b.currentHp).toBeLessThan(100);
+    expect(b.currentHp).toBeLessThan(maxHp(b));
   });
 });
 
@@ -183,6 +185,6 @@ describe('맹독 지속피해', () => {
   it('맹독은 출혈과 별개로 매 턴 최대체력 1/8 피해를 준다', () => {
     const c = createCharacter({ id: 'c', name: 'c', baseStats: { hp: 160, attack: 10, magicAttack: 10, speed: 10, endurance: 10 }, sight: 5, starterWeaponTemplateId: 'sword_short' });
     applyStatus(c, 'poisoned', { turnsRemaining: 2 });
-    expect(applyPoisonDamage(c)).toBe(20); // 160/8
+    expect(applyPoisonDamage(c)).toBe(65); // 최대체력 520(=20+160*3+10*2)의 1/8
   });
 });

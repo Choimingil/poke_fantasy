@@ -32,7 +32,6 @@ export function pickAiAction(
   weather: Weather = 'clear',
   time: TimeOfDay = 'day',
   knownPositions: Record<string, GridPos> = {},
-  round = 1,
 ): UnitAction {
   const cond = { time, weather };
   const allUnits = [...ownTeam, ...enemyTeam];
@@ -46,7 +45,7 @@ export function pickAiAction(
   // 시야 안에 실제 대상이 없어도 이동은 예상 위치(마지막 목격/맵 중앙)를 향해 계속한다.
   const movePos = target ? target.position : estimateAdvancePos(unit, enemyTeam, map, knownPositions);
 
-  const budget = moveStepsForRound(effectiveMove(unit, map, weather), round);
+  const budget = moveStepsForRound(effectiveMove(unit, map, weather));
   const reachable = [unit.position, ...computeReachableTiles(map, unit, allUnits, budget)];
   const bestTile = reachable.reduce((best, pos) =>
     manhattan(pos, movePos) < manhattan(best, movePos) ? pos : best);

@@ -5,6 +5,7 @@ import { themeForRound, isBossRound, enemyLevelForRound, enemyCountForRound } fr
 import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getSkill, skillDisplayName } from '../game/data/skills';
+import { maxHp } from '../game/engine/derivedStats';
 import type { Character, WeaponKind } from '../game/types';
 
 const KIND_LABEL: Record<WeaponKind, string> = {
@@ -91,7 +92,7 @@ export function PartyFormationTab({
         {benched.map((c) => (
           <li key={c.id}>
             <span><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level}
-              <span className="deploy-stats">HP {c.baseStats.hp} · 근 {c.baseStats.attack} · 지 {c.baseStats.magicAttack} · 속 {c.baseStats.speed}</span>
+              <span className="deploy-stats">HP {maxHp(c)} · 근 {c.baseStats.attack} · 지 {c.baseStats.magicAttack} · 속 {c.baseStats.speed}</span>
             </span>
             <button type="button" disabled={campaign.deployedIds.length >= MAX_DEPLOY} onClick={() => add(c.id)}>출전</button>
           </li>

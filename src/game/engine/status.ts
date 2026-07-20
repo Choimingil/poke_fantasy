@@ -1,4 +1,5 @@
 import type { ActiveStatus, BattleMap, Character, StatusEffectType } from '../types';
+import { maxHp } from './derivedStats';
 
 export interface StatusApplyOptions {
   turnsRemaining: number;
@@ -65,7 +66,7 @@ export function tickStatusAtTurnStart(character: Character): StatusTickResult {
 /** 출혈(검 부가효과) 상태의 캐릭터는 매 턴 최대체력 1/8을 잃는다. tickStatusAtTurnStart로 지속시간이 깎이기 전에 호출해야 정확히 2턴 동안 적용된다. */
 export function applyBleedDamage(character: Character): number {
   if (!character.statusEffects.some((s) => s.type === 'bleeding')) return 0;
-  const damage = Math.max(1, Math.round(character.baseStats.hp / 8));
+  const damage = Math.max(1, Math.round(maxHp(character) / 8));
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
 }
@@ -73,7 +74,7 @@ export function applyBleedDamage(character: Character): number {
 /** 맹독(투척 기술)도 출혈과 동일하게 매 턴 최대체력 1/8을 잃는다. 출혈과 별개로 중복 적용된다. */
 export function applyPoisonDamage(character: Character): number {
   if (!character.statusEffects.some((s) => s.type === 'poisoned')) return 0;
-  const damage = Math.max(1, Math.round(character.baseStats.hp / 8));
+  const damage = Math.max(1, Math.round(maxHp(character) / 8));
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
 }
@@ -93,7 +94,7 @@ export function rollStunned(character: Character, rng: () => number): boolean {
 export function applyTileBurnDamage(character: Character, map: BattleMap): number {
   const tile = map.tiles[character.position.y][character.position.x];
   if (!tile.status || tile.status.type !== 'burning') return 0;
-  const damage = Math.max(1, Math.round(character.baseStats.hp / 4));
+  const damage = Math.max(1, Math.round(maxHp(character) / 4));
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
 }
