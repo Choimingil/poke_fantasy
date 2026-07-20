@@ -1,4 +1,5 @@
 import type { ArmorKind, ArmorTemplate } from '../types';
+import { enhancedValue } from './enhance';
 
 const ARMOR_TEMPLATES: ArmorTemplate[] = [
   { id: 'armor_cloth', name: '천', kind: 'cloth' },
@@ -21,10 +22,10 @@ const ARMOR_DEFENSE_MULT: Record<ArmorKind, number> = {
   plate: 1.3,
 };
 
-/** 방어구 방어력 = 같은 레벨 무기의 기준공격력(착용 레벨 / 2, 단검 제외) × 종류별 배수. */
-export function armorDefense(level: number, kind: ArmorKind): number {
-  const baseAttackPower = level / 2;
-  return baseAttackPower * ARMOR_DEFENSE_MULT[kind];
+/** 방어구 방어력 = 같은 레벨 무기의 기준공격력(착용 레벨 / 2, 단검 제외) × 종류별 배수 + 강화(§32). */
+export function armorDefense(level: number, kind: ArmorKind, enhanceLevel = 0, repairer = false): number {
+  const at = (lv: number) => (lv / 2) * ARMOR_DEFENSE_MULT[kind];
+  return enhancedValue(at(level), at(level + 10), enhanceLevel, repairer);
 }
 
 export function armorWeight(kind: ArmorKind): number {

@@ -25,6 +25,7 @@ export function BarracksScreen({
   onEquipStashArmor,
   onSellStashWeapon,
   onSellStashArmor,
+  onEnhance,
 }: {
   campaign: Campaign;
   onSetDeployed: (ids: string[]) => void;
@@ -36,6 +37,7 @@ export function BarracksScreen({
   onEquipStashArmor: (charId: string, instanceId: string) => void;
   onSellStashWeapon: (instanceId: string) => void;
   onSellStashArmor: (instanceId: string) => void;
+  onEnhance: (instanceId: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>('party');
 
@@ -46,6 +48,7 @@ export function BarracksScreen({
         <div className="barracks-resources">
           <span>🏅 명성 {campaign.reputation}</span>
           <span>💰 골드 {campaign.gold}</span>
+          <span>🔩 재료 {campaign.materials ?? 0}</span>
           <span>👥 동료 {campaign.roster.length}/30</span>
         </div>
       </div>
@@ -72,6 +75,9 @@ export function BarracksScreen({
             onEquipStashArmor={onEquipStashArmor}
             onSellStashWeapon={onSellStashWeapon}
             onSellStashArmor={onSellStashArmor}
+            gold={campaign.gold}
+            materials={campaign.materials ?? 0}
+            onEnhance={onEnhance}
           />
         )}
 

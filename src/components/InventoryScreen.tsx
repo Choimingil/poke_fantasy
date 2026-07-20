@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import type { ArmorInstance, Character, StatKey, WeaponInstance } from '../game/types';
 import { ROSTER } from '../game/data/roster';
-import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, weaponPower } from '../game/data/weapons';
+import { canWieldTwoHanded, getWeapon, TWO_HANDED_POWER_MULT, weaponInstanceName, effectiveWeaponPower } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
+import { MAX_ENHANCE, enhanceCost } from '../game/data/enhance';
 import { getSkill, skillDisplayName, skillTypeLabel } from '../game/data/skills';
 import { getUsableSkillIds, MAX_LOADOUT } from '../game/data/promotions';
 import { equipArmor, equipShield, equipWeapon, unequipArmor, unequipShield } from '../game/engine/inventory';
@@ -26,12 +27,30 @@ interface StashProps {
   onEquipStashArmor?: (charId: string, instanceId: string) => void;
   onSellStashWeapon?: (instanceId: string) => void;
   onSellStashArmor?: (instanceId: string) => void;
+  /** 캠페인 강화(§32): 골드·재료 잔량과 강화 콜백. */
+  gold?: number;
+  materials?: number;
+  onEnhance?: (instanceId: string) => void;
 }
 
-export function InventoryScreen({ characters, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor }: { characters?: Character[]; onChange: () => void; onBack?: () => void } & StashProps) {
+export function InventoryScreen({ characters, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor, gold, materials, onEnhance }: { characters?: Character[]; onChange: () => void; onBack?: () => void } & StashProps) {
   const roster = characters ?? ROSTER;
   const [selectedId, setSelectedId] = useState(roster[0].id);
   const c = roster.find((x) => x.id === selectedId) ?? roster[0];
+
+  // §32 장비 강화 버튼(캠페인 정비에서만; onEnhance가 있을 때).
+  const enhanceControl = (inst: WeaponInstance | ArmorInstance) => {
+    if (!onEnhance) return inst.enhanceLevel ? <span className="enh-badge">+{inst.enhanceLevel}</span> : null;
+    const lvl = inst.enhanceLevel ?? 0;
+    if (lvl >= MAX_ENHANCE) return <span className="enh-badge">+{lvl} 최대</span>;
+    const cost = enhanceCost(inst.level, lvl, c.traitId === 'thrifty');
+    const afford = (gold ?? 0) >= cost.gold && (materials ?? 0) >= cost.materials;
+    return (
+      <button type="button" className="enh-button" disabled={!afford} onClick={() => onEnhance(inst.instanceId)}>
+        {lvl > 0 ? `+${lvl} ` : ''}강화 (💰{cost.gold}·🔩{cost.materials})
+      </button>
+    );
+  };
 
   const equippedInstance = c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!;
   const equippedWeapon = getWeapon(equippedInstance.templateId);
@@ -124,7 +143,8 @@ export function InventoryScreen({ characters, onChange, onBack, stash, onEquipSt
               const canEquip = meetsEquipLevel(c, instance.level);
               const eligibleTwoHanded = canWieldTwoHanded(template.kind);
               const twoHandedActive = isEquippedWeapon && eligibleTwoHanded && !c.equippedShieldId;
-              const shownPower = Math.floor(weaponPower(instance.level, template.kind) * (twoHandedActive ? TWO_HANDED_POWER_MULT : 1));
+              const basePower = effectiveWeaponPower(instance.level, template.kind, true, instance.enhanceLevel ?? 0, c.traitId === 'repairer');
+              const shownPower = Math.floor(basePower * (twoHandedActive ? TWO_HANDED_POWER_MULT : 1));
               return (
                 <li key={instance.instanceId} className={isEquippedWeapon || isEquippedShield ? 'inventory-item-equipped' : ''}>
                   <span>
@@ -145,6 +165,7 @@ export function InventoryScreen({ characters, onChange, onBack, stash, onEquipSt
                   ) : (
                     <button type="button" disabled={!canEquip} onClick={() => setWeapon(instance.instanceId)}>{canEquip ? '장착' : `Lv.${instance.level} 필요`}</button>
                   )}
+                  {enhanceControl(instance)}
                 </li>
               );
             })}
@@ -164,6 +185,7 @@ export function InventoryScreen({ characters, onChange, onBack, stash, onEquipSt
                   ) : (
                     <button type="button" disabled={!canEquip} onClick={() => setArmor(instance.instanceId)}>{canEquip ? '장착' : `Lv.${instance.level} 필요`}</button>
                   )}
+                  {enhanceControl(instance)}
                 </li>
               );
             })}

@@ -50,6 +50,7 @@ export interface Campaign {
   round: number;
   gold: number;
   reputation: number;
+  materials?: number; // 강화 재료(§32). absent == 0
   roster: Character[]; // 주인공 포함 보유 동료(최대 30)
   deployedIds: string[]; // 다음 전투 출전 선택
   stash: { weapons: WeaponInstance[]; armor: ArmorInstance[] }; // 미장착 보관 장비

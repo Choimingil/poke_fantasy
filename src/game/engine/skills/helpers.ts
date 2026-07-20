@@ -34,7 +34,7 @@ function statSourceFor(attacker: Character, skill: Skill): 'attack' | 'magic' | 
 function weaponCtxOf(attacker: Character): { kind: ReturnType<typeof getWeapon>['kind']; range: number; power: number } {
   const instance = attacker.inventory.find((w) => w.instanceId === attacker.equippedWeaponId)!;
   const weapon = getWeapon(instance.templateId);
-  return { kind: weapon.kind, range: weapon.range, power: effectiveWeaponPower(instance.level, weapon.kind, !!attacker.equippedShieldId) };
+  return { kind: weapon.kind, range: weapon.range, power: effectiveWeaponPower(instance.level, weapon.kind, !!attacker.equippedShieldId, instance.enhanceLevel ?? 0, attacker.traitId === 'repairer') };
 }
 
 function shieldDefenseBonus(ctx: SkillContext, defender: Character): number {
@@ -50,7 +50,7 @@ function armorDefenseBonus(defender: Character): number {
   if (!defender.equippedArmorId) return 0;
   const instance = defender.armor.find((a) => a.instanceId === defender.equippedArmorId);
   if (!instance) return 0;
-  return armorDefense(instance.level, getArmor(instance.templateId).kind);
+  return armorDefense(instance.level, getArmor(instance.templateId).kind, instance.enhanceLevel ?? 0, defender.traitId === 'repairer');
 }
 
 /** 상대의 능력치 감소·부가효과를 정신력 확률로 무시한다. 무시되면 true(적용 실패)를 반환하고 로그를 남긴다. */

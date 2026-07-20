@@ -96,10 +96,13 @@ export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: ()
   const reputationGained = roundReputationGain(outcome);
   const goldGained = battleGold(outcome);
   const reputation = campaign.reputation + reputationGained;
+  // 강화 재료: 승리 시 +1, 보스 처치 시 추가 +1(§32).
+  const materialsGained = outcome.won ? 1 + (outcome.bossDefeated ? 1 : 0) : 0;
   const next: Campaign = {
     ...campaign,
     reputation,
     gold: campaign.gold + goldGained,
+    materials: (campaign.materials ?? 0) + materialsGained,
     round: outcome.won ? campaign.round + 1 : campaign.round,
   };
   // 승리로 라운드가 진행되면 새 명성 기준으로 모집 후보·상점 상품을 갱신(지나간 것은 사라진다).

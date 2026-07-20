@@ -136,6 +136,7 @@ export interface WeaponInstance {
   procEffect?: ProcEffect; // tome/thrown only, chosen when the instance is created
   grade?: EquipGrade; // 장비 등급(§31), absent == 일반
   options?: EquipOption[]; // 희귀/전설 추가 옵션
+  enhanceLevel?: number; // 강화 단계(§32), absent == 0
 }
 
 export type ArmorKind = 'cloth' | 'leather' | 'mail' | 'plate';
@@ -152,6 +153,7 @@ export interface ArmorInstance {
   level: number; // 10 단위 등급(10~100). 방어력은 이 값으로 계산한다.
   grade?: EquipGrade; // 장비 등급(§31), absent == 일반
   options?: EquipOption[]; // 희귀/전설 추가 옵션
+  enhanceLevel?: number; // 강화 단계(§32), absent == 0
 }
 
 export type SpriteGender = 'male' | 'female';

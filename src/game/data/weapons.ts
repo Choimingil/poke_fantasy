@@ -1,4 +1,5 @@
 import type { Element, EquipGrade, ProcEffect, WeaponKind, WeaponTemplate } from '../types';
+import { enhancedValue } from './enhance';
 
 const MELEE_KINDS: WeaponKind[] = ['sword', 'blunt', 'spear', 'dagger'];
 
@@ -45,9 +46,9 @@ export function canWieldTwoHanded(kind: WeaponKind): boolean {
   return kind !== 'dagger' && kind !== 'thrown' && kind !== 'shield';
 }
 
-/** 실제 적용되는 무기공격력. 양손 파지(방패/보조 무기 미장착 + 양손 가능 무기)면 1.3배. */
-export function effectiveWeaponPower(level: number, kind: WeaponKind, hasOffhand: boolean): number {
-  const base = weaponPower(level, kind);
+/** 실제 적용되는 무기공격력. 강화(§32) + 양손 파지(방패/보조 무기 미장착 + 양손 가능 무기)면 1.3배. */
+export function effectiveWeaponPower(level: number, kind: WeaponKind, hasOffhand: boolean, enhanceLevel = 0, repairer = false): number {
+  const base = enhancedValue(weaponPower(level, kind), weaponPower(level + 10, kind), enhanceLevel, repairer);
   return canWieldTwoHanded(kind) && !hasOffhand ? base * TWO_HANDED_POWER_MULT : base;
 }
 

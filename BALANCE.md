@@ -7,6 +7,16 @@
 
 ---
 
+## 2단계 P2c — 장비 강화(§32)
+
+- **강화 시스템**(`data/enhance.ts`): 실패·파괴 없음, 골드+재료 소모, 최대 5단계(`enhanceLevel`). 강화 총량 = 다음 레벨 단계 무강화 수준(선형 가산). `effectiveWeaponPower`·`armorDefense`에 강화 인자 추가.
+- **재료 자원**(`campaign.materials`): 승리 +1·보스 처치 추가 +1. 정비 화면 상단에 표기.
+- **무기 강화 부가**: 숙련 경험치 획득 +3%/단계(최대 +15%, `weaponEnhanceExpMult`). 성장 특성 연계 — 수리공(+10% 증가분)·절약가(-15% 골드).
+- **UI**: 인벤토리 탭 장비별 강화 버튼(비용·재료 표기), 강화 단계 배지, 무기 공격력 표시에 강화 반영.
+- `npm run verify`(test 162)+build 통과, 강화 테스트 추가.
+
+---
+
 ## 2단계 P2b — 장비 등급·옵션(§31)
 
 - **3등급 도입**(`data/equipGrade.ts`): 기존 희귀 boolean → **일반/희귀/전설**. 상점 등급 확률(전설 5%·희귀 22%·일반), 가격 배수(×1 / ×1.8 / ×3.2). 인스턴스·상점 상품에 `grade`·`options` 필드 추가(`WeaponInstance`/`ArmorInstance`/`ShopItem`).
