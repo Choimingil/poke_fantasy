@@ -45,8 +45,11 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
   // 마법부여: 주스탯 = 높은 능력치 + 낮은 능력치의 50%
   const stat =
     ctx.statSource === 'combined'
-      ? Math.max(attacker.baseStats.attack, attacker.baseStats.magicAttack) +
-        0.5 * Math.min(attacker.baseStats.attack, attacker.baseStats.magicAttack)
+      ? Math.min(
+          Math.max(attacker.baseStats.attack, attacker.baseStats.magicAttack) * 1.5, // 높은 능력치의 1.5배 상한
+          Math.max(attacker.baseStats.attack, attacker.baseStats.magicAttack) +
+            0.5 * Math.min(attacker.baseStats.attack, attacker.baseStats.magicAttack),
+        )
       : ctx.statSource === 'magic'
         ? attacker.baseStats.magicAttack
         : attacker.baseStats.attack;
@@ -78,9 +81,12 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
   // 피해 배수(속성·급소·질주·쇄상 등)는 최대 2.5배로 제한한다.
   const powerMult = Math.min(DAMAGE_MULT_CAP, passivePowerMult * elementMult * (crit ? 1.5 : 1));
 
-  // 최종데미지 = (기본 공격력 - 방어력) x 피해 배수. 방어를 무시한 기술 피해의 10%가 최소 보장된다.
-  const afterDefense = (baseAttack - defense) * powerMult;
-  const minDamage = baseAttack * powerMult * MIN_DAMAGE_RATIO;
+  // 피해 감소 효과: 광역보호 상태(대신 받는 태세)이면 20% 감소.
+  const reduction = ctx.defender.statusEffects.some((s) => s.type === 'guardWide') ? 0.8 : 1;
+
+  // 최종데미지 = (기본 공격력 - 방어력) x 피해 배수 x 피해감소. 방어를 무시한 기술 피해의 10%가 최소 보장된다.
+  const afterDefense = (baseAttack - defense) * powerMult * reduction;
+  const minDamage = baseAttack * powerMult * reduction * MIN_DAMAGE_RATIO;
   const total = Math.max(minDamage, afterDefense);
   return { damage: Math.max(1, Math.round(total)), crit };
 }

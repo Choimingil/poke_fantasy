@@ -29,11 +29,19 @@ describe('determineTurnOrder', () => {
     expect(order.map((u) => u.id)).toEqual(['alive']);
   });
 
-  it('완전 동률이면 rng로 순서를 정한다(결정적)', () => {
-    const a = makeUnit('a', 10);
-    const b = makeUnit('b', 10);
-    const rng = () => 0.9; // a와 b 모두 같은 값을 받으므로 입력 순서가 보존됨
-    const order = determineTurnOrder([a, b], rng);
-    expect(order).toHaveLength(2);
+  it('스피드 동률이면 라운드 우선권 진영 → 배치 순서로 정한다(결정적)', () => {
+    const a = makeUnit('a', 10); a.side = 'A';
+    const b = makeUnit('b', 10); b.side = 'B';
+    // 홀수 라운드: 플레이어(A) 우선
+    expect(determineTurnOrder([b, a], 1).map((u) => u.id)).toEqual(['a', 'b']);
+    // 짝수 라운드: 적(B) 우선
+    expect(determineTurnOrder([a, b], 2).map((u) => u.id)).toEqual(['b', 'a']);
+  });
+
+  it('같은 진영 동률은 입력(배치) 순서를 따른다', () => {
+    const a = makeUnit('a', 10); a.side = 'A';
+    const c = makeUnit('c', 10); c.side = 'A';
+    expect(determineTurnOrder([a, c], 1).map((u) => u.id)).toEqual(['a', 'c']);
+    expect(determineTurnOrder([c, a], 1).map((u) => u.id)).toEqual(['c', 'a']);
   });
 });

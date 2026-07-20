@@ -36,10 +36,12 @@ function weaponCtxOf(attacker: Character): { kind: ReturnType<typeof getWeapon>[
 }
 
 function shieldDefenseBonus(ctx: SkillContext, defender: Character): number {
-  if (!defender.equippedShieldId || ctx.negatedShields.has(defender.equippedShieldId)) return 0;
+  if (!defender.equippedShieldId) return 0;
   const instance = defender.inventory.find((w) => w.instanceId === defender.equippedShieldId);
   if (!instance) return 0;
-  return getWeapon(instance.templateId).defenseBonus ?? 0;
+  const base = getWeapon(instance.templateId).defenseBonus ?? 0;
+  // 돌진의 방패 약화: 무력화가 아니라 방패 방어력을 절반으로 감소.
+  return ctx.negatedShields.has(defender.equippedShieldId) ? base * 0.5 : base;
 }
 
 function armorDefenseBonus(defender: Character): number {

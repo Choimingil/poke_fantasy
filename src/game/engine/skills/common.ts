@@ -1,5 +1,5 @@
 import type { Element } from '../../types';
-import { dealDamageTo, applyStatusTo, applyDebuffTo } from './helpers';
+import { dealDamageTo, applyStatusTo, applyDebuffTo, knockbackTarget } from './helpers';
 import type { SkillContext, SkillHandler } from './context';
 
 const ELEMENT_NAMES: Record<Exclude<Element, 'none'>, string> = {
@@ -44,8 +44,13 @@ const rockfall: SkillHandler = (ctx) => {
     if (pos.x < 0 || pos.y < 0 || pos.x >= ctx.map.width || pos.y >= ctx.map.height) break;
     const terrain = ctx.map.tiles[pos.y][pos.x].terrain;
     if (terrain !== 'hill' && terrain !== 'plain') break;
+    // 직선상의 첫 번째 적만 공격하고, 뒤 1칸까지 밀어낸다(보스는 밀려나지 않음).
     const hit = ctx.enemyTeam.find((u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y);
-    if (hit) dealDamageTo(ctx, hit);
+    if (hit) {
+      dealDamageTo(ctx, hit);
+      if (hit.currentHp > 0) knockbackTarget(ctx, hit);
+      break;
+    }
   }
 };
 

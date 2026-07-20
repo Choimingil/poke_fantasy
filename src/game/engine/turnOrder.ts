@@ -8,16 +8,19 @@ export function effectiveSpeed(c: Character): number {
 }
 
 /**
- * 살아있는 유닛을 스피드 내림차순으로 정렬한다. 완전 동률은 rng로 판정.
- * 비교 함수 안에서 매번 rng()를 새로 호출하면 sort 구현체의 비교 순서에 따라 결과가 달라지는
- * 비결정적 버그가 생기므로, 동률 판정용 난수는 정렬 전에 한 번씩만 뽑아 고정한다.
+ * 살아있는 유닛을 스피드 내림차순으로 정렬한다(결정적).
+ * 스피드 동률은 ①이번 라운드 우선권 진영(홀수 라운드=플레이어 A / 짝수=적 B) → ②같은 진영 내 출전(배치) 순서로 정한다.
+ * 배치 순서는 입력 배열 순서(allUnits = teamA 배치순 ++ teamB 배치순)를 그대로 따른다.
  */
-export function determineTurnOrder(units: Character[], rng: () => number = Math.random): Character[] {
+export function determineTurnOrder(units: Character[], round = 1): Character[] {
   const alive = units.filter((u) => u.currentHp > 0);
-  const tieBreak = new Map(alive.map((u) => [u.id, rng()]));
+  const deployIndex = new Map(alive.map((u, i) => [u.id, i]));
+  const initiativeSide = round % 2 === 1 ? 'A' : 'B';
+  const sideRank = (c: Character) => (c.side === initiativeSide ? 0 : 1);
   return [...alive].sort((a, b) => {
     const speedDiff = effectiveSpeed(b) - effectiveSpeed(a);
     if (speedDiff !== 0) return speedDiff;
-    return tieBreak.get(b.id)! - tieBreak.get(a.id)!;
+    if (sideRank(a) !== sideRank(b)) return sideRank(a) - sideRank(b);
+    return deployIndex.get(a.id)! - deployIndex.get(b.id)!;
   });
 }

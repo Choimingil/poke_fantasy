@@ -1,7 +1,7 @@
 import { applyDebuffTo, dealDamageTo, enemyBehind } from './helpers';
 import type { SkillContext, SkillHandler } from './context';
 
-const CHARGE_NEGATE_CHANCE = 0.3;
+const CHARGE_NEGATE_CHANCE = 0.5;
 
 function findEnemyTarget(ctx: SkillContext) {
   return ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
@@ -28,10 +28,10 @@ const spearCharge: SkillHandler = (ctx) => {
   const target = findEnemyTarget(ctx);
   if (!target) return;
   dealDamageTo(ctx, target, { triggersReactions: true });
-  // 방패 무력화는 보스에게 1턴으로 약화(일반/정예는 3턴).
+  // 방패 방어력 절반 감소(2턴). 보스는 1턴으로 약화.
   if (target.currentHp > 0 && target.equippedShieldId && ctx.rng() < CHARGE_NEGATE_CHANCE) {
-    ctx.negatedShields.set(target.equippedShieldId, target.isBoss ? 1 : 3);
-    ctx.log.push(`${target.name}의 방패가 무력화되었다!`);
+    ctx.negatedShields.set(target.equippedShieldId, target.isBoss ? 1 : 2);
+    ctx.log.push(`${target.name}의 방패 방어력이 절반으로 떨어졌다!`);
   }
 };
 

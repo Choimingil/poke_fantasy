@@ -34,11 +34,13 @@ function nearBurningTile(map: BattleMap, pos: GridPos): boolean {
 }
 
 export function effectiveSight(c: Character, map: BattleMap, cond?: SightConditions): number {
-  let base = c.sight + (c.statusEffects.some((s) => s.type === 'farSight') ? 1 : 0);
-  if (map.tiles[c.position.y][c.position.x].terrain === 'hill') base += 1; // 언덕 위 시야 +1
+  // 시야 증가 효과(천리안·언덕·매의눈)의 총합은 최대 +2로 제한한다.
+  let bonus = 0;
+  if (c.statusEffects.some((s) => s.type === 'farSight')) bonus += 1; // 천리안
+  if (map.tiles[c.position.y][c.position.x].terrain === 'hill') bonus += 1; // 언덕 위
   const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
-  if (inst && getWeapon(inst.templateId).kind === 'bow' && hasWeaponPassive(c, 'bow', 'hawkeye')) base += 1; // 매의눈
-  return Math.max(1, base + envSightModifier(cond)); // 시야는 최소 1
+  if (inst && getWeapon(inst.templateId).kind === 'bow' && hasWeaponPassive(c, 'bow', 'hawkeye')) bonus += 1; // 매의눈
+  return Math.max(1, c.sight + Math.min(2, bonus) + envSightModifier(cond)); // 시야는 최소 1
 }
 
 export function isVisibleTo(viewer: Character, target: Character, map: BattleMap, cond?: SightConditions): boolean {

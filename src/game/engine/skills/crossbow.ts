@@ -11,16 +11,16 @@ const crossbowAp: SkillHandler = (ctx) => {
   if (target) dealDamageTo(ctx, target, { triggersReactions: true });
 };
 
-// 관통사격: 직선 첫 대상 + 1칸 뒤 적에게 0.5배(2번째는 급소 없음).
+// 관통사격: 직선 첫 대상 + 1칸 뒤 적에게 0.6배(2번째는 급소·부가효과 없음).
 const crossbowPierceshot: SkillHandler = (ctx) => {
   const target = findEnemyTarget(ctx);
   if (!target) return;
   const behind = enemyBehind(ctx, target);
   dealDamageTo(ctx, target, { triggersReactions: true });
-  if (behind) dealDamageTo(ctx, behind, { powerOverride: ctx.skill.power * 0.5, suppressCrit: true });
+  if (behind) dealDamageTo(ctx, behind, { powerOverride: ctx.skill.power * 0.6, suppressCrit: true, suppressProc: true });
 };
 
-// 치명사격: 최대체력 50% 고정피해(방어·속성·급소·위력 무시). fixedDamagePercent는 스킬 정의에서 읽음.
+// 치명사격: 최대체력 비례 고정피해(일반25/정예15/보스10%, 방어·속성·급소·위력 무시). fixedDamagePercent는 스킬 정의에서 읽음.
 const crossbowLethal: SkillHandler = (ctx) => {
   const target = findEnemyTarget(ctx);
   if (target) dealDamageTo(ctx, target, { suppressProc: true });

@@ -102,7 +102,7 @@ export class GridBattle {
       if (remaining <= 1) this.negatedShields.delete(id);
       else this.negatedShields.set(id, remaining - 1);
     }
-    this.roundQueue = determineTurnOrder(this.allUnits(), this.rng);
+    this.roundQueue = determineTurnOrder(this.allUnits(), this.round);
   }
 
   /** 경호(둔기)·협공(투척) 반응을 라운드당 한도 내에서 소모. 성공 시 true. */

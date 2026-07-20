@@ -15,7 +15,7 @@ const COMMON_SKILLS: Skill[] = [
   { id: 'incantation', name: '주술', weaponKind: 'common', category: 'attack', damageType: 'magic', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', element: 'weaponElement' },
   { id: 'protect', name: '보호', weaponKind: 'common', category: 'guard', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', areaRadius: 1 },
   { id: 'taunt', name: '도발', weaponKind: 'common', category: 'debuff', damageType: 'none', power: 0, accuracy: 90, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
-  { id: 'rockfall', name: '낙석', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 200, accuracy: 100, targetMode: 'tile', maxUses: 2, requiresTerrain: 'hill' },
+  { id: 'rockfall', name: '낙석', weaponKind: 'common', category: 'attack', damageType: 'physical', power: 180, accuracy: 100, targetMode: 'tile', maxUses: 2, requiresTerrain: 'hill' },
   ...ENCHANT_ELEMENTS.map(({ element, name }): Skill => ({
     id: `enchant_${element}`,
     name: `마법부여-${name}`,
@@ -32,7 +32,7 @@ const COMMON_SKILLS: Skill[] = [
   { id: 'climb', name: '등반', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
   { id: 'far_sight', name: '천리안', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
   { id: 'forest_vision', name: '투시', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self' },
-  { id: 'quick_swap', name: '빠른교체', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', maxUses: 3 },
+  { id: 'quick_swap', name: '빠른교체', weaponKind: 'common', category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', maxUses: 2 },
 ];
 
 // 검(r1): 반월참 / 일섬 / 섬광참
@@ -53,14 +53,14 @@ const BLUNT_SKILLS: Skill[] = [
 const SPEAR_SKILLS: Skill[] = [
   { id: 'spear_pierce', name: '꿰뚫기', weaponKind: 'spear', requiredTier: 1, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', pierceBehind: true, maxUses: 5 },
   { id: 'spear_lock', name: '봉쇄', weaponKind: 'spear', requiredTier: 2, category: 'debuff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
-  { id: 'spear_charge', name: '돌진', weaponKind: 'spear', requiredTier: 3, category: 'attack', damageType: 'physical', power: 180, accuracy: 90, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
+  { id: 'spear_charge', name: '돌진', weaponKind: 'spear', requiredTier: 3, category: 'attack', damageType: 'physical', power: 170, accuracy: 90, targetMode: 'enemy', range: 'weapon', maxUses: 2 },
 ];
 
 // 활(r2): 천궁 / 도약사격 / 저격
 const BOW_SKILLS: Skill[] = [
   { id: 'bow_skyshot', name: '천궁', weaponKind: 'bow', requiredTier: 1, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', hillRangeBonus: 1, maxUses: 5 },
   { id: 'bow_leapshot', name: '도약사격', weaponKind: 'bow', requiredTier: 2, category: 'attack', damageType: 'physical', power: 120, accuracy: 100, targetMode: 'enemy', range: 'weapon', followupMoveRadius: 1, maxUses: 3 },
-  { id: 'bow_snipe', name: '저격', weaponKind: 'bow', requiredTier: 3, category: 'attack', damageType: 'physical', power: 150, accuracy: 95, targetMode: 'anyInSight', range: 5, ignoresRange: true, maxUses: 3 },
+  { id: 'bow_snipe', name: '저격', weaponKind: 'bow', requiredTier: 3, category: 'attack', damageType: 'physical', power: 150, accuracy: 95, targetMode: 'anyInSight', range: 5, ignoresRange: true, maxUses: 2 },
 ];
 
 // 석궁(r2): 철갑사격 / 관통사격 / 치명사격
@@ -80,13 +80,13 @@ const TOME_SKILLS: Skill[] = [
 // 지팡이(r2): 원소탄 / 약화 / 원소폭풍 — 이름·속성은 장착 지팡이 element로 자동 변환
 const STAFF_SKILLS: Skill[] = [
   { id: 'staff_bolt', name: '원소탄', weaponKind: 'staff', requiredTier: 1, category: 'attack', damageType: 'magic', power: 120, accuracy: 100, targetMode: 'enemy', range: 'weapon', element: 'weaponElement', maxUses: 5 },
-  { id: 'staff_weaken', name: '약화', weaponKind: 'staff', requiredTier: 2, category: 'debuff', damageType: 'none', power: 0, accuracy: 95, targetMode: 'enemy', range: 'weapon', maxUses: 3 },
-  { id: 'staff_meteor', name: '원소폭풍', weaponKind: 'staff', requiredTier: 3, category: 'attack', damageType: 'magic', power: 150, accuracy: 90, targetMode: 'tile', range: 'weapon', areaRadius: 1, element: 'weaponElement', maxUses: 3 },
+  { id: 'staff_weaken', name: '약화', weaponKind: 'staff', requiredTier: 2, category: 'debuff', damageType: 'none', power: 0, accuracy: 90, targetMode: 'enemy', range: 'weapon', maxUses: 2 },
+  { id: 'staff_meteor', name: '원소폭풍', weaponKind: 'staff', requiredTier: 3, category: 'attack', damageType: 'magic', power: 150, accuracy: 90, targetMode: 'tile', range: 'weapon', areaRadius: 1, element: 'weaponElement', maxUses: 2 },
 ];
 
 // 단검(r1): 기습 / 은신 / 축지
 const DAGGER_SKILLS: Skill[] = [
-  { id: 'dagger_ambush', name: '기습', weaponKind: 'dagger', requiredTier: 1, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', followupMoveRadius: 2, maxUses: 5 },
+  { id: 'dagger_ambush', name: '기습', weaponKind: 'dagger', requiredTier: 1, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', followupMoveRadius: 2, maxUses: 4 },
   { id: 'dagger_stealth', name: '은신', weaponKind: 'dagger', requiredTier: 2, category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', maxUses: 2 },
   { id: 'dagger_warp', name: '축지', weaponKind: 'dagger', requiredTier: 3, category: 'utility', damageType: 'none', power: 0, accuracy: 100, targetMode: 'allyAdjacentTile', maxUses: 1 },
 ];
@@ -94,7 +94,7 @@ const DAGGER_SKILLS: Skill[] = [
 // 투척(r2): 맹독 / 분신 / 쇄상
 const THROWN_SKILLS: Skill[] = [
   { id: 'thrown_poison', name: '맹독', weaponKind: 'thrown', requiredTier: 1, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 5 },
-  { id: 'thrown_clone', name: '분신', weaponKind: 'thrown', requiredTier: 2, category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', maxUses: 3 },
+  { id: 'thrown_clone', name: '분신', weaponKind: 'thrown', requiredTier: 2, category: 'buff', damageType: 'none', power: 0, accuracy: 100, targetMode: 'self', maxUses: 2 },
   { id: 'thrown_chain', name: '쇄상', weaponKind: 'thrown', requiredTier: 3, category: 'attack', damageType: 'physical', power: 150, accuracy: 100, targetMode: 'enemy', range: 'weapon', maxUses: 1 },
 ];
 
