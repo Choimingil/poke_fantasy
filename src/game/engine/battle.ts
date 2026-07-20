@@ -1,7 +1,7 @@
 import type { BattleMap, Character, CombatFloatEvent, GridPos, StatusEffectType, WeaponKind } from '../types';
 import { getSkill } from '../data/skills';
 import { effectiveWeaponPower, getWeapon, isRangedOrMagicKind } from '../data/weapons';
-import { FALLBACK_SKILL_ID, getUsableSkillIds, hasTier5Passive, masteryTier, TIER1_BONUS } from '../data/promotions';
+import { FALLBACK_SKILL_ID, FREE_SWAP_TIER, getUsableSkillIds, hasWeaponPassive, masteryTier, gainProficiencyExp, PROFICIENCY_MAX_GAIN_PER_SKILL } from '../data/promotions';
 import { resolveSkill } from './skills';
 import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
 import { isVisibleTo, isVisibleToTeam } from './vision';
@@ -165,7 +165,7 @@ export class GridBattle {
     if (wide && this.consumeReaction(wide.id, 2)) return wide;
     // 3) 경호 패시브(둔기 T5): 인접 1칸, 라운드당 1회
     const passive = allies.find(
-      (a) => this.weaponKindOf(a) === 'blunt' && hasTier5Passive(a, 'blunt', 'guardian') && manhattan(a.position, target.position) <= 1,
+      (a) => this.weaponKindOf(a) === 'blunt' && hasWeaponPassive(a, 'blunt', 'guardian') && manhattan(a.position, target.position) <= 1,
     );
     if (passive && this.consumeReaction(passive.id, 1)) return passive;
     return target;
@@ -218,8 +218,8 @@ export class GridBattle {
       const newInstance = unit.inventory.find((w) => w.instanceId === action.switchWeaponTo);
       if (newInstance) {
         const kind = getWeapon(newInstance.templateId).kind;
-        // 티어3 무료교체 또는 빠른교체 상태면 턴을 소모하지 않는다.
-        const free = masteryTier(unit, kind) >= 3 || unit.statusEffects.some((s) => s.type === 'quickSwap');
+        // 2차 전직(무료교체) 또는 빠른교체 상태면 턴을 소모하지 않는다.
+        const free = masteryTier(unit, kind) >= FREE_SWAP_TIER || unit.statusEffects.some((s) => s.type === 'quickSwap');
         unit.equippedWeaponId = newInstance.instanceId;
         swappedThisTurn = true;
         this.log.push(`${unit.name}가 무기를 교체했다.`);
@@ -369,7 +369,7 @@ export class GridBattle {
         weaponKind === 'tome' &&
         skill.id !== 'tome_recast' &&
         skill.maxUses >= 2 &&
-        hasTier5Passive(unit, 'tome', 'meditation') &&
+        hasWeaponPassive(unit, 'tome', 'meditation') &&
         this.rng() < 0.2 &&
         this.consumeReaction(unit.id);
       if (meditation) {
@@ -383,15 +383,16 @@ export class GridBattle {
     // 위력 0 보조/디버프 기술만 캐스팅 시점에 한 번 명중 판정한다(회피 미적용, 정신력 저항은 별도).
     const dealsPerTargetDamage = skill.power > 0 || skill.fixedDamagePercent !== undefined;
     if (!dealsPerTargetDamage) {
-      const tier1Acc = masteryTier(unit, weaponKind) >= 1 ? (TIER1_BONUS[weaponKind]?.accuracyBonus ?? 0) : 0;
       const hitRoll = this.rng() * 100;
-      if (hitRoll >= skill.accuracy + tier1Acc) {
+      if (hitRoll >= skill.accuracy) {
         this.log.push(`${unit.name}의 ${skill.name}이(가) 빗나갔다.`);
         if (target) this.lastTurnEvents.push({ targetId: target.id, kind: 'miss' });
         return;
       }
     }
 
+    // 이번 기술 사용에서 각 공격자가 직접 피해를 준 횟수(무기 숙련 경험치 상한 적용용).
+    const proficiencyHits = new Map<string, { kind: WeaponKind; hits: number }>();
     resolveSkill({
       map: this.map,
       actorTeam: this.ownTeamOf(unit),
@@ -406,6 +407,11 @@ export class GridBattle {
       log: this.log,
       combatEvents: this.lastTurnEvents,
       rng: this.rng,
+      noteDirectDamage: (attacker, kind) => {
+        const entry = proficiencyHits.get(attacker.id) ?? { kind, hits: 0 };
+        entry.hits += 1;
+        proficiencyHits.set(attacker.id, entry);
+      },
       onKill: (killerId, victimId) => this.grantKillXp(killerId, victimId),
       onBonusAction: (unitId) => {
         const bonusUnit = this.allUnits().find((u) => u.id === unitId);
@@ -430,6 +436,12 @@ export class GridBattle {
         }
       },
     });
+
+    // 무기 숙련 경험치 누적: 한 번의 기술 사용에서 얻는 경험치는 최대 2배(상한)까지만.
+    for (const [id, { kind, hits }] of proficiencyHits) {
+      const u = this.allUnits().find((x) => x.id === id);
+      if (u) gainProficiencyExp(u, kind, Math.min(hits, PROFICIENCY_MAX_GAIN_PER_SKILL));
+    }
   }
 
   private grantBonusAction(unit: Character): void {

@@ -1,4 +1,4 @@
-import type { BattleMap, Character, CombatFloatEvent, GridPos, Skill, WeaponTemplate } from '../../types';
+import type { BattleMap, Character, CombatFloatEvent, GridPos, Skill, WeaponKind, WeaponTemplate } from '../../types';
 
 export interface SkillContext {
   map: BattleMap;
@@ -27,6 +27,8 @@ export interface SkillContext {
   consumeReaction: (unitId: string) => boolean;
   /** 공격 후 추가 이동('move', 반경) 또는 추가 행동('action')을 엔진에 요청 */
   requestFollowup?: (unitId: string, opts: { kind: 'move' | 'action'; radius?: number }) => void;
+  /** 공격자가 대상에게 직접 피해를 준 시점에 호출 — 엔진이 무기 숙련 경험치를 누적한다(기술 사용당 상한 적용). */
+  noteDirectDamage?: (attacker: Character, kind: WeaponKind) => void;
 }
 
 export type SkillHandler = (ctx: SkillContext) => void;

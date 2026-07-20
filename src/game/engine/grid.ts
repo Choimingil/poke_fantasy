@@ -1,12 +1,12 @@
 import type { BattleMap, Character, GridPos, TerrainType } from '../types';
 import { getWeapon } from '../data/weapons';
-import { hasTier5Passive } from '../data/promotions';
+import { hasWeaponPassive } from '../data/promotions';
 import { weatherMoveModifier, type Weather } from './weather';
 
 /** 단검 적응력: 자연지형 이동감소 무시 + 바위 통과(정지 불가). */
 function hasAdaptation(c: Character): boolean {
   const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
-  return !!inst && getWeapon(inst.templateId).kind === 'dagger' && hasTier5Passive(c, 'dagger', 'adaptation');
+  return !!inst && getWeapon(inst.templateId).kind === 'dagger' && hasWeaponPassive(c, 'dagger', 'adaptation');
 }
 
 export function chebyshev(a: GridPos, b: GridPos): number {

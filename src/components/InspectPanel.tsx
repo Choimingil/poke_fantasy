@@ -3,6 +3,7 @@ import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { baseMoveFromEndurance } from '../game/engine/grid';
 import { mentalResistChance, maxHp } from '../game/engine/derivedStats';
+import { proficiencyStage, PROFICIENCY_STAGE_LABEL } from '../game/data/promotions';
 import { TrainerSprite } from './TrainerSprite';
 import { StatusChips } from './StatusChips';
 
@@ -24,6 +25,8 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
   const armor = unit.equippedArmorId
     ? getArmor(unit.armor.find((a) => a.instanceId === unit.equippedArmorId)!.templateId)
     : null;
+  const weaponKind = getWeapon(weaponInstance.templateId).kind;
+  const proficiencyLabel = PROFICIENCY_STAGE_LABEL[proficiencyStage(unit, weaponKind)];
   const move = baseMoveFromEndurance(unit.baseStats.endurance);
   const moveLabel = move.excess > 0 ? `${move.shown}+${move.excess.toFixed(1)}` : `${Math.floor(move.shown)}`;
   return (
@@ -44,6 +47,7 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
         <span className="inspect-stat"><span>이동</span><strong>{moveLabel}</strong></span>
         <span className="inspect-stat"><span>시야</span><strong>{unit.sight}</strong></span>
         <span className="inspect-stat"><span>정신력</span><strong>{Math.round(mentalResistChance(unit) * 100)}%</strong></span>
+        <span className="inspect-stat"><span>숙련도</span><strong>{proficiencyLabel}</strong></span>
       </div>
       <StatusChips effects={unit.statusEffects} />
     </div>

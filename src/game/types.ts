@@ -83,7 +83,7 @@ export interface Skill {
   id: string;
   name: string;
   weaponKind: 'common' | WeaponKind;
-  requiredTier?: 2 | 4 | 6; // absent => usable at weapon mastery tier 0 (or always, for 'common')
+  requiredTier?: 1 | 2 | 3; // 전직 티어(1=초급/2=중급/3=고급). absent => tier 0부터(또는 'common'은 항상)
   category: SkillCategory;
   damageType: DamageType;
   power: number; // percent, e.g. 100 = 100%
@@ -152,7 +152,8 @@ export interface Character {
   xp: number;
   unspentPromotions: number;
   unspentStatPoints: number; // 레벨업마다 3점 지급, 체력/근력/지력/스피드/지구력에 분배
-  weaponMastery: Partial<Record<WeaponKind, number>>; // 0-6, absent key == tier 0
+  weaponMastery: Partial<Record<WeaponKind, number>>; // 전직 티어 0-3, absent key == tier 0
+  weaponProficiency?: Partial<Record<WeaponKind, number>>; // 무기 숙련 경험치(전직과 별개), absent == 0(초보)
 
   baseStats: StatBlock;
   sight: number;

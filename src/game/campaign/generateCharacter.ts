@@ -2,6 +2,7 @@ import type { ArmorKind, Character, Element, ProcEffect, SpriteGender, StatBlock
 import { createCharacter } from '../engine/characterFactory';
 import { weaponTemplatesForKind } from '../data/weapons';
 import { SKILLS } from '../data/skills';
+import { gainProficiencyExp, seededProficiencyExp } from '../data/promotions';
 
 const ELEMENTS: Exclude<Element, 'none'>[] = ['fire', 'water', 'wood', 'steel', 'earth'];
 const PROCS: ProcEffect[] = ['bleed', 'stun', 'pierce', 'focus', 'crit'];
@@ -46,9 +47,9 @@ const NAME_POOL = [
   '배도윤', '신라온', '고은샘', '허재이', '엄태오', '양다온', '심우주', '진서율', '표한결', '변시온',
 ];
 
-/** 레벨에 따른 전직 티어(5레벨 단위, 최대 6). */
+/** 레벨에 따른 전직 티어(10레벨 단위, 최대 3). */
 function masteryTierForLevel(level: number): number {
-  return Math.min(6, Math.floor(level / 5));
+  return Math.min(3, Math.floor(level / 10));
 }
 
 export function randomName(rng: () => number): string {
@@ -129,6 +130,8 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
     weaponMastery: { [kind]: tier },
     skillLoadout: [basic, ...weaponSkillIds],
   });
+  // 무기 숙련도(전직과 별개)는 레벨에 맞춰 기본치를 부여한다.
+  gainProficiencyExp(c, kind, seededProficiencyExp(level));
   if (opts.isBoss) c.isBoss = true;
   return c;
 }

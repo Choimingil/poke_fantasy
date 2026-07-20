@@ -1,6 +1,6 @@
 import type { BattleMap, Character, GridPos } from '../types';
 import { getWeapon } from '../data/weapons';
-import { hasTier5Passive } from '../data/promotions';
+import { hasWeaponPassive } from '../data/promotions';
 import { manhattan } from './grid';
 import type { TimeOfDay } from './daytime';
 import type { Weather } from './weather';
@@ -37,7 +37,7 @@ export function effectiveSight(c: Character, map: BattleMap, cond?: SightConditi
   let base = c.sight + (c.statusEffects.some((s) => s.type === 'farSight') ? 1 : 0);
   if (map.tiles[c.position.y][c.position.x].terrain === 'hill') base += 1; // 언덕 위 시야 +1
   const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
-  if (inst && getWeapon(inst.templateId).kind === 'bow' && hasTier5Passive(c, 'bow', 'hawkeye')) base += 1; // 매의눈
+  if (inst && getWeapon(inst.templateId).kind === 'bow' && hasWeaponPassive(c, 'bow', 'hawkeye')) base += 1; // 매의눈
   return Math.max(1, base + envSightModifier(cond)); // 시야는 최소 1
 }
 

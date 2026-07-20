@@ -28,7 +28,7 @@ export function RecruitTab({ campaign, onRecruit }: { campaign: Campaign; onRecr
             const kind = getWeapon(weaponInst.templateId).kind;
             const armor = c.equippedArmorId ? getArmor(c.armor.find((a) => a.instanceId === c.equippedArmorId)!.templateId) : null;
             const passive = weaponPassiveLabel(kind);
-            const hasPassive = masteryTier(c, kind) >= 5;
+            const hasPassive = masteryTier(c, kind) >= 3;
             const tooExpensive = campaign.gold < cand.cost;
             return (
               <li key={cand.id} className="recruit-card">
@@ -42,7 +42,7 @@ export function RecruitTab({ campaign, onRecruit }: { campaign: Campaign; onRecr
                 </div>
                 <div className="recruit-gear">
                   🗡 {weaponInstanceName(weaponInst)} · 🛡 {armor ? armor.name : '없음'}
-                  {passive && <span className="recruit-passive"> · 패시브 {passive}{hasPassive ? '' : '(티어5)'}</span>}
+                  {passive && <span className="recruit-passive"> · 패시브 {passive}{hasPassive ? '' : '(3차)'}</span>}
                 </div>
                 <div className="recruit-foot">
                   <span className="recruit-cost">💰 {cand.cost}</span>

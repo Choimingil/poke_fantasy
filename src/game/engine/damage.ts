@@ -1,5 +1,5 @@
 import type { Character, Element, Skill, WeaponTemplate } from '../types';
-import { TIER1_BONUS, hasTier5Passive, masteryTier } from '../data/promotions';
+import { hasWeaponPassive, proficiencyFloor } from '../data/promotions';
 import { elementMultiplier } from './elements';
 
 export interface DamageContext {
@@ -38,11 +38,6 @@ const DAMAGE_MULT_CAP = 2.5;
 /** 최소 데미지 보장: 방어를 무시한 기술 피해의 이 비율만큼은 항상 들어간다. */
 const MIN_DAMAGE_RATIO = 0.1;
 
-/** 숙련도 티어(0~6)에 따른 랜덤 배율 하한. 명세에 구체 수치가 없어 새로 설계한 placeholder(티어0=50% ~ 티어6=100%). */
-function masteryRandomFloor(tier: number): number {
-  return 0.5 + (tier / 6) * 0.5;
-}
-
 export function calculateDamage(ctx: DamageContext): DamageResult {
   const rng = ctx.rng ?? Math.random;
   const { attacker, skill, weapon } = ctx;
@@ -56,28 +51,27 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
         ? attacker.baseStats.magicAttack
         : attacker.baseStats.attack;
 
-  const tier = masteryTier(attacker, weapon.kind);
-  const tier1PowerBonus = tier >= 1 ? (TIER1_BONUS[weapon.kind]?.powerBonusPercent ?? 0) : 0;
-  const floor = masteryRandomFloor(tier);
+  // 무기 숙련도(전직과 별개, 초보 0.7 ~ 달인 1.0)에 따른 랜덤 하한과 100% 사이 균등 난수.
+  const floor = proficiencyFloor(attacker, weapon.kind);
   const masteryRoll = floor + rng() * (1 - floor);
   const skillPower = skill.power / 100;
 
   // 위력 있는 공격 기술에만 붙는 패시브/조건부 위력 배수(0% 보조기술엔 미적용).
   let passivePowerMult = 1;
   if (skill.power > 0) {
-    if (weapon.kind === 'sword' && ctx.movedAtLeast2 && hasTier5Passive(attacker, 'sword', 'sprint')) passivePowerMult *= 1.2;
+    if (weapon.kind === 'sword' && ctx.movedAtLeast2 && hasWeaponPassive(attacker, 'sword', 'sprint')) passivePowerMult *= 1.2;
     passivePowerMult *= ctx.finalPowerMult ?? 1;
   }
 
-  // 기본 공격력 = (주스탯/6 + 무기 공격력) x 숙련도~100% 랜덤값 x 기술위력 (+ 티어1 위력 보너스)
-  const baseAttack = (stat / 6 + ctx.weaponPower) * (1 + tier1PowerBonus / 100) * masteryRoll * skillPower;
+  // 기본 공격력 = (주스탯/6 + 무기 공격력) x 숙련도~100% 랜덤값 x 기술위력
+  const baseAttack = (stat / 6 + ctx.weaponPower) * masteryRoll * skillPower;
 
   const rawDefense = ctx.defenderDefense ?? 0;
   const defense = ctx.ignoreDefense ? 0 : rawDefense * (1 - (ctx.ignoreDefenseRatio ?? 0));
 
   let elementMult = elementMultiplier(ctx.attackerElement, ctx.defenderElement);
   // 지팡이 증폭: 약점(1.3배)을 1.6배로 강화
-  if (elementMult === 1.3 && hasTier5Passive(attacker, 'staff', 'amplify')) elementMult = 1.6;
+  if (elementMult === 1.3 && hasWeaponPassive(attacker, 'staff', 'amplify')) elementMult = 1.6;
 
   const crit = !!ctx.weaponCrit;
 

@@ -169,14 +169,14 @@ describe('데미지 훅', () => {
     return c;
   }
 
-  it('증폭(지팡이 T5): 약점 배율이 1.3→1.6으로 강화된다', () => {
+  it('증폭(지팡이 3차): 약점 배율이 1.3→1.6으로 강화된다', () => {
     const defender = createCharacter({ id: 'd', name: 'd', baseStats: { hp: 100, attack: 10, magicAttack: 10, speed: 10, endurance: 10 }, sight: 5, starterWeaponTemplateId: 'sword_short' });
     const base = calculateDamage({
-      attacker: staffAttacker(4), defender, skill: getSkill('staff_bolt'), weapon: getWeapon('staff_east'), weaponPower: STAFF_POWER,
+      attacker: staffAttacker(2), defender, skill: getSkill('staff_bolt'), weapon: getWeapon('staff_east'), weaponPower: STAFF_POWER,
       attackerElement: 'fire', defenderElement: 'earth', statSource: 'magic', rng: () => 0.999,
     });
     const amplified = calculateDamage({
-      attacker: staffAttacker(5), defender, skill: getSkill('staff_bolt'), weapon: getWeapon('staff_east'), weaponPower: STAFF_POWER,
+      attacker: staffAttacker(3), defender, skill: getSkill('staff_bolt'), weapon: getWeapon('staff_east'), weaponPower: STAFF_POWER,
       attackerElement: 'fire', defenderElement: 'earth', statSource: 'magic', rng: () => 0.999,
     });
     expect(amplified.damage / base.damage).toBeCloseTo(1.6 / 1.3, 1);
