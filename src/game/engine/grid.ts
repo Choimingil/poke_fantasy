@@ -51,6 +51,8 @@ export function effectiveMove(c: Character, map: BattleMap, weather: Weather = '
   let penalty = 0;
   const legHit = c.statusEffects.find((s) => s.type === 'legHit');
   if (legHit) penalty += Math.abs(legHit.magnitude ?? 0.5);
+  // 이동력 감소(정예/보스 충격 전환, 보스 봉쇄 전환): magnitude만큼 이동력 차감.
+  for (const s of c.statusEffects) if (s.type === 'moveDown') penalty += Math.abs(s.magnitude ?? 1);
   const onWater = map.tiles[c.position.y][c.position.x].terrain === 'water';
   if (onWater) {
     if (!adapt) penalty += WATER_MOVE_PENALTY; // 물 위에서는 이동력 감소(적응력은 무시)

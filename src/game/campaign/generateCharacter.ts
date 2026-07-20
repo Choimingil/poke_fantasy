@@ -84,6 +84,7 @@ export interface GenerateOptions {
   name?: string;
   rng?: () => number;
   isBoss?: boolean;
+  isElite?: boolean;
   /** 후반 라운드 난이도 스케일(능력치 배수, 기본 1). */
   statMult?: number;
 }
@@ -108,6 +109,10 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
     stats.hp = Math.round(stats.hp * 2.2); // 보스는 체력이 크게 높다
     stats.attack = Math.round(stats.attack * 1.2);
     stats.magicAttack = Math.round(stats.magicAttack * 1.2);
+  } else if (opts.isElite) {
+    stats.hp = Math.round(stats.hp * 1.5); // 정예는 보스와 일반 사이
+    stats.attack = Math.round(stats.attack * 1.1);
+    stats.magicAttack = Math.round(stats.magicAttack * 1.1);
   }
   const sprite = SPRITE_BY_KIND[kind];
   const weaponSkillIds = SKILLS.filter((s) => s.weaponKind === kind).map((s) => s.id);
@@ -133,5 +138,6 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
   // 무기 숙련도(전직과 별개)는 레벨에 맞춰 기본치를 부여한다.
   gainProficiencyExp(c, kind, seededProficiencyExp(level));
   if (opts.isBoss) c.isBoss = true;
+  if (opts.isElite) c.isElite = true;
   return c;
 }

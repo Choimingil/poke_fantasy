@@ -40,7 +40,7 @@ export function UnitToken({
     <div
       className={classes}
       style={{ gridColumn: pos.x + 1, gridRow: pos.y + 1 }}
-      title={`${character.name} Lv.${character.level} (${character.currentHp}/${maxHp(character)})`}
+      title={`${character.name}${character.isBoss ? ' [보스]' : character.isElite ? ' [정예]' : ''} Lv.${character.level} (${character.currentHp}/${maxHp(character)})`}
     >
       {float && (
         <span key={floatKey} className={`combat-float combat-float-${float.kind}`}>{float.text}</span>

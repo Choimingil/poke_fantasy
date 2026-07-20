@@ -6,7 +6,7 @@ import { resolveSkill } from './skills';
 import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
 import { isVisibleTo, isVisibleToTeam } from './vision';
 import { determineTurnOrder } from './turnOrder';
-import { applyBleedDamage, applyPoisonDamage, applyTileBurnDamage, isImmobilized, rollStunned, tickMapStatus, tickStatusAtTurnStart } from './status';
+import { applyDamageOverTime, applyTileBurnDamage, isImmobilized, consumeShock, tickMapStatus, tickStatusAtTurnStart } from './status';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
 import { weatherTurnStartDamage, type Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -186,12 +186,10 @@ export class GridBattle {
 
     let stunnedThisTurn = false;
     if (fromRoundQueue) {
-      // 출혈·맹독 피해와 기절 판정은 상태 지속시간이 깎이기 전(적용된 턴부터 정확히 2턴)에 확인한다.
-      const bleed = applyBleedDamage(unit);
-      if (bleed > 0) this.log.push(`${unit.name}는 출혈로 ${bleed}의 데미지를 입었다.`);
-      const poison = applyPoisonDamage(unit);
-      if (poison > 0) this.log.push(`${unit.name}는 맹독으로 ${poison}의 데미지를 입었다.`);
-      stunnedThisTurn = rollStunned(unit, this.rng);
+      // 출혈+맹독 합산 지속피해(한 턴 최대체력 20% 상한)와 충격 판정은 지속시간이 깎이기 전에 확인한다.
+      const dot = applyDamageOverTime(unit);
+      if (dot > 0) this.log.push(`${unit.name}는 지속 피해로 ${dot}의 데미지를 입었다.`);
+      stunnedThisTurn = consumeShock(unit);
 
       const tick = tickStatusAtTurnStart(unit);
       for (const expired of tick.expired) this.log.push(`${unit.name}의 ${expired} 상태가 해제되었다.`);
@@ -206,7 +204,7 @@ export class GridBattle {
         return;
       }
       if (stunnedThisTurn) {
-        this.log.push(`${unit.name}는 기절해서 이번 턴에 행동할 수 없다.`);
+        this.log.push(`${unit.name}는 충격으로 이번 턴에 행동할 수 없다.`);
         this.afterAction();
         return;
       }

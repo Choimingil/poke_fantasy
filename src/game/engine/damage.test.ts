@@ -45,11 +45,11 @@ describe('calculateDamage', () => {
     const defender = makeCharacter('def');
     const favorable = calculateDamage({
       attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
-      attackerElement: 'fire', defenderElement: 'earth', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
+      attackerElement: 'fire', defenderElement: 'wood', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const unfavorable = calculateDamage({
       attacker, defender, skill: getSkill('power_strike'), weapon: getWeapon('sword_short'), weaponPower: SWORD_POWER,
-      attackerElement: 'earth', defenderElement: 'fire', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
+      attackerElement: 'fire', defenderElement: 'water', statSource: 'attack', rng: sequenceRng([0.99, 0.5]),
     });
     const ratio = favorable.damage / unfavorable.damage;
     expect(ratio).toBeGreaterThan(1.7);

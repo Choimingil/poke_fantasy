@@ -65,7 +65,8 @@ export type StatusEffectType =
   | 'quickSwap' // 빠른교체: 무기 교체가 턴을 소모하지 않음
   | 'bleeding' // 출혈(검 부가효과): 매 턴 최대체력 1/8 피해
   | 'poisoned' // 맹독(투척 기술): 출혈과 동일 지속피해, 출혈과 중복
-  | 'stunned'; // 기절(둔기 부가효과): 매 턴 30% 확률로 행동 불가
+  | 'shocked' // 충격(둔기 부가효과): 일반 적은 다음 행동 취소
+  | 'moveDown'; // 이동력 감소(정예/보스 충격 전환, 보스 봉쇄 전환 등): magnitude만큼 이동력 −
 
 export interface ActiveStatus {
   type: StatusEffectType;
@@ -161,7 +162,8 @@ export interface Character {
   currentHp: number;
   position: GridPos;
   side?: 'A' | 'B'; // assigned by battle setup, not persisted on the roster
-  isBoss?: boolean; // 보스: 고정피해 감소·강력 상태효과 저항
+  isBoss?: boolean; // 보스: 고정피해 감소·강력 상태효과 저항(약화·전환)
+  isElite?: boolean; // 정예: 고정피해 상한 15%·충격은 이동력 감소로 전환
 
   inventory: WeaponInstance[];
   equippedWeaponId: string;

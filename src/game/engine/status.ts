@@ -63,20 +63,39 @@ export function tickStatusAtTurnStart(character: Character): StatusTickResult {
   return { dotDamage: 0, expired };
 }
 
-/** 출혈(검 부가효과) 상태의 캐릭터는 매 턴 최대체력 1/8을 잃는다. tickStatusAtTurnStart로 지속시간이 깎이기 전에 호출해야 정확히 2턴 동안 적용된다. */
+/** 지속피해 한 틱의 피해량: 상태에 magnitude(보스용 고정치)가 있으면 그 값, 없으면 최대체력 1/8. */
+function dotTick(character: Character, type: StatusEffectType): number {
+  const status = character.statusEffects.find((s) => s.type === type);
+  if (!status) return 0;
+  return Math.max(1, Math.round(status.magnitude ?? maxHp(character) / 8));
+}
+
+/** 출혈(검 부가효과): 2턴 동안 매 턴 최대체력 1/8(보스는 제한 피해). 단독 계산용(테스트/단일 검사). */
 export function applyBleedDamage(character: Character): number {
-  if (!character.statusEffects.some((s) => s.type === 'bleeding')) return 0;
-  const damage = Math.max(1, Math.round(maxHp(character) / 8));
+  const damage = dotTick(character, 'bleeding');
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
 }
 
-/** 맹독(투척 기술)도 출혈과 동일하게 매 턴 최대체력 1/8을 잃는다. 출혈과 별개로 중복 적용된다. */
+/** 맹독(투척 기술): 출혈과 동일 지속피해, 출혈과 중복. 단독 계산용. */
 export function applyPoisonDamage(character: Character): number {
-  if (!character.statusEffects.some((s) => s.type === 'poisoned')) return 0;
-  const damage = Math.max(1, Math.round(maxHp(character) / 8));
+  const damage = dotTick(character, 'poisoned');
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
+}
+
+/**
+ * 턴 시작 지속피해(출혈+맹독)를 합산 적용한다. 두 피해의 합은 한 턴에 최대체력의 20%를 넘지 못한다.
+ * 실제로 입힌 총 피해를 반환한다. tickStatusAtTurnStart로 지속시간이 깎이기 전에 호출한다.
+ */
+export function applyDamageOverTime(character: Character): number {
+  const bleed = dotTick(character, 'bleeding');
+  const poison = dotTick(character, 'poisoned');
+  if (bleed + poison <= 0) return 0;
+  const cap = Math.round(maxHp(character) * 0.2);
+  const total = Math.min(bleed + poison, cap);
+  character.currentHp = Math.max(0, character.currentHp - total);
+  return total;
 }
 
 /** 봉쇄(창 봉쇄) 상태이면 이번 턴 이동할 수 없다. */
@@ -84,10 +103,12 @@ export function isImmobilized(character: Character): boolean {
   return character.statusEffects.some((s) => s.type === 'immobilized');
 }
 
-/** 기절(둔기 부가효과) 상태이면 이번 턴에 30% 확률로 행동이 불가능한지 판정한다. */
-export function rollStunned(character: Character, rng: () => number): boolean {
-  if (!character.statusEffects.some((s) => s.type === 'stunned')) return false;
-  return rng() < 0.3;
+/** 충격(둔기 부가효과, 일반 적) 상태이면 이번 턴 행동을 취소하고 그 상태를 소모한다. */
+export function consumeShock(character: Character): boolean {
+  const idx = character.statusEffects.findIndex((s) => s.type === 'shocked');
+  if (idx < 0) return false;
+  character.statusEffects.splice(idx, 1);
+  return true;
 }
 
 /** 화염 타일 위에 있는 캐릭터는 매 턴 최대체력 1/4을 잃는다 */

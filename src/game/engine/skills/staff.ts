@@ -13,10 +13,6 @@ const staffBolt: SkillHandler = (ctx) => {
 const staffWeaken: SkillHandler = (ctx) => {
   const target = ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
   if (!target) return;
-  if (target.isBoss) {
-    ctx.log.push('보스에게는 약화 효과가 통하지 않는다.');
-    return;
-  }
   const weaponInstance = ctx.actor.inventory.find((w) => w.instanceId === ctx.actor.equippedWeaponId);
   const staffElement = weaponInstance?.element;
   if (!staffElement || staffElement === 'none') return;
@@ -24,8 +20,9 @@ const staffWeaken: SkillHandler = (ctx) => {
     ctx.log.push(`${target.name}는 정신력으로 약화 효과를 무시했다.`);
     return;
   }
+  // 속성 변경은 보스에게 1턴으로 약화(일반/정예는 2턴).
   target.elementOverride = weaknessOf(staffElement);
-  target.elementOverrideTurns = 2;
+  target.elementOverrideTurns = target.isBoss ? 1 : 2;
   ctx.log.push(`${target.name}의 속성이 약화되었다.`);
 };
 

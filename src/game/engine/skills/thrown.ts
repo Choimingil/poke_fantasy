@@ -3,7 +3,7 @@ import { applyStatusTo, applyDebuffTo, dealDamageTo } from './helpers';
 import type { SkillContext, SkillHandler } from './context';
 
 const POISON_CHANCE = 0.3;
-const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'stunned', 'immobilized'];
+const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'shocked', 'moveDown', 'immobilized'];
 
 function isDebuffed(target: Character): boolean {
   return target.statusEffects.some((s) => DEBUFF_TYPES.includes(s.type)) || target.elementOverride !== undefined;

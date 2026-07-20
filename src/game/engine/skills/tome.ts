@@ -3,7 +3,7 @@ import { aliveUnitsInRadius } from './helpers';
 import { maxHp } from '../derivedStats';
 import type { SkillHandler } from './context';
 
-const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'stunned', 'immobilized'];
+const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'shocked', 'moveDown', 'immobilized'];
 
 // 치료: 주변 1칸 아군 체력을 시전자 지력의 1/5만큼 회복.
 const tomeHeal: SkillHandler = (ctx) => {

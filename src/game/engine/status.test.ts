@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BattleMap, Character } from '../types';
 import { createCharacter } from './characterFactory';
-import { applyBleedDamage, applyStatus, applyTileBurnDamage, getStatus, rollStunned, tickMapStatus, tickStatusAtTurnStart } from './status';
+import { applyBleedDamage, applyStatus, applyTileBurnDamage, getStatus, consumeShock, applyDamageOverTime, tickMapStatus, tickStatusAtTurnStart } from './status';
 
 function makeCharacter(): Character {
   return createCharacter({
@@ -84,17 +84,28 @@ describe('applyBleedDamage', () => {
   });
 });
 
-describe('rollStunned', () => {
-  it('기절 상태가 아니면 항상 false', () => {
+describe('consumeShock', () => {
+  it('충격 상태가 아니면 false', () => {
     const c = makeCharacter();
-    expect(rollStunned(c, () => 0)).toBe(false);
+    expect(consumeShock(c)).toBe(false);
   });
 
-  it('기절 상태면 30% 확률로 행동 불가를 판정한다', () => {
+  it('충격 상태면 true를 반환하고 그 상태를 소모(제거)한다', () => {
     const c = makeCharacter();
-    applyStatus(c, 'stunned', { turnsRemaining: 2 });
-    expect(rollStunned(c, () => 0)).toBe(true); // 0 < 0.3
-    expect(rollStunned(c, () => 0.99)).toBe(false);
+    applyStatus(c, 'shocked', { turnsRemaining: 2 });
+    expect(consumeShock(c)).toBe(true);
+    expect(getStatus(c, 'shocked')).toBeUndefined();
+  });
+});
+
+describe('applyDamageOverTime', () => {
+  it('출혈+맹독 합산 지속피해는 한 턴에 최대체력의 20%를 넘지 않는다', () => {
+    const c = makeCharacter(); // hp160 → 최대체력 520, 20% = 104
+    applyStatus(c, 'bleeding', { turnsRemaining: 2 });
+    applyStatus(c, 'poisoned', { turnsRemaining: 2 });
+    // 출혈 65 + 맹독 65 = 130 이지만 상한 104로 제한.
+    expect(applyDamageOverTime(c)).toBe(104);
+    expect(c.currentHp).toBe(520 - 104);
   });
 });
 

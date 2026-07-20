@@ -18,7 +18,8 @@ const STATUS_LABEL: Record<StatusEffectType, string> = {
   immobilized: '봉쇄',
   bleeding: '출혈',
   poisoned: '맹독',
-  stunned: '기절',
+  shocked: '충격',
+  moveDown: '둔화',
 };
 
 const STATUS_DESC: Record<StatusEffectType, string> = {
@@ -37,12 +38,13 @@ const STATUS_DESC: Record<StatusEffectType, string> = {
   legHit: '이동력이 1 감소한다.',
   immobilized: '이동할 수 없다.',
   bleeding: '매 턴 최대 체력의 1/8 피해를 입는다.',
-  poisoned: '매 턴 최대 체력의 1/8 피해를 입는다(출혈과 중복).',
-  stunned: '매 턴 30% 확률로 행동할 수 없다.',
+  poisoned: '매 턴 최대 체력의 1/8 피해를 입는다(출혈과 중복, 합산 상한 20%).',
+  shocked: '다음 행동이 취소된다(정예·보스는 이동력 감소로 전환).',
+  moveDown: '일정 기간 이동력이 감소한다(최소 1).',
 };
 
 // 디버프로 취급하는 상태(붉은색)
-const DEBUFFS = new Set<StatusEffectType>(['taunted', 'legHit', 'immobilized', 'bleeding', 'poisoned', 'stunned']);
+const DEBUFFS = new Set<StatusEffectType>(['taunted', 'legHit', 'immobilized', 'bleeding', 'poisoned', 'shocked', 'moveDown']);
 
 /** 현재 캐릭터의 버프/디버프와 남은 턴 수를 칩으로 표시한다. 칩을 누르면 해당 상태 설명이 나온다. */
 export function StatusChips({ effects }: { effects: ActiveStatus[] }) {

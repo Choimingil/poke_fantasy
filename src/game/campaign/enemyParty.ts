@@ -50,11 +50,15 @@ export function generateEnemyParty(round: number, rng: () => number = Math.rando
   if (isBossRound(round)) {
     units.push(generateCharacter(kinds[0], level + 5, { id: `enemy-${round}-boss`, name: `${randomName(rng)} (보스)`, rng, isBoss: true, statMult }));
     for (let i = 1; i < count; i++) {
-      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, statMult }));
+      // 보스 라운드에는 부하 1명이 정예(친위대)로 등장한다.
+      const elite = i === 1;
+      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, isElite: elite, statMult }));
     }
   } else {
     for (let i = 0; i < count; i++) {
-      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, statMult }));
+      // 4라운드 이후에는 선두 1명이 정예로 등장한다.
+      const elite = i === 0 && round >= 4;
+      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, isElite: elite, statMult }));
     }
   }
   return { units, theme };

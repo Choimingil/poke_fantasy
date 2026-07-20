@@ -104,7 +104,7 @@ describe('무기 전용기술 통합', () => {
     expect(enemy.statusEffects.some((s) => s.type === 'immobilized')).toBe(true);
   });
 
-  it('치명사격: 대상 최대체력의 50% 고정피해', () => {
+  it('치명사격: 일반 적 최대체력의 25% 고정피해(상한 적용)', () => {
     const map = makeMap();
     const xbow = makeUnit('xbow', 'crossbow_a', 6, { baseStats: { hp: 100, attack: 1, magicAttack: 1, speed: 30, endurance: 10 } });
     const enemy = makeUnit('enemy', 'sword_short', 0, { baseStats: { hp: 200, attack: 10, magicAttack: 10, speed: 5, endurance: 10 } });
@@ -113,7 +113,31 @@ describe('무기 전용기술 통합', () => {
     const battle = new GridBattle(map, [xbow], [enemy], () => 0.5);
     const before = enemy.currentHp;
     battle.takeTurn({ skillId: 'xbow_lethal', targetId: 'enemy' });
-    expect(enemy.currentHp).toBe(before - Math.floor(before * 0.5)); // 최대체력의 50% 고정피해
+    expect(enemy.currentHp).toBe(before - Math.floor(before * 0.25)); // 최대체력의 25% 고정피해
+  });
+
+  it('치명사격: 보스에게는 고정피해 상한이 10%로 낮아진다', () => {
+    const map = makeMap();
+    const xbow = makeUnit('xbow', 'crossbow_a', 3, { baseStats: { hp: 100, attack: 1, magicAttack: 1, speed: 30, endurance: 10 } });
+    const boss = makeUnit('boss', 'sword_short', 0, { baseStats: { hp: 200, attack: 10, magicAttack: 10, speed: 5, endurance: 10 }, isBoss: true });
+    prepareForBattle(xbow, { x: 0, y: 0 }, 'A');
+    prepareForBattle(boss, { x: 2, y: 0 }, 'B');
+    const battle = new GridBattle(map, [xbow], [boss], () => 0.5);
+    const before = boss.currentHp;
+    battle.takeTurn({ skillId: 'xbow_lethal', targetId: 'boss' });
+    expect(boss.currentHp).toBe(before - Math.floor(before * 0.10)); // 25%가 아니라 10% 상한
+  });
+
+  it('밀쳐내기: 보스는 밀려나지 않고(면역) 추가 피해를 받는다', () => {
+    const map = makeMap();
+    const blunt = makeUnit('blunt', 'blunt_maul', 3, { baseStats: { hp: 100, attack: 80, magicAttack: 5, speed: 30, endurance: 10 } });
+    const boss = makeUnit('boss', 'sword_short', 0, { baseStats: { hp: 300, attack: 10, magicAttack: 10, speed: 5, endurance: 10 }, isBoss: true });
+    prepareForBattle(blunt, { x: 0, y: 0 }, 'A');
+    prepareForBattle(boss, { x: 1, y: 0 }, 'B');
+    const battle = new GridBattle(map, [blunt], [boss], () => 0.5);
+    battle.takeTurn({ skillId: 'blunt_shove', targetId: 'boss' });
+    expect(boss.position).toEqual({ x: 1, y: 0 }); // 밀려나지 않음
+    expect(boss.currentHp).toBeLessThan(maxHp(boss)); // 대신 추가 피해
   });
 
   it('통합 명중: 명중률 = 기술 명중 − 대상 회피, 빠른 대상은 정확도 100 공격도 회피한다', () => {
@@ -173,11 +197,11 @@ describe('데미지 훅', () => {
     const defender = createCharacter({ id: 'd', name: 'd', baseStats: { hp: 100, attack: 10, magicAttack: 10, speed: 10, endurance: 10 }, sight: 5, starterWeaponTemplateId: 'sword_short' });
     const base = calculateDamage({
       attacker: staffAttacker(2), defender, skill: getSkill('staff_bolt'), weapon: getWeapon('staff_east'), weaponPower: STAFF_POWER,
-      attackerElement: 'fire', defenderElement: 'earth', statSource: 'magic', rng: () => 0.999,
+      attackerElement: 'fire', defenderElement: 'wood', statSource: 'magic', rng: () => 0.999,
     });
     const amplified = calculateDamage({
       attacker: staffAttacker(3), defender, skill: getSkill('staff_bolt'), weapon: getWeapon('staff_east'), weaponPower: STAFF_POWER,
-      attackerElement: 'fire', defenderElement: 'earth', statSource: 'magic', rng: () => 0.999,
+      attackerElement: 'fire', defenderElement: 'wood', statSource: 'magic', rng: () => 0.999,
     });
     expect(amplified.damage / base.damage).toBeCloseTo(1.6 / 1.3, 1);
   });

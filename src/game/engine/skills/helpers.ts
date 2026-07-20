@@ -58,17 +58,27 @@ function resistedByMentalStrength(target: Character, rng: () => number, log: str
   return false;
 }
 
-/** 보스가 저항하는 강력한 상태이상(기절·봉쇄). */
-const BOSS_RESISTED: StatusEffectType[] = ['stunned', 'immobilized'];
-
-/** 상대에게 디버프/부가효과를 걸 때 반드시 이 함수를 거친다(정신력 저항 + 보스 강력CC 저항). */
+/** 상대에게 디버프/부가효과를 걸 때 반드시 이 함수를 거친다(정신력 저항 + 보스 강력CC 전환). */
 export function applyDebuffTo(ctx: SkillContext, target: Character, type: StatusEffectType, options: StatusApplyOptions, label: string): void {
-  if (target.isBoss && BOSS_RESISTED.includes(type)) {
-    ctx.log.push(`보스에게는 ${label} 효과가 통하지 않는다.`);
+  // 보스: 봉쇄(이동 불가)는 완전 무효 대신 다음 턴 이동력 −2로 약화 전환한다.
+  if (target.isBoss && type === 'immobilized') {
+    if (resistedByMentalStrength(target, ctx.rng, ctx.log, label)) return;
+    applyStatusTo(target, 'moveDown', { turnsRemaining: 1, magnitude: 2 }, ctx.log, '이동력 감소');
     return;
   }
   if (resistedByMentalStrength(target, ctx.rng, ctx.log, label)) return;
   applyStatusTo(target, type, options, ctx.log, label);
+}
+
+/**
+ * 충격(둔기 부가효과): 일반 적은 다음 행동 취소('shocked'), 정예는 이동력 −2, 보스는 이동력 −1로 전환한다.
+ * 정신력 저항을 거친다.
+ */
+function applyShock(ctx: SkillContext, defender: Character): void {
+  if (resistedByMentalStrength(defender, ctx.rng, ctx.log, '충격')) return;
+  if (defender.isBoss) applyStatusTo(defender, 'moveDown', { turnsRemaining: 2, magnitude: 1 }, ctx.log, '이동력 감소');
+  else if (defender.isElite) applyStatusTo(defender, 'moveDown', { turnsRemaining: 2, magnitude: 2 }, ctx.log, '이동력 감소');
+  else applyStatusTo(defender, 'shocked', { turnsRemaining: 2 }, ctx.log, '충격');
 }
 
 export function applyStatusTo(character: Character, type: StatusEffectType, options: StatusApplyOptions, log: string[], label: string): void {
@@ -120,8 +130,9 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   }
 
   if (fixedPct !== undefined) {
-    // 보스는 고정 피해가 절반으로 감소한다.
-    const effPct = defender.isBoss ? fixedPct / 2 : fixedPct;
+    // 최대체력 비례 고정 피해 상한: 일반 25% / 정예 15% / 보스 10%.
+    const cap = defender.isBoss ? 10 : defender.isElite ? 15 : 25;
+    const effPct = Math.min(fixedPct, cap);
     const dmg = Math.max(1, Math.floor(maxHp(defender) * (effPct / 100)));
     defender.currentHp = Math.max(0, defender.currentHp - dmg);
     ctx.noteDirectDamage?.(attacker, wc.kind);
@@ -146,8 +157,8 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
     defenderElement: defender.elementOverride ?? 'none',
     statSource: statSourceFor(attacker, effSkill),
     defenderDefense: shieldDefenseBonus(ctx, defender) + armorDefenseBonus(defender),
-    ignoreDefense: proc === 'pierce',
-    ignoreDefenseRatio: opts.ignoreDefenseRatio ?? skill.ignoreDefenseRatio,
+    // 창 관통: 방어력을 전부가 아니라 50%만 무시한다(철갑사격 등 기술 자체 무시율과 큰 쪽 적용).
+    ignoreDefenseRatio: Math.max(proc === 'pierce' ? 0.5 : 0, opts.ignoreDefenseRatio ?? skill.ignoreDefenseRatio ?? 0),
     weaponCrit: crit,
     movedAtLeast2: (attacker.movedStepsThisTurn ?? 0) >= 2,
     finalPowerMult: opts.finalPowerMult,
@@ -163,8 +174,13 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
     return result.damage;
   }
 
-  if (proc === 'bleed') applyDebuffTo(ctx, defender, 'bleeding', { turnsRemaining: 2 }, '출혈');
-  else if (proc === 'stun') applyDebuffTo(ctx, defender, 'stunned', { turnsRemaining: 2 }, '기절');
+  if (proc === 'bleed') {
+    // 보스 출혈은 최대체력 비례가 아니라 시전자 공격력 기반 제한 피해로 적용한다.
+    const magnitude = defender.isBoss ? Math.max(1, Math.round(attacker.baseStats.attack)) : undefined;
+    applyDebuffTo(ctx, defender, 'bleeding', { turnsRemaining: 2, magnitude }, '출혈');
+  } else if (proc === 'stun') {
+    applyShock(ctx, defender);
+  }
 
   return result.damage;
 }
@@ -239,8 +255,9 @@ function stepDir(from: GridPos, to: GridPos): GridPos {
   return { x: Math.sign(to.x - from.x), y: Math.sign(to.y - from.y) };
 }
 
-/** 공격 방향으로 대상을 1칸 밀어낸다. 밀려날 수 없으면 false. */
+/** 공격 방향으로 대상을 1칸 밀어낸다. 밀려날 수 없으면 false. 보스는 기본 밀쳐내기 면역. */
 export function knockbackTarget(ctx: SkillContext, target: Character): boolean {
+  if (target.isBoss) return false;
   const dir = stepDir(ctx.actor.position, target.position);
   if (dir.x === 0 && dir.y === 0) return false;
   const dest = { x: target.position.x + dir.x, y: target.position.y + dir.y };

@@ -6,7 +6,7 @@ const WEAPON_ELEMENT_LABEL: Record<Exclude<Element, 'none'>, string> = {
   fire: '불', water: '물', wood: '나무', steel: '강철', earth: '땅',
 };
 const WEAPON_PROC_LABEL: Record<ProcEffect, string> = {
-  bleed: '출혈', stun: '기절', pierce: '관통', focus: '집중', crit: '급소',
+  bleed: '출혈', stun: '충격', pierce: '관통', focus: '집중', crit: '급소',
 };
 
 /** 인스턴스 표시 이름: 지팡이=속성(예 "불의 법장"), 마법서/투척=부가효과(예 "출혈의 주술서"). */

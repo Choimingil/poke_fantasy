@@ -1,8 +1,6 @@
 import { applyStatusTo, applyDebuffTo, dealDamageTo, knockbackTarget } from './helpers';
 import type { SkillContext, SkillHandler } from './context';
 
-const SHOVE_STUN_CHANCE = 0.5;
-
 function findEnemyTarget(ctx: SkillContext) {
   return ctx.enemyTeam.find((u) => u.id === ctx.targetId && u.currentHp > 0);
 }
@@ -15,7 +13,7 @@ const bluntLeghit: SkillHandler = (ctx) => {
   if (target.currentHp > 0) applyDebuffTo(ctx, target, 'legHit', { turnsRemaining: 3, magnitude: -1, noStack: true }, '다리 부상');
 };
 
-// 밀쳐내기: 1칸 넉백. 밀려날 수 없으면 50% 확률로 1턴 기절.
+// 밀쳐내기: 1칸 넉백. 밀려날 수 없으면(벽·보스 등) 추가 피해 20%. 기절 효과는 없음.
 const bluntShove: SkillHandler = (ctx) => {
   const target = findEnemyTarget(ctx);
   if (!target) return;
@@ -23,8 +21,9 @@ const bluntShove: SkillHandler = (ctx) => {
   if (target.currentHp <= 0) return;
   if (knockbackTarget(ctx, target)) {
     ctx.log.push(`${target.name}가 밀려났다.`);
-  } else if (ctx.rng() < SHOVE_STUN_CHANCE) {
-    applyDebuffTo(ctx, target, 'stunned', { turnsRemaining: 1 }, '기절');
+  } else {
+    ctx.log.push(`${target.name}가 밀려나지 않아 추가 피해를 입었다.`);
+    dealDamageTo(ctx, target, { powerOverride: ctx.skill.power * 0.2, suppressProc: true, suppressCrit: true, triggersReactions: false });
   }
 };
 

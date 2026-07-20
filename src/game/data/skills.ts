@@ -67,7 +67,7 @@ const BOW_SKILLS: Skill[] = [
 const CROSSBOW_SKILLS: Skill[] = [
   { id: 'xbow_ap', name: '철갑사격', weaponKind: 'crossbow', requiredTier: 1, category: 'attack', damageType: 'physical', power: 100, accuracy: 100, targetMode: 'enemy', range: 'weapon', ignoreDefenseRatio: 0.2, maxUses: 5 },
   { id: 'xbow_pierceshot', name: '관통사격', weaponKind: 'crossbow', requiredTier: 2, category: 'attack', damageType: 'physical', power: 120, accuracy: 95, targetMode: 'enemy', range: 'weapon', pierceBehind: true, maxUses: 3 },
-  { id: 'xbow_lethal', name: '치명사격', weaponKind: 'crossbow', requiredTier: 3, category: 'attack', damageType: 'physical', power: 0, accuracy: 90, targetMode: 'enemy', range: 'weapon', fixedDamagePercent: 50, maxUses: 2 },
+  { id: 'xbow_lethal', name: '치명사격', weaponKind: 'crossbow', requiredTier: 3, category: 'attack', damageType: 'physical', power: 0, accuracy: 90, targetMode: 'enemy', range: 'weapon', fixedDamagePercent: 25, maxUses: 1 },
 ];
 
 // 마법서(r1): 치료 / 정화 / 재행동 — 주변 1칸 아군 대상
