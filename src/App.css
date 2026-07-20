@@ -1131,3 +1131,11 @@ button:disabled {
 .trait-tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #33405e; color: #cdd8f2; }
 .trait-live { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #235b3a; color: #b6f0c9; }
 .inspect-trait, .recruit-trait { margin-top: 6px; font-size: 12px; color: #b7c0da; }
+
+/* ── 장비 등급(§31) ── */
+.shop-card.shop-rare { border-color: #b98a2e; box-shadow: 0 0 0 1px rgba(255, 200, 90, 0.35) inset; }
+.shop-card.shop-legendary { border-color: #b061d8; box-shadow: 0 0 0 1px rgba(210, 140, 255, 0.4) inset; }
+.grade-tag { font-size: 0.7rem; font-weight: 800; padding: 1px 6px; border-radius: 999px; }
+.grade-tag.grade-rare { background: #6a4a12; color: #ffe6a6; }
+.grade-tag.grade-legendary { background: #4a2467; color: #e6c8ff; }
+.shop-options { font-size: 12px; color: #b6f0c9; margin-top: 2px; }

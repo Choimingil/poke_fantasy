@@ -1,4 +1,4 @@
-import type { ArmorInstance, Character, Element, ProcEffect, WeaponInstance, WeaponKind } from '../types';
+import type { ArmorInstance, Character, Element, EquipGrade, EquipOption, ProcEffect, WeaponInstance, WeaponKind } from '../types';
 
 /** 동료 품질 등급(명성에 따라 결정). 일반병사 → 숙련병 → 엘리트 → 영웅급. */
 export type Quality = 'recruit' | 'veteran' | 'elite' | 'hero';
@@ -38,7 +38,8 @@ export interface ShopItem {
   level: number;
   element?: Element;
   procEffect?: ProcEffect;
-  rare?: boolean;
+  grade: EquipGrade; // 일반/희귀/전설(§31)
+  options?: EquipOption[]; // 희귀/전설 추가 옵션
   price: number;
 }
 

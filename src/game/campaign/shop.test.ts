@@ -19,8 +19,9 @@ describe('rollShop', () => {
     expect(nextId).toBe(10 + shop.length);
   });
 
-  it('희귀 장비가 더 비싸다', () => {
-    expect(shopPrice(20, false)).toBeLessThan(shopPrice(20, true));
+  it('등급이 높을수록 더 비싸다(일반 < 희귀 < 전설)', () => {
+    expect(shopPrice(20, 'common')).toBeLessThan(shopPrice(20, 'rare'));
+    expect(shopPrice(20, 'rare')).toBeLessThan(shopPrice(20, 'legendary'));
   });
 });
 

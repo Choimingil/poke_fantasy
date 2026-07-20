@@ -1,6 +1,7 @@
 import type { ArmorInstance, Character, WeaponInstance } from '../types';
 import { getWeapon } from '../data/weapons';
 import { getUsableSkillIds } from '../data/promotions';
+import { partyHasLegendaryEquipped } from '../data/equipGrade';
 import { meetsEquipLevel } from '../engine/equipment';
 import { sellValue } from './gold';
 import type { Campaign as C } from './types';
@@ -12,9 +13,9 @@ export function buyShopItem(campaign: C, itemId: string): C {
   const instanceId = `i${campaign.nextId}`;
   const stash = { weapons: [...campaign.stash.weapons], armor: [...campaign.stash.armor] };
   if (item.slot === 'armor') {
-    stash.armor.push({ instanceId, templateId: item.templateId, level: item.level });
+    stash.armor.push({ instanceId, templateId: item.templateId, level: item.level, grade: item.grade, options: item.options });
   } else {
-    stash.weapons.push({ instanceId, templateId: item.templateId, level: item.level, element: item.element, procEffect: item.procEffect });
+    stash.weapons.push({ instanceId, templateId: item.templateId, level: item.level, element: item.element, procEffect: item.procEffect, grade: item.grade, options: item.options });
   }
   return {
     ...campaign,
@@ -56,6 +57,8 @@ export function equipStashWeapon(campaign: C, charId: string, instanceId: string
   const char = campaign.roster.find((c) => c.id === charId);
   const w = campaign.stash.weapons.find((x) => x.instanceId === instanceId);
   if (!char || !w || !meetsEquipLevel(char, w.level)) return campaign;
+  // 전설 장비는 파티 내 하나만 장착 가능(§31).
+  if (w.grade === 'legendary' && partyHasLegendaryEquipped(campaign.roster, w.templateId, charId)) return campaign;
   const tpl = getWeapon(w.templateId);
   if (tpl.kind === 'shield') return equipStashShield(campaign, charId, instanceId);
 
@@ -83,6 +86,7 @@ function equipStashShield(campaign: C, charId: string, instanceId: string): C {
   const sh = campaign.stash.weapons.find((x) => x.instanceId === instanceId);
   if (!char || !sh || !meetsEquipLevel(char, sh.level)) return campaign;
   if (getWeapon(sh.templateId).kind !== 'shield') return campaign;
+  if (sh.grade === 'legendary' && partyHasLegendaryEquipped(campaign.roster, sh.templateId, charId)) return campaign;
   const mainWeapon = getWeapon(char.inventory.find((i) => i.instanceId === char.equippedWeaponId)!.templateId);
   if (mainWeapon.handedness === 'twoHanded') return campaign; // 양손 무기와 병용 불가
 
@@ -99,6 +103,7 @@ export function equipStashArmor(campaign: C, charId: string, instanceId: string)
   const char = campaign.roster.find((c) => c.id === charId);
   const a = campaign.stash.armor.find((x) => x.instanceId === instanceId);
   if (!char || !a || !meetsEquipLevel(char, a.level)) return campaign;
+  if (a.grade === 'legendary' && partyHasLegendaryEquipped(campaign.roster, a.templateId, charId)) return campaign;
 
   const stashArmor: ArmorInstance[] = campaign.stash.armor.filter((x) => x.instanceId !== instanceId);
   const oldArmor = char.equippedArmorId ? char.armor.find((i) => i.instanceId === char.equippedArmorId) : undefined;

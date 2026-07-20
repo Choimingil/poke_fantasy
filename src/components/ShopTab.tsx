@@ -1,10 +1,11 @@
 import type { Campaign, ShopItem } from '../game/campaign/types';
-import { getWeapon, weaponInstanceName, weaponPower } from '../game/data/weapons';
+import { getWeapon, weaponInstanceName, weaponPower, gradeTag } from '../game/data/weapons';
 import { getArmor, armorDefense } from '../game/data/armor';
+import { GRADE_LABEL } from '../game/data/equipGrade';
 
 function itemName(item: ShopItem): string {
-  if (item.slot === 'armor') return getArmor(item.templateId).name;
-  return weaponInstanceName({ templateId: item.templateId, element: item.element, procEffect: item.procEffect });
+  if (item.slot === 'armor') return `${gradeTag(item.grade)}${getArmor(item.templateId).name}`;
+  return weaponInstanceName({ templateId: item.templateId, element: item.element, procEffect: item.procEffect, grade: item.grade });
 }
 
 function itemSpec(item: ShopItem): string {
@@ -27,13 +28,16 @@ export function ShopTab({ campaign, onBuy }: { campaign: Campaign; onBuy: (id: s
           {campaign.shop.map((item) => {
             const tooExpensive = campaign.gold < item.price;
             return (
-              <li key={item.id} className={`shop-card${item.rare ? ' shop-rare' : ''}`}>
+              <li key={item.id} className={`shop-card${item.grade !== 'common' ? ` shop-${item.grade}` : ''}`}>
                 <div className="shop-head">
                   <strong>{itemName(item)}</strong>
-                  {item.rare && <span className="rare-tag">희귀</span>}
+                  {item.grade !== 'common' && <span className={`grade-tag grade-${item.grade}`}>{GRADE_LABEL[item.grade]}</span>}
                   <span className="shop-slot">{SLOT_LABEL[item.slot]} · Lv.{item.level}</span>
                 </div>
                 <div className="shop-spec">{itemSpec(item)}</div>
+                {item.options && item.options.length > 0 && (
+                  <div className="shop-options">{item.options.map((o) => o.label).join(' · ')}</div>
+                )}
                 <div className="shop-foot">
                   <span className="recruit-cost">💰 {item.price}</span>
                   <button type="button" disabled={tooExpensive} onClick={() => onBuy(item.id)}>

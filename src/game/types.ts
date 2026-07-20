@@ -119,12 +119,23 @@ export interface WeaponTemplate {
 /** 무기 종류별 30% 확률 부가효과. 마법서/투척무기는 인스턴스마다 하나를 선택해 지닌다(그 외 종류는 kind로 고정 매핑). */
 export type ProcEffect = 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit';
 
+/** 장비 등급(§31): 일반=옵션 없음, 희귀=추가 옵션 1개, 전설=고유(더 강한) 옵션·파티 내 하나만. */
+export type EquipGrade = 'common' | 'rare' | 'legendary';
+export type EquipOptionKind = 'maxHp' | 'weightReduce' | 'mentalResist';
+export interface EquipOption {
+  kind: EquipOptionKind;
+  magnitude: number; // maxHp: +체력, weightReduce: 감소 kg(양수), mentalResist: +저항 비율
+  label: string;
+}
+
 export interface WeaponInstance {
   instanceId: string;
   templateId: string;
   level: number; // 10 단위 등급(10~100). 공격력은 이 값으로 계산한다.
   element?: Element; // staff only, chosen when the instance is created
   procEffect?: ProcEffect; // tome/thrown only, chosen when the instance is created
+  grade?: EquipGrade; // 장비 등급(§31), absent == 일반
+  options?: EquipOption[]; // 희귀/전설 추가 옵션
 }
 
 export type ArmorKind = 'cloth' | 'leather' | 'mail' | 'plate';
@@ -139,6 +150,8 @@ export interface ArmorInstance {
   instanceId: string;
   templateId: string;
   level: number; // 10 단위 등급(10~100). 방어력은 이 값으로 계산한다.
+  grade?: EquipGrade; // 장비 등급(§31), absent == 일반
+  options?: EquipOption[]; // 희귀/전설 추가 옵션
 }
 
 export type SpriteGender = 'male' | 'female';

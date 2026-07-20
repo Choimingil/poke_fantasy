@@ -2,6 +2,7 @@ import type { Character } from '../types';
 import { WEAPON_WEIGHT_KG } from '../data/weapons';
 import { armorWeight, getArmor } from '../data/armor';
 import { carryCapacityTraitBonus } from './traitEffects';
+import { equippedOptionTotal } from '../data/equipGrade';
 
 const BASE_CARRY_KG = 5;
 const CARRY_KG_PER_ATTACK = 5; // 근력 5당 적재량 1kg 증가
@@ -11,11 +12,11 @@ export function carryCapacityKg(c: Character): number {
   return BASE_CARRY_KG + Math.floor(c.baseStats.attack / CARRY_KG_PER_ATTACK) + carryCapacityTraitBonus(c);
 }
 
-/** 장착 중이든 아니든, 소지한 모든 무기·방패·방어구 무게의 합. */
+/** 장착 중이든 아니든, 소지한 모든 무기·방패·방어구 무게의 합(장착 장비의 무게 감소 옵션 반영). */
 export function totalEquipmentWeightKg(c: Character): number {
   const weaponWeight = c.inventory.length * WEAPON_WEIGHT_KG;
   const armorTotal = c.armor.reduce((sum, a) => sum + armorWeight(getArmor(a.templateId).kind), 0);
-  return weaponWeight + armorTotal;
+  return Math.max(0, weaponWeight + armorTotal - equippedOptionTotal(c, 'weightReduce'));
 }
 
 export const MAX_EXTRA_CARRIED = 2;
