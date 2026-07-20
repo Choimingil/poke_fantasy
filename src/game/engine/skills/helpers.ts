@@ -1,7 +1,7 @@
 import type { Character, Element, GridPos, Skill, StatusEffectType } from '../../types';
 import { getWeapon, effectiveWeaponPower } from '../../data/weapons';
 import { armorDefense, getArmor } from '../../data/armor';
-import { hasTier5Passive } from '../../data/promotions';
+import { hasTier5Passive, masteryTier, TIER1_BONUS } from '../../data/promotions';
 import { manhattan } from '../grid';
 import { calculateDamage } from '../damage';
 import { applyStatus, type StatusApplyOptions } from '../status';
@@ -86,6 +86,16 @@ export interface DealOptions {
   triggersReactions?: boolean; // 협공/분신 발동 여부(직접 단일 공격만 true)
 }
 
+/**
+ * 통합 명중 판정: 최종 명중률 = 기술 명중률 + 지형·상태 보정(현재는 티어1 숙련 명중 보너스) − 대상 회피율, [20,100] 클램프.
+ * 활의 '집중'이 발동하면 회피율을 무시한다(evasion 항 0).
+ */
+function hitChanceAgainst(attacker: Character, defender: Character, skill: Skill, kind: ReturnType<typeof getWeapon>['kind'], ignoreEvasion: boolean): number {
+  const tier1Acc = masteryTier(attacker, kind) >= 1 ? (TIER1_BONUS[kind]?.accuracyBonus ?? 0) : 0;
+  const evasion = ignoreEvasion ? 0 : evasionChance(defender) * 100;
+  return Math.max(20, Math.min(100, skill.accuracy + tier1Acc - evasion));
+}
+
 /** 은신 상태의 공격자는 공격을 실행하면 은신이 해제된다. */
 function breakHiddenOnAttack(attacker: Character, log: string[]): void {
   if (attacker.statusEffects.some((s) => s.type === 'hidden')) {
@@ -102,13 +112,12 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   const procChanceMult = wc.kind === 'crossbow' && noMove && hasTier5Passive(attacker, 'crossbow', 'steadyAim') ? 2 : 1;
   const proc = opts.suppressProc ? null : rollWeaponProc(attacker, wc.kind, ctx.rng, procChanceMult);
 
-  // 활의 '집중'은 회피율을 무시한다. 그 외에는 정상적으로 회피 판정을 먼저 거친다.
-  if (proc !== 'focus') {
-    if (ctx.rng() < evasionChance(defender)) {
-      ctx.log.push(`${defender.name}가 공격을 회피했다!`);
-      ctx.combatEvents.push({ targetId: defender.id, kind: 'miss' });
-      return 0;
-    }
+  // 명중·회피 통합 판정(대상별 1회). 활의 '집중' 발동 시 회피율을 무시한다.
+  const hitChance = hitChanceAgainst(attacker, defender, skill, wc.kind, proc === 'focus');
+  if (ctx.rng() * 100 >= hitChance) {
+    ctx.log.push(`${attacker.name}의 공격이 ${defender.name}에게 빗나갔다.`);
+    ctx.combatEvents.push({ targetId: defender.id, kind: 'miss' });
+    return 0;
   }
 
   if (fixedPct !== undefined) {

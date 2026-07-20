@@ -379,12 +379,17 @@ export class GridBattle {
       }
     }
 
-    const tier1Acc = masteryTier(unit, weaponKind) >= 1 ? (TIER1_BONUS[weaponKind]?.accuracyBonus ?? 0) : 0;
-    const hitRoll = this.rng() * 100;
-    if (hitRoll >= skill.accuracy + tier1Acc) {
-      this.log.push(`${unit.name}의 ${skill.name}이(가) 빗나갔다.`);
-      if (target) this.lastTurnEvents.push({ targetId: target.id, kind: 'miss' });
-      return;
+    // 피해를 주는 공격은 대상별로 명중·회피를 통합 판정(applyAttack)하므로 여기선 굴리지 않는다.
+    // 위력 0 보조/디버프 기술만 캐스팅 시점에 한 번 명중 판정한다(회피 미적용, 정신력 저항은 별도).
+    const dealsPerTargetDamage = skill.power > 0 || skill.fixedDamagePercent !== undefined;
+    if (!dealsPerTargetDamage) {
+      const tier1Acc = masteryTier(unit, weaponKind) >= 1 ? (TIER1_BONUS[weaponKind]?.accuracyBonus ?? 0) : 0;
+      const hitRoll = this.rng() * 100;
+      if (hitRoll >= skill.accuracy + tier1Acc) {
+        this.log.push(`${unit.name}의 ${skill.name}이(가) 빗나갔다.`);
+        if (target) this.lastTurnEvents.push({ targetId: target.id, kind: 'miss' });
+        return;
+      }
     }
 
     resolveSkill({

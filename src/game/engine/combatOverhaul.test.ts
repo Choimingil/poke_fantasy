@@ -116,6 +116,30 @@ describe('무기 전용기술 통합', () => {
     expect(enemy.currentHp).toBe(before - Math.floor(before * 0.5)); // 최대체력의 50% 고정피해
   });
 
+  it('통합 명중: 명중률 = 기술 명중 − 대상 회피, 빠른 대상은 정확도 100 공격도 회피한다', () => {
+    const map = makeMap();
+    const atk = makeUnit('atk', 'sword_short', 0, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 400, endurance: 10 } }); // 먼저 행동
+    const dodgy = makeUnit('dodgy', 'sword_short', 0, { baseStats: { hp: 100, attack: 5, magicAttack: 5, speed: 300, endurance: 10 } }); // 회피율 상한 30%
+    prepareForBattle(atk, { x: 0, y: 0 }, 'A');
+    prepareForBattle(dodgy, { x: 1, y: 0 }, 'B');
+    // 최종 명중률 = 100 − 30 = 70. rng*100 = 75 ≥ 70 → 빗나감(무피해).
+    const miss = new GridBattle(map, [atk], [dodgy], () => 0.75);
+    miss.takeTurn({ skillId: 'power_strike', targetId: 'dodgy' });
+    expect(dodgy.currentHp).toBe(maxHp(dodgy));
+  });
+
+  it('통합 명중: 명중률 이하로 굴리면 회피가 높아도 적중한다', () => {
+    const map = makeMap();
+    const atk = makeUnit('atk', 'sword_short', 0, { baseStats: { hp: 100, attack: 60, magicAttack: 5, speed: 400, endurance: 10 } }); // 먼저 행동
+    const dodgy = makeUnit('dodgy', 'sword_short', 0, { baseStats: { hp: 100, attack: 5, magicAttack: 5, speed: 300, endurance: 10 } });
+    prepareForBattle(atk, { x: 0, y: 0 }, 'A');
+    prepareForBattle(dodgy, { x: 1, y: 0 }, 'B');
+    // rng*100 = 50 < 70 → 적중.
+    const hit = new GridBattle(map, [atk], [dodgy], () => 0.5);
+    hit.takeTurn({ skillId: 'power_strike', targetId: 'dodgy' });
+    expect(dodgy.currentHp).toBeLessThan(maxHp(dodgy));
+  });
+
   it('빠른교체: 상태 중에는 교체가 턴을 소모하지 않지만 교체한 턴엔 전용기술을 못 쓴다', () => {
     const map = makeMap();
     const a = makeUnit('a', 'sword_short', 6, { baseStats: { hp: 100, attack: 100, magicAttack: 10, speed: 30, endurance: 10 } });
