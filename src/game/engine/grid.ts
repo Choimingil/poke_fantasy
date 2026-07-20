@@ -1,7 +1,7 @@
 import type { BattleMap, Character, GridPos, TerrainType } from '../types';
 import { getWeapon } from '../data/weapons';
 import { hasWeaponPassive } from '../data/promotions';
-import { weatherMoveModifier, type Weather } from './weather';
+import type { Weather } from './weather';
 
 /** 단검 적응력: 자연지형 이동감소 무시 + 바위 통과(정지 불가). */
 function hasAdaptation(c: Character): boolean {
@@ -30,9 +30,9 @@ function tileAt(map: BattleMap, p: GridPos): { terrain: BattleMap['tiles'][numbe
   return map.tiles[p.y][p.x];
 }
 
-const WATER_MOVE_PENALTY = 1;
 const MOVE_CAP = 5;
 const END_PER_MOVE = 30;
+const WATER_ENTRY_COST = 2;
 
 /** UI 표시용: 지형/날씨/상태 보정 없이 지구력만으로 계산한 기본 이동력("5+a" 표기의 a 포함). */
 export function baseMoveFromEndurance(endurance: number): { shown: number; excess: number } {
@@ -41,41 +41,44 @@ export function baseMoveFromEndurance(endurance: number): { shown: number; exces
 }
 
 /**
- * 이동력 = (지구력 / 30) + 1. 5를 넘는 초과분(a)은 '표시상' 버퍼로 남아 이동력 감소 페널티를 우선 상쇄하고,
- * 그래도 남는 페널티만 실제 이동력(최대 5)에서 차감한다. 즉 END가 높을수록 이동 디버프에 더 잘 버틴다.
+ * 이동 예산(이동력) = (지구력 / 30) + 1. 5를 넘는 초과분(a)은 이동력 감소 페널티를 우선 상쇄하고,
+ * 그래도 남는 페널티만 실제 이동력(최대 5)에서 차감한다(END가 높을수록 이동 디버프에 강함).
+ * 지형·날씨로 인한 감소는 여기서 처리하지 않고 타일 진입 비용(computeReachableTiles)으로 반영한다.
  */
-export function effectiveMove(c: Character, map: BattleMap, weather: Weather = 'clear'): number {
+export function effectiveMove(c: Character): number {
   const raw = c.baseStats.endurance / END_PER_MOVE + 1;
-  const adapt = hasAdaptation(c);
-  let bonus = 0;
   let penalty = 0;
   const legHit = c.statusEffects.find((s) => s.type === 'legHit');
   if (legHit) penalty += Math.abs(legHit.magnitude ?? 0.5);
   // 이동력 감소(정예/보스 충격 전환, 보스 봉쇄 전환): magnitude만큼 이동력 차감.
   for (const s of c.statusEffects) if (s.type === 'moveDown') penalty += Math.abs(s.magnitude ?? 1);
-  const onWater = map.tiles[c.position.y][c.position.x].terrain === 'water';
-  if (onWater) {
-    if (!adapt) penalty += WATER_MOVE_PENALTY; // 물 위에서는 이동력 감소(적응력은 무시)
-    if (c.statusEffects.some((s) => s.type === 'riverSurge')) bonus += 1; // 급류로 상쇄
-  }
-  // 눈(자연지형)으로 인한 이동감소는 적응력이 무시한다. 비(방어구 무게)는 그대로 적용.
-  if (!(adapt && weather === 'snow')) penalty += Math.abs(Math.min(0, weatherMoveModifier(c, weather)));
-
-  const total = raw + bonus;
-  const excess = Math.max(0, total - MOVE_CAP); // 5를 넘는 초과분(a)
-  const cappedBase = Math.min(MOVE_CAP, total);
+  const excess = Math.max(0, raw - MOVE_CAP); // 5를 넘는 초과분(a)
+  const cappedBase = Math.min(MOVE_CAP, raw);
   const remainingPenalty = Math.max(0, penalty - excess); // 초과분이 페널티를 우선 흡수
   return Math.max(0, cappedBase - remainingPenalty);
 }
 
-/** effectiveMove 결과를 실제 이동 칸 수로 변환한다. 이동력이 낮아도 최소 1칸은 이동할 수 있다. */
-export function moveStepsForRound(effectiveMoveValue: number): number {
-  return Math.max(1, Math.floor(effectiveMoveValue));
+/** 물은 진입은 가능하지만 넘어서 계속 이동할 수 없다(경로 종착). 언덕은 통과 가능한 고지대로 취급한다. */
+function isPassThroughBlocked(terrain: TerrainType): boolean {
+  return terrain === 'water';
 }
 
-/** 물·언덕은 진입은 가능하지만 그 칸을 넘어서 계속 이동할 수 없다(경로 종착 전용). */
-function isPassThroughBlocked(terrain: TerrainType): boolean {
-  return terrain === 'water' || terrain === 'hill';
+/**
+ * 타일 진입 비용: 평지·언덕·숲 1, 물 2(급류 −1·적응력은 1). 눈 날씨는 평지·숲 진입 비용 +1
+ * (물·언덕·바위·불 제외, 적응력은 눈 추가 비용 무시).
+ */
+function tileEntryCost(map: BattleMap, pos: GridPos, mover: Character, weather: Weather): number {
+  const terrain = tileAt(map, pos).terrain;
+  const adapt = hasAdaptation(mover);
+  let cost = 1;
+  if (terrain === 'water') {
+    cost = WATER_ENTRY_COST;
+    if (mover.statusEffects.some((s) => s.type === 'riverSurge')) cost -= 1; // 급류: 물 진입 비용 −1
+    if (adapt) cost = 1; // 적응력: 물 추가 비용 무시
+    cost = Math.max(1, cost);
+  }
+  if (weather === 'snow' && (terrain === 'plain' || terrain === 'forest') && !adapt) cost += 1; // 눈: 평지·숲 +1
+  return cost;
 }
 
 // 직교 4방향. 대각선 이동은 직교 2칸을 거쳐야 하므로 자연히 비용 2가 되어
@@ -95,35 +98,53 @@ export function canEnterTile(map: BattleMap, mover: Character, pos: GridPos, all
   return true;
 }
 
-/** 직교 4방향 BFS(마름모 이동). 이동 비용은 칸당 1로 균일. 물·언덕은 진입만 가능하고 넘어갈 수 없어 경로가 그 칸에서 끝난다. */
-export function computeReachableTiles(map: BattleMap, mover: Character, allUnits: Character[], budget: number): GridPos[] {
-  const steps = Math.floor(budget);
+/**
+ * 직교 4방향 가중 탐색(마름모 이동, 다익스트라). 타일마다 진입 비용이 다르며(tileEntryCost),
+ * 누적 비용이 이동 예산(budget) 이하인 타일에 도달할 수 있다. 물은 진입만 가능하고 넘어갈 수 없다.
+ * 예산이 부족해 갈 곳이 없어도 인접한 진입 가능 타일 하나(가장 싼 곳)로는 이동할 수 있다(최소 1칸 보장).
+ */
+export function computeReachableTiles(map: BattleMap, mover: Character, allUnits: Character[], budget: number, weather: Weather = 'clear'): GridPos[] {
   const start = mover.position;
-  const visited = new Map<string, number>([[posKey(start), 0]]);
-  const queue: GridPos[] = [start];
-  let head = 0;
-  while (head < queue.length) {
-    const current = queue[head++];
-    const dist = visited.get(posKey(current))!;
-    if (dist >= steps) continue;
-    // 물·언덕은 넘어서 이동 불가: 시작 칸이 아니면 그 칸에서 경로를 더 확장하지 않는다.
-    if (!(current.x === start.x && current.y === start.y) && isPassThroughBlocked(tileAt(map, current).terrain)) continue;
+  const dist = new Map<string, number>([[posKey(start), 0]]);
+  const frontier: { pos: GridPos; cost: number }[] = [{ pos: start, cost: 0 }];
+  while (frontier.length > 0) {
+    let mi = 0;
+    for (let i = 1; i < frontier.length; i++) if (frontier[i].cost < frontier[mi].cost) mi = i;
+    const { pos, cost } = frontier.splice(mi, 1)[0];
+    if (cost > (dist.get(posKey(pos)) ?? Infinity)) continue;
+    // 물은 넘어서 이동 불가: 시작 칸이 아니면 그 칸에서 경로를 더 확장하지 않는다.
+    if (!(pos.x === start.x && pos.y === start.y) && isPassThroughBlocked(tileAt(map, pos).terrain)) continue;
     for (const offset of NEIGHBOR_OFFSETS) {
-      const next: GridPos = { x: current.x + offset.x, y: current.y + offset.y };
-      const key = posKey(next);
-      if (visited.has(key)) continue;
+      const next: GridPos = { x: pos.x + offset.x, y: pos.y + offset.y };
       if (!canEnterTile(map, mover, next, allUnits)) continue;
-      visited.set(key, dist + 1);
-      queue.push(next);
+      const nextCost = cost + tileEntryCost(map, next, mover, weather);
+      if (nextCost <= budget && nextCost < (dist.get(posKey(next)) ?? Infinity)) {
+        dist.set(posKey(next), nextCost);
+        frontier.push({ pos: next, cost: nextCost });
+      }
     }
   }
-  return [...visited.keys()]
+  const reachable = [...dist.keys()]
     .filter((key) => key !== posKey(start))
     .map((key) => {
       const [x, y] = key.split(',').map(Number);
       return { x, y };
     })
     .filter((p) => tileAt(map, p).terrain !== 'rock'); // 바위에는 정지할 수 없다(적응력도 통과만)
+
+  // 최소 1칸 보장: 예산이 부족해 도달 타일이 없어도 인접한 가장 싼 진입 가능 타일 하나로는 이동 가능.
+  if (reachable.length === 0) {
+    let best: GridPos | null = null;
+    let bestCost = Infinity;
+    for (const offset of NEIGHBOR_OFFSETS) {
+      const next: GridPos = { x: start.x + offset.x, y: start.y + offset.y };
+      if (!canEnterTile(map, mover, next, allUnits) || tileAt(map, next).terrain === 'rock') continue;
+      const c = tileEntryCost(map, next, mover, weather);
+      if (c < bestCost) { best = next; bestCost = c; }
+    }
+    if (best) return [best];
+  }
+  return reachable;
 }
 
 /** from→to 직선 경로(양 끝 제외)에 바위 타일이 있으면 true. 원거리·마법 공격이 바위를 넘지 못하게 하는 데 쓴다. */

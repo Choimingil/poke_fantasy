@@ -3,7 +3,7 @@ import { getSkill } from '../data/skills';
 import { effectiveWeaponPower, getWeapon, isRangedOrMagicKind } from '../data/weapons';
 import { FALLBACK_SKILL_ID, FREE_SWAP_TIER, getUsableSkillIds, hasWeaponPassive, masteryTier, gainProficiencyExp, PROFICIENCY_MAX_GAIN_PER_SKILL } from '../data/promotions';
 import { resolveSkill } from './skills';
-import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
 import { isVisibleTo, isVisibleToTeam } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyDamageOverTime, applyTileBurnDamage, isImmobilized, consumeShock, tickMapStatus, tickStatusAtTurnStart } from './status';
@@ -240,8 +240,8 @@ export class GridBattle {
     if (action.moveTo && isImmobilized(unit)) {
       this.log.push(`${unit.name}는 봉쇄되어 이동할 수 없다.`);
     } else if (action.moveTo) {
-      const budget = moveStepsForRound(effectiveMove(unit, this.map, this.weather));
-      const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget);
+      const budget = effectiveMove(unit);
+      const reachable = computeReachableTiles(this.map, unit, this.allUnits(), budget, this.weather);
       if (reachable.some((p) => p.x === action.moveTo!.x && p.y === action.moveTo!.y)) {
         unit.movedStepsThisTurn = manhattan(unit.position, action.moveTo);
         unit.position = action.moveTo;
@@ -453,7 +453,7 @@ export class GridBattle {
   private autoFollowupMove(unit: Character, radius: number): void {
     const enemies = this.otherTeamOf(unit).filter((u) => u.currentHp > 0);
     if (enemies.length === 0) return;
-    const reachable = computeReachableTiles(this.map, unit, this.allUnits(), radius);
+    const reachable = computeReachableTiles(this.map, unit, this.allUnits(), radius, this.weather);
     if (reachable.length === 0) return;
     const nearest = (pos: GridPos) => Math.min(...enemies.map((e) => manhattan(pos, e.position)));
     let best = unit.position;
@@ -474,7 +474,7 @@ export class GridBattle {
   /** 후속 이동 목적지가 반경 내 실제로 도달 가능한 빈 타일인지 검증. */
   private isReachableWithin(unit: Character, dest: GridPos, radius: number): boolean {
     if (dest.x === unit.position.x && dest.y === unit.position.y) return true; // 제자리(이동 생략)
-    return computeReachableTiles(this.map, unit, this.allUnits(), radius).some((p) => p.x === dest.x && p.y === dest.y);
+    return computeReachableTiles(this.map, unit, this.allUnits(), radius, this.weather).some((p) => p.x === dest.x && p.y === dest.y);
   }
 
   /** 축지 목적지 검증: 시야 내 다른 아군의 인접 1칸이며 비어 있는(바위·점유 아님) 타일 */

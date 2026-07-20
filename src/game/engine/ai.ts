@@ -3,7 +3,7 @@ import type { UnitAction } from './battle';
 import { getSkill } from '../data/skills';
 import { getWeapon, isRangedOrMagicKind } from '../data/weapons';
 import { FALLBACK_SKILL_ID, getLoadoutSkillIds } from '../data/promotions';
-import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, lineCrossesRock } from './grid';
+import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from './grid';
 import { isVisibleTo } from './vision';
 import type { Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -45,8 +45,8 @@ export function pickAiAction(
   // 시야 안에 실제 대상이 없어도 이동은 예상 위치(마지막 목격/맵 중앙)를 향해 계속한다.
   const movePos = target ? target.position : estimateAdvancePos(unit, enemyTeam, map, knownPositions);
 
-  const budget = moveStepsForRound(effectiveMove(unit, map, weather));
-  const reachable = [unit.position, ...computeReachableTiles(map, unit, allUnits, budget)];
+  const budget = effectiveMove(unit);
+  const reachable = [unit.position, ...computeReachableTiles(map, unit, allUnits, budget, weather)];
   const bestTile = reachable.reduce((best, pos) =>
     manhattan(pos, movePos) < manhattan(best, movePos) ? pos : best);
 

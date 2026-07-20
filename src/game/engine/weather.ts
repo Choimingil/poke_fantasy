@@ -1,5 +1,4 @@
-import type { ArmorKind, Character } from '../types';
-import { getArmor } from '../data/armor';
+import type { Character } from '../types';
 import { maxHp } from './derivedStats';
 
 export type Weather = 'clear' | 'rain' | 'snow' | 'heatwave';
@@ -13,22 +12,7 @@ export const WEATHER_LABEL: Record<Weather, string> = {
   heatwave: '폭염',
 };
 
-// 중장(중갑·판금)은 비에, 경장(천·가죽, 미착용 포함)은 눈에 이동 페널티를 받는다.
-const HEAVY_ARMOR: ArmorKind[] = ['mail', 'plate'];
-
-function equippedArmorKind(c: Character): ArmorKind | undefined {
-  if (!c.equippedArmorId) return undefined;
-  const inst = c.armor.find((a) => a.instanceId === c.equippedArmorId);
-  return inst ? getArmor(inst.templateId).kind : undefined;
-}
-
-/** 날씨에 따른 rawMove 보정치. 착용한 방어구 종류로 판정: 비=중장 -0.5, 눈=경장 -0.5. */
-export function weatherMoveModifier(c: Character, weather: Weather): number {
-  const heavy = HEAVY_ARMOR.includes(equippedArmorKind(c) ?? 'cloth'); // 미착용은 경장 취급
-  if (weather === 'rain' && heavy) return -0.5;
-  if (weather === 'snow' && !heavy) return -0.5;
-  return 0;
-}
+// 날씨의 이동 영향은 방어구 무게가 아니라 타일 진입 비용으로 처리한다(눈=평지·숲 진입 +1, grid.ts). 비는 시야만 감소.
 
 /** 폭염 저항 확률(정신력): 마법공격력이 높을수록 체력 감소를 막을 확률이 커진다(최대 70%). */
 function heatResistChance(c: Character): number {

@@ -7,7 +7,7 @@ import { getSkill, skillDisplayName, skillTypeLabel } from '../game/data/skills'
 import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getBattleSkillIds } from '../game/data/promotions';
 import { meetsEquipLevel } from '../game/engine/equipment';
-import { manhattan, computeReachableTiles, effectiveMove, moveStepsForRound, posKey, lineCrossesRock } from '../game/engine/grid';
+import { manhattan, computeReachableTiles, effectiveMove, posKey, lineCrossesRock } from '../game/engine/grid';
 import { isRangedOrMagicKind } from '../game/data/weapons';
 import { isVisibleTo, isVisibleToTeam, isTileRevealed } from '../game/engine/vision';
 import { pickAiAction } from '../game/engine/ai';
@@ -247,8 +247,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
 
   const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
-  const budget = moveStepsForRound(effectiveMove(currentUnit, battle.map, battle.weather));
-  const reachable = pendingMoveTile || pendingFollowup ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget);
+  const budget = effectiveMove(currentUnit);
+  const reachable = pendingMoveTile || pendingFollowup ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget, battle.weather);
   const reachableTiles = new Set(reachable.map(posKey));
 
   const usableSkillIds = getBattleSkillIds(
@@ -306,7 +306,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   if (pendingFollowup) {
     followupTiles.add(posKey(pendingFollowup.origin));
     const mover = { ...currentUnit, position: pendingFollowup.origin };
-    for (const t of computeReachableTiles(battle.map, mover, allUnits, pendingFollowup.radius)) followupTiles.add(posKey(t));
+    for (const t of computeReachableTiles(battle.map, mover, allUnits, pendingFollowup.radius, battle.weather)) followupTiles.add(posKey(t));
   }
 
   // 스킬은 즉시 발동, 장비교체는 모달로 처리하므로 확인 버튼은 이동 확정용. 없으면 '대기'(턴 종료).
@@ -318,7 +318,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     currentUnit.armor.some((a) => a.instanceId !== currentUnit.equippedArmorId && meetsEquipLevel(currentUnit, a.level));
 
   // 이동력이 1 미만이면 2턴에 1칸만 이동 가능 — 이번 턴 이동 가능 여부를 안내한다.
-  const rawMoveValue = effectiveMove(currentUnit, battle.map, battle.weather);
+  const rawMoveValue = effectiveMove(currentUnit);
   const subOneMove = rawMoveValue < 1;
   const moveWarning = subOneMove
     ? (budget === 0
