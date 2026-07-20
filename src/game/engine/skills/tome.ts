@@ -1,6 +1,7 @@
 import type { StatusEffectType } from '../../types';
 import { aliveUnitsInRadius } from './helpers';
 import { maxHp } from '../derivedStats';
+import { healTraitMult } from '../traitEffects';
 import type { SkillHandler } from './context';
 
 const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'poisoned', 'shocked', 'moveDown', 'immobilized'];
@@ -8,9 +9,11 @@ const DEBUFF_TYPES: StatusEffectType[] = ['taunted', 'legHit', 'bleeding', 'pois
 // 치료: 주변 1칸 아군 체력을 시전자 마법공격력의 50%만큼 회복(대상 수 많아도 감소 없음).
 const tomeHeal: SkillHandler = (ctx) => {
   const allies = aliveUnitsInRadius(ctx.actorTeam, ctx.actor.position, ctx.skill.areaRadius ?? 1);
-  const healAmount = Math.max(1, Math.round(ctx.actor.baseStats.magicAttack / 2));
+  const base = ctx.actor.baseStats.magicAttack / 2;
   for (const ally of allies) {
     const before = ally.currentHp;
+    // 구호병·의무병·전술 치료 특성으로 회복량이 증가한다.
+    const healAmount = Math.max(1, Math.round(base * healTraitMult(ctx.actor, ally, maxHp(ally))));
     ally.currentHp = Math.min(maxHp(ally), ally.currentHp + healAmount);
     if (ally.currentHp > before) {
       ctx.log.push(`${ally.name}의 체력을 ${ally.currentHp - before} 회복했다.`);

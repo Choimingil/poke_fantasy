@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import './App.css';
 import { TitleScreen } from './components/TitleScreen';
-import { ClassSelectScreen } from './components/ClassSelectScreen';
+import { HeroCreateScreen } from './components/HeroCreateScreen';
+import { HeroTraitConfirmScreen } from './components/HeroTraitConfirmScreen';
 import { BarracksScreen } from './components/BarracksScreen';
 import { TeamSetupScreen } from './components/TeamSetupScreen';
 import { InventoryScreen } from './components/InventoryScreen';
@@ -9,16 +10,17 @@ import { GridBattleScreen } from './components/GridBattleScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { cloneForBattle } from './game/data/roster';
 import type { GridBattle } from './game/engine/battle';
-import type { Character, WeaponKind } from './game/types';
+import type { Character } from './game/types';
 import type { Campaign } from './game/campaign/types';
 import { loadCampaign, saveCampaign, clearCampaign } from './game/campaign/storage';
-import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle } from './game/campaign/state';
+import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle, confirmHeroTrait, dismissHeroTraitConfirm, type HeroSetup } from './game/campaign/state';
 import { buyShopItem, equipStashArmor, equipStashWeapon, sellStashArmor, sellStashWeapon } from './game/campaign/stash';
 import { generateEnemyParty } from './game/campaign/enemyParty';
 
 type Screen =
   | 'title'
-  | 'class'
+  | 'hero-create'
+  | 'hero-trait-confirm'
   | 'campaign-battle'
   | 'campaign-result'
   | 'barracks'
@@ -59,11 +61,11 @@ function App() {
   const startNewGame = () => {
     clearCampaign();
     setCampaign(null);
-    setScreen('class');
+    setScreen('hero-create');
   };
 
-  const chooseClass = (kind: WeaponKind) => {
-    const c = newCampaign(kind);
+  const createHero = (setup: HeroSetup) => {
+    const c = newCampaign(setup);
     persist(c);
     setScreen('barracks');
   };
@@ -112,8 +114,25 @@ function App() {
     );
   }
 
-  if (screen === 'class') {
-    return <ClassSelectScreen onSelect={chooseClass} onBack={() => setScreen('title')} />;
+  if (screen === 'hero-create') {
+    return <HeroCreateScreen onCreate={createHero} onBack={() => setScreen('title')} />;
+  }
+
+  if (screen === 'hero-trait-confirm' && campaign) {
+    const hero = campaign.roster.find((c) => c.id === 'hero');
+    if (hero && hero.traitId && campaign.heroTraitCandidates) {
+      return (
+        <HeroTraitConfirmScreen
+          heroKind={campaign.heroKind}
+          currentTraitId={hero.traitId}
+          originalCandidates={campaign.heroTraitCandidates}
+          onConfirm={(traitId) => { persist(confirmHeroTrait(campaign, traitId)); setScreen('barracks'); }}
+          onKeep={() => { persist(dismissHeroTraitConfirm(campaign)); setScreen('barracks'); }}
+        />
+      );
+    }
+    setScreen('barracks');
+    return null;
   }
 
   if (screen === 'barracks' && campaign) {
@@ -145,7 +164,9 @@ function App() {
         levelUpEvents={finishedBattle.levelUpEvents}
         allUnits={[...finishedBattle.teamA, ...finishedBattle.teamB]}
         reward={reward}
-        onContinue={() => setScreen('barracks')}
+        onContinue={() => setScreen(
+          campaign && campaign.heroTraitCandidates && campaign.round >= 2 ? 'hero-trait-confirm' : 'barracks',
+        )}
       />
     );
   }

@@ -3,6 +3,7 @@ import { createCharacter } from '../engine/characterFactory';
 import { weaponTemplatesForKind } from '../data/weapons';
 import { SKILLS } from '../data/skills';
 import { gainProficiencyExp, seededProficiencyExp } from '../data/promotions';
+import { rollTraitForRole, roleForWeaponKind } from '../data/traits';
 
 const ELEMENTS: Exclude<Element, 'none'>[] = ['fire', 'water', 'wood', 'steel', 'earth'];
 const PROCS: ProcEffect[] = ['bleed', 'stun', 'pierce', 'focus', 'crit'];
@@ -83,8 +84,14 @@ export interface GenerateOptions {
   id: string;
   name?: string;
   rng?: () => number;
+  /** 성별 지정(주인공용). 미지정 시 무기 종류 기본값. */
+  gender?: SpriteGender;
+  /** 방어구 종류 지정(주인공용). 미지정 시 무기 종류 기본값. */
+  armorKind?: ArmorKind;
   isBoss?: boolean;
   isElite?: boolean;
+  /** 고유 특성 id 지정(미지정 시 역할 가중치로 무작위 배정). */
+  traitId?: string;
   /** 후반 라운드 난이도 스케일(능력치 배수, 기본 1). */
   statMult?: number;
 }
@@ -122,7 +129,7 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
     id: opts.id,
     name: opts.name ?? randomName(rng),
     spriteJob: sprite.job,
-    gender: sprite.gender,
+    gender: opts.gender ?? sprite.gender,
     level,
     baseStats: stats,
     sight: 5,
@@ -130,13 +137,15 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
     starterWeaponLevel: level,
     starterWeaponElement: element,
     starterWeaponProcEffect: procEffect,
-    starterArmorKind: ARMOR_BY_KIND[kind],
+    starterArmorKind: opts.armorKind ?? ARMOR_BY_KIND[kind],
     starterArmorLevel: level,
     weaponMastery: { [kind]: tier },
     skillLoadout: [basic, ...weaponSkillIds],
   });
   // 무기 숙련도(전직과 별개)는 레벨에 맞춰 기본치를 부여한다.
   gainProficiencyExp(c, kind, seededProficiencyExp(level));
+  // 고유 특성: 지정값 또는 무기 역할 가중치로 무작위 배정(§43.11).
+  c.traitId = opts.traitId ?? rollTraitForRole(roleForWeaponKind(kind), rng).id;
   if (opts.isBoss) c.isBoss = true;
   if (opts.isElite) c.isElite = true;
   return c;

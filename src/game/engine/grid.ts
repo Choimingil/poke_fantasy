@@ -74,10 +74,12 @@ function tileEntryCost(map: BattleMap, pos: GridPos, mover: Character, weather: 
   if (terrain === 'water') {
     cost = WATER_ENTRY_COST;
     if (mover.statusEffects.some((s) => s.type === 'riverSurge')) cost -= 1; // 급류: 물 진입 비용 −1
+    if (mover.traitId === 'swimming') cost -= 1; // 수영 숙련 특성: 물 진입 비용 −1
     if (adapt) cost = 1; // 적응력: 물 추가 비용 무시
     cost = Math.max(1, cost);
   }
-  if (weather === 'snow' && (terrain === 'plain' || terrain === 'forest') && !adapt) cost += 1; // 눈: 평지·숲 +1
+  const ignoreSnow = adapt || mover.traitId === 'snowAdapt'; // 적응력·설원 적응은 눈 추가 비용 무시
+  if (weather === 'snow' && (terrain === 'plain' || terrain === 'forest') && !ignoreSnow) cost += 1; // 눈: 평지·숲 +1
   return cost;
 }
 

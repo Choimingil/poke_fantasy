@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { qualityForReputation, recruitCost, rollRecruits } from './recruit';
 import { newCampaign, recruitFromCandidate } from './state';
+const hs = (heroKind: import('../types').WeaponKind) => ({ heroKind, name: '주인공', gender: 'male' as const, armorKind: 'cloth' as const, traitId: 'toughness', traitCandidates: [] as string[] });
 
 function seq(values: number[]): () => number {
   let i = 0;
@@ -38,7 +39,7 @@ describe('rollRecruits', () => {
 
 describe('recruitFromCandidate', () => {
   it('골드가 충분하면 로스터에 추가하고 골드를 차감·후보를 제거한다', () => {
-    let c = newCampaign('sword', seq([0.5]));
+    let c = newCampaign(hs('sword'), seq([0.5]));
     c = { ...c, gold: 10000 };
     const cand = c.recruits[0];
     const before = c.roster.length;
@@ -50,7 +51,7 @@ describe('recruitFromCandidate', () => {
   });
 
   it('골드가 부족하면 모집되지 않는다', () => {
-    let c = newCampaign('sword', seq([0.5]));
+    let c = newCampaign(hs('sword'), seq([0.5]));
     c = { ...c, gold: 0 };
     const cand = c.recruits[0];
     const after = recruitFromCandidate(c, cand.id);

@@ -4,6 +4,7 @@ import { getArmor } from '../game/data/armor';
 import { baseMoveFromEndurance } from '../game/engine/grid';
 import { mentalResistChance, maxHp } from '../game/engine/derivedStats';
 import { proficiencyStage, PROFICIENCY_STAGE_LABEL } from '../game/data/promotions';
+import { getTrait } from '../game/data/traits';
 import { TrainerSprite } from './TrainerSprite';
 import { StatusChips } from './StatusChips';
 
@@ -49,6 +50,9 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
         <span className="inspect-stat"><span>정신력</span><strong>{Math.round(mentalResistChance(unit) * 100)}%</strong></span>
         <span className="inspect-stat"><span>숙련도</span><strong>{proficiencyLabel}</strong></span>
       </div>
+      {unit.traitId && getTrait(unit.traitId) && (
+        <p className="inspect-trait">🏷 {getTrait(unit.traitId)!.name} — {getTrait(unit.traitId)!.effect}</p>
+      )}
       <StatusChips effects={unit.statusEffects} />
     </div>
   );

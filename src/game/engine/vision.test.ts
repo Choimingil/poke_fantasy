@@ -44,7 +44,7 @@ describe('effectiveSight', () => {
     const unit = makeUnit({ sight: 5 });
     expect(effectiveSight(unit, map, { time: 'night' })).toBe(3); // 5-2
     expect(effectiveSight(unit, map, { time: 'day', weather: 'rain' })).toBe(4); // 5-1
-    expect(effectiveSight(unit, map, { time: 'night', weather: 'snow' })).toBe(2); // 5-2-1
+    expect(effectiveSight(unit, map, { time: 'night', weather: 'snow' })).toBe(3); // 밤-2+눈-1=-3 이지만 합계 상한 -2 → 5-2
     expect(effectiveSight(unit, map, { time: 'day', weather: 'clear' })).toBe(5);
   });
 

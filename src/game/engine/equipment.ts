@@ -1,13 +1,14 @@
 import type { Character } from '../types';
 import { WEAPON_WEIGHT_KG } from '../data/weapons';
 import { armorWeight, getArmor } from '../data/armor';
+import { carryCapacityTraitBonus } from './traitEffects';
 
 const BASE_CARRY_KG = 5;
 const CARRY_KG_PER_ATTACK = 5; // 근력 5당 적재량 1kg 증가
 
-/** 적재량(kg): 기본 5kg + 근력 5당 1kg. */
+/** 적재량(kg): 기본 5kg + 근력 5당 1kg + 짐꾼 특성 +2. */
 export function carryCapacityKg(c: Character): number {
-  return BASE_CARRY_KG + Math.floor(c.baseStats.attack / CARRY_KG_PER_ATTACK);
+  return BASE_CARRY_KG + Math.floor(c.baseStats.attack / CARRY_KG_PER_ATTACK) + carryCapacityTraitBonus(c);
 }
 
 /** 장착 중이든 아니든, 소지한 모든 무기·방패·방어구 무게의 합. */

@@ -1,6 +1,7 @@
 import type { Character, Element, Skill, WeaponTemplate } from '../types';
 import { hasWeaponPassive, proficiencyFloor } from '../data/promotions';
 import { elementMultiplier } from './elements';
+import { effectiveBaseStat, proficiencyFloorTraitBonus } from './traitEffects';
 
 export interface DamageContext {
   attacker: Character;
@@ -23,8 +24,10 @@ export interface DamageContext {
   weaponCrit?: boolean;
   /** 검 질주: 일반 이동 2칸 이상 후 공격(위력 스킬 ×1.2) */
   movedAtLeast2?: boolean;
-  /** 쇄상 등 최종 위력 배수(디버프 대상 1.3배). */
+  /** 쇄상·특성 등 최종 위력 배수(디버프 대상 1.3배 등). */
   finalPowerMult?: number;
+  /** 방어자 특성·태세로 인한 받는 피해 배수(광역보호 0.8, 결속/진형 등). */
+  defenderDamageMult?: number;
   rng?: () => number;
 }
 
@@ -42,20 +45,21 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
   const rng = ctx.rng ?? Math.random;
   const { attacker, skill, weapon } = ctx;
 
-  // 마법부여: 주스탯 = 높은 능력치 + 낮은 능력치의 50%
+  // 마법부여: 주스탯 = 높은 능력치 + 낮은 능력치의 50%(균형 감각 특성은 최저 능력치 +5로 판정)
+  const atkStat = effectiveBaseStat(attacker, 'attack');
+  const magStat = effectiveBaseStat(attacker, 'magicAttack');
   const stat =
     ctx.statSource === 'combined'
       ? Math.min(
-          Math.max(attacker.baseStats.attack, attacker.baseStats.magicAttack) * 1.5, // 높은 능력치의 1.5배 상한
-          Math.max(attacker.baseStats.attack, attacker.baseStats.magicAttack) +
-            0.5 * Math.min(attacker.baseStats.attack, attacker.baseStats.magicAttack),
+          Math.max(atkStat, magStat) * 1.5, // 높은 능력치의 1.5배 상한
+          Math.max(atkStat, magStat) + 0.5 * Math.min(atkStat, magStat),
         )
       : ctx.statSource === 'magic'
-        ? attacker.baseStats.magicAttack
-        : attacker.baseStats.attack;
+        ? magStat
+        : atkStat;
 
-  // 무기 숙련도(전직과 별개, 초보 0.7 ~ 달인 1.0)에 따른 랜덤 하한과 100% 사이 균등 난수.
-  const floor = proficiencyFloor(attacker, weapon.kind);
+  // 무기 숙련도(전직과 별개, 초보 0.7 ~ 달인 1.0)에 따른 랜덤 하한과 100% 사이 균등 난수(노련한 용병 +0.05).
+  const floor = Math.min(1, proficiencyFloor(attacker, weapon.kind) + proficiencyFloorTraitBonus(attacker));
   const masteryRoll = floor + rng() * (1 - floor);
   const skillPower = skill.power / 100;
 
@@ -81,8 +85,8 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
   // 피해 배수(속성·급소·질주·쇄상 등)는 최대 2.5배로 제한한다.
   const powerMult = Math.min(DAMAGE_MULT_CAP, passivePowerMult * elementMult * (crit ? 1.5 : 1));
 
-  // 피해 감소 효과: 광역보호 상태(대신 받는 태세)이면 20% 감소.
-  const reduction = ctx.defender.statusEffects.some((s) => s.type === 'guardWide') ? 0.8 : 1;
+  // 피해 감소 효과: 광역보호 상태(대신 받는 태세)이면 20% 감소 + 방어자 특성 배수(결속·진형 등).
+  const reduction = (ctx.defender.statusEffects.some((s) => s.type === 'guardWide') ? 0.8 : 1) * (ctx.defenderDamageMult ?? 1);
 
   // 최종데미지 = (기본 공격력 - 방어력) x 피해 배수 x 피해감소. 방어를 무시한 기술 피해의 10%가 최소 보장된다.
   const afterDefense = (baseAttack - defense) * powerMult * reduction;

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getWeapon } from '../data/weapons';
 import { rollShop, shopPrice } from './shop';
 import { newCampaign } from './state';
+const hs = (heroKind: import('../types').WeaponKind) => ({ heroKind, name: '주인공', gender: 'male' as const, armorKind: 'cloth' as const, traitId: 'toughness', traitCandidates: [] as string[] });
 import { buyShopItem, sellStashWeapon, equipStashWeapon, equipStashArmor } from './stash';
 
 function seq(values: number[]): () => number {
@@ -25,7 +26,7 @@ describe('rollShop', () => {
 
 describe('구매 → 보관함', () => {
   it('골드가 충분하면 구매해 보관함에 넣고 골드를 차감한다', () => {
-    let c = newCampaign('sword', seq([0.5]));
+    let c = newCampaign(hs('sword'), seq([0.5]));
     c = { ...c, gold: 100000 };
     const item = c.shop[0];
     const before = c.stash.weapons.length + c.stash.armor.length;
@@ -36,7 +37,7 @@ describe('구매 → 보관함', () => {
   });
 
   it('골드가 부족하면 구매되지 않는다', () => {
-    const c = { ...newCampaign('sword', seq([0.5])), gold: 0 };
+    const c = { ...newCampaign(hs('sword'), seq([0.5])), gold: 0 };
     const after = buyShopItem(c, c.shop[0].id);
     expect(after).toBe(c);
   });
@@ -44,7 +45,7 @@ describe('구매 → 보관함', () => {
 
 describe('보관함 판매·장착', () => {
   it('보관함 무기를 판매하면 골드가 오르고 목록에서 사라진다', () => {
-    let c = { ...newCampaign('sword', seq([0.5])), gold: 100000 };
+    let c = { ...newCampaign(hs('sword'), seq([0.5])), gold: 100000 };
     // 무기 상품을 하나 사서 보관함에 넣는다.
     const weaponItem = c.shop.find((s) => s.slot === 'weapon')!;
     c = buyShopItem(c, weaponItem.id);
@@ -56,9 +57,9 @@ describe('보관함 판매·장착', () => {
   });
 
   it('보관함 무기를 장착하면 캐릭터의 기존 무기와 교체된다(착용 레벨 충족 시)', () => {
-    // 하이 레벨 무기(레벨 10, 주인공 레벨 10)를 강제로 보관함에 넣는다.
-    let c = newCampaign('sword', seq([0.5]));
-    c = { ...c, stash: { weapons: [{ instanceId: 'w-test', templateId: 'sword_great', level: 10 }], armor: [] } };
+    // 착용 가능한 무기(레벨 1, 주인공 레벨 1)를 강제로 보관함에 넣는다.
+    let c = newCampaign(hs('sword'), seq([0.5]));
+    c = { ...c, stash: { weapons: [{ instanceId: 'w-test', templateId: 'sword_great', level: 1 }], armor: [] } };
     const hero = c.roster[0];
     const oldWeaponId = hero.equippedWeaponId;
     const after = equipStashWeapon(c, hero.id, 'w-test');
@@ -70,7 +71,7 @@ describe('보관함 판매·장착', () => {
   });
 
   it('착용 레벨 미달 장비는 장착되지 않는다', () => {
-    let c = newCampaign('sword', seq([0.5])); // 주인공 레벨 10
+    let c = newCampaign(hs('sword'), seq([0.5])); // 주인공 레벨 1
     c = { ...c, stash: { weapons: [], armor: [{ instanceId: 'a-test', templateId: 'armor_plate', level: 40 }] } };
     const after = equipStashArmor(c, c.roster[0].id, 'a-test');
     expect(after).toBe(c); // 레벨 40 방어구는 장착 불가 → 변화 없음

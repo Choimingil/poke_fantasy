@@ -6,6 +6,8 @@ import { manhattan } from '../grid';
 import { calculateDamage } from '../damage';
 import { applyStatus, type StatusApplyOptions } from '../status';
 import { mentalResistChance, evasionChance, maxHp } from '../derivedStats';
+import { elementMultiplier } from '../elements';
+import { computeTraitAttackMods, shieldDefenseTraitMult } from '../traitEffects';
 import { rollWeaponProc } from '../weaponEffects';
 import type { SkillContext } from './context';
 
@@ -39,7 +41,7 @@ function shieldDefenseBonus(ctx: SkillContext, defender: Character): number {
   if (!defender.equippedShieldId) return 0;
   const instance = defender.inventory.find((w) => w.instanceId === defender.equippedShieldId);
   if (!instance) return 0;
-  const base = getWeapon(instance.templateId).defenseBonus ?? 0;
+  const base = (getWeapon(instance.templateId).defenseBonus ?? 0) * shieldDefenseTraitMult(defender); // 방패 숙련 특성 +15%
   // 돌진의 방패 약화: 무력화가 아니라 방패 방어력을 절반으로 감소.
   return ctx.negatedShields.has(defender.equippedShieldId) ? base * 0.5 : base;
 }
@@ -102,9 +104,9 @@ export interface DealOptions {
  * 통합 명중 판정: 최종 명중률 = 기술 명중률 + 지형·상태 보정 − 대상 회피율, [20,100] 클램프.
  * 현재 지형·상태 명중 보정 값은 0(향후 확장 지점). 활의 '집중'이 발동하면 회피율을 무시한다(evasion 항 0).
  */
-function hitChanceAgainst(defender: Character, skill: Skill, ignoreEvasion: boolean): number {
+function hitChanceAgainst(defender: Character, skill: Skill, ignoreEvasion: boolean, hitBonus = 0): number {
   const evasion = ignoreEvasion ? 0 : evasionChance(defender) * 100;
-  return Math.max(20, Math.min(100, skill.accuracy - evasion));
+  return Math.max(20, Math.min(100, skill.accuracy + hitBonus - evasion));
 }
 
 /** 은신 상태의 공격자는 공격을 실행하면 은신이 해제된다. */
@@ -123,8 +125,14 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
   const procChanceMult = wc.kind === 'crossbow' && noMove && hasWeaponPassive(attacker, 'crossbow', 'steadyAim') ? 2 : 1;
   const proc = opts.suppressProc ? null : rollWeaponProc(attacker, wc.kind, ctx.rng, procChanceMult);
 
+  // 고유 특성 보정(공격자·방어자). 방어자 팀은 actorTeam/enemyTeam 멤버십으로 판정한다.
+  const attackerOnActorTeam = ctx.actorTeam.some((u) => u.id === attacker.id);
+  const defenderAllies = attackerOnActorTeam ? ctx.enemyTeam : ctx.actorTeam;
+  const favorable = elementMultiplier(attackerElementFor(attacker, skill), defender.elementOverride ?? 'none') > 1;
+  const traitMods = computeTraitAttackMods(attacker, defender, maxHp(defender), favorable, defenderAllies);
+
   // 명중·회피 통합 판정(대상별 1회). 활의 '집중' 발동 시 회피율을 무시한다.
-  const hitChance = hitChanceAgainst(defender, skill, proc === 'focus');
+  const hitChance = hitChanceAgainst(defender, skill, proc === 'focus', traitMods.hitBonus);
   if (ctx.rng() * 100 >= hitChance) {
     ctx.log.push(`${attacker.name}의 공격이 ${defender.name}에게 빗나갔다.`);
     ctx.combatEvents.push({ targetId: defender.id, kind: 'miss' });
@@ -159,11 +167,12 @@ function applyAttack(ctx: SkillContext, attacker: Character, defender: Character
     defenderElement: defender.elementOverride ?? 'none',
     statSource: statSourceFor(attacker, effSkill),
     defenderDefense: shieldDefenseBonus(ctx, defender) + armorDefenseBonus(defender),
-    // 창 관통: 방어력을 전부가 아니라 50%만 무시한다(철갑사격 등 기술 자체 무시율과 큰 쪽 적용).
-    ignoreDefenseRatio: Math.max(proc === 'pierce' ? 0.5 : 0, opts.ignoreDefenseRatio ?? skill.ignoreDefenseRatio ?? 0),
+    // 창 관통: 방어력을 전부가 아니라 50%만 무시(철갑사격·특성 압박 등과 큰 쪽 적용).
+    ignoreDefenseRatio: Math.max(proc === 'pierce' ? 0.5 : 0, traitMods.ignoreDefenseRatio, opts.ignoreDefenseRatio ?? skill.ignoreDefenseRatio ?? 0),
     weaponCrit: crit,
     movedAtLeast2: (attacker.movedStepsThisTurn ?? 0) >= 2,
-    finalPowerMult: opts.finalPowerMult,
+    finalPowerMult: (opts.finalPowerMult ?? 1) * traitMods.powerMult,
+    defenderDamageMult: traitMods.defenderDamageMult,
     rng: ctx.rng,
   });
   defender.currentHp = Math.max(0, defender.currentHp - result.damage);

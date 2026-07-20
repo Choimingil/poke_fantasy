@@ -6,6 +6,7 @@ import { battleGold } from './gold';
 import { generateCharacter } from './generateCharacter';
 import { generateEnemyParty, themeForRound, enemyCountForRound, isBossRound } from './enemyParty';
 import { newCampaign, settleBattle } from './state';
+const hs = (heroKind: import('../types').WeaponKind) => ({ heroKind, name: '주인공', gender: 'male' as const, armorKind: 'cloth' as const, traitId: 'toughness', traitCandidates: [] as string[] });
 import type { BattleOutcome } from './types';
 
 function seq(values: number[]): () => number {
@@ -39,7 +40,7 @@ describe('골드', () => {
 });
 
 describe('settleBattle', () => {
-  const base = newCampaign('sword', seq([0.5]));
+  const base = newCampaign(hs('sword'), seq([0.5]));
   it('승리 시 라운드 진행 + 명성·골드 증가', () => {
     const outcome: BattleOutcome = { round: 1, won: true, enemiesDefeated: 2, allySurvivors: 1, bossDefeated: false };
     const { campaign, reputationGained, goldGained } = settleBattle(base, outcome);
@@ -101,7 +102,7 @@ describe('적 파티 생성', () => {
 
 describe('newCampaign', () => {
   it('주인공 1명, 라운드 1, 자원 0으로 시작한다', () => {
-    const c = newCampaign('dagger', seq([0.5]));
+    const c = newCampaign(hs('dagger'), seq([0.5]));
     expect(c.roster).toHaveLength(1);
     expect(c.roster[0].id).toBe('hero');
     expect(c.round).toBe(1);

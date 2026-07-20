@@ -7,6 +7,7 @@ import { manhattan, computeReachableTiles, effectiveMove, lineCrossesRock } from
 import { isVisibleTo, isVisibleToTeam } from './vision';
 import { determineTurnOrder } from './turnOrder';
 import { applyDamageOverTime, applyTileBurnDamage, isImmobilized, consumeShock, tickMapStatus, tickStatusAtTurnStart } from './status';
+import { proficiencyExpTraitMult } from './traitEffects';
 import { grantXp, xpForKill, type LevelUpResult } from './leveling';
 import { weatherTurnStartDamage, type Weather } from './weather';
 import type { TimeOfDay } from './daytime';
@@ -438,7 +439,7 @@ export class GridBattle {
     // 무기 숙련 경험치 누적: 한 번의 기술 사용에서 얻는 경험치는 최대 2배(상한)까지만.
     for (const [id, { kind, hits }] of proficiencyHits) {
       const u = this.allUnits().find((x) => x.id === id);
-      if (u) gainProficiencyExp(u, kind, Math.min(hits, PROFICIENCY_MAX_GAIN_PER_SKILL));
+      if (u) gainProficiencyExp(u, kind, Math.min(hits, PROFICIENCY_MAX_GAIN_PER_SKILL) * proficiencyExpTraitMult(u)); // 훈련광 특성 +15%
     }
   }
 

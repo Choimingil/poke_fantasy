@@ -15,12 +15,12 @@ export interface SightConditions {
   weather?: Weather;
 }
 
-/** 시간대·날씨에 따른 시야 보정치. 밤 -2, 비/눈 -1. */
-function envSightModifier(cond?: SightConditions): number {
+/** 시간대·날씨에 따른 시야 보정치. 밤 -2(야간 시야 특성 -1), 비/눈 -1. 밤+날씨 합계는 최대 -2. */
+function envSightModifier(c: Character, cond?: SightConditions): number {
   let mod = 0;
-  if (cond?.time === 'night') mod -= 2;
+  if (cond?.time === 'night') mod -= c.traitId === 'nightSight' ? 1 : 2; // 야간 시야 특성: 밤 감소 1 완화
   if (cond?.weather === 'rain' || cond?.weather === 'snow') mod -= 1;
-  return mod;
+  return Math.max(-2, mod);
 }
 
 /** pos가 불타는 타일 반경 내에 있는가(불 타일 포함 주변 1칸) */
@@ -40,7 +40,7 @@ export function effectiveSight(c: Character, map: BattleMap, cond?: SightConditi
   if (map.tiles[c.position.y][c.position.x].terrain === 'hill') bonus += 1; // 언덕 위
   const inst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId);
   if (inst && getWeapon(inst.templateId).kind === 'bow' && hasWeaponPassive(c, 'bow', 'hawkeye')) bonus += 1; // 매의눈
-  return Math.max(1, c.sight + Math.min(2, bonus) + envSightModifier(cond)); // 시야는 최소 1
+  return Math.max(1, c.sight + Math.min(2, bonus) + envSightModifier(c, cond)); // 시야는 최소 1
 }
 
 export function isVisibleTo(viewer: Character, target: Character, map: BattleMap, cond?: SightConditions): boolean {
@@ -53,7 +53,8 @@ export function isVisibleTo(viewer: Character, target: Character, map: BattleMap
   const onForest = map.tiles[target.position.y][target.position.x].terrain === 'forest';
   if (onForest) {
     const canSeeIntoForest = viewer.statusEffects.some((s) => s.type === 'forestVision');
-    if (!canSeeIntoForest && dist > FOREST_CONCEALMENT_RADIUS) return false;
+    const revealRadius = viewer.traitId === 'forester' ? 2 : FOREST_CONCEALMENT_RADIUS; // 숲지기: 발견 거리 2
+    if (!canSeeIntoForest && dist > revealRadius) return false;
   }
   return true;
 }

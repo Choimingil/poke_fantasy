@@ -1,4 +1,4 @@
-import type { WeaponKind } from '../types';
+import type { ArmorKind, SpriteGender, WeaponKind } from '../types';
 import type { GridBattle } from '../engine/battle';
 import type { BattleOutcome, Campaign } from './types';
 import { CAMPAIGN_VERSION, MAX_ROSTER } from './types';
@@ -8,9 +8,25 @@ import { rollShop } from './shop';
 import { roundReputationGain } from './reputation';
 import { battleGold } from './gold';
 
-/** 선택한 직업으로 주인공 1명을 만들어 새 캠페인을 시작한다(레벨 10, 초급 전용기술 보유). */
-export function newCampaign(heroKind: WeaponKind, rng: () => number = Math.random): Campaign {
-  const hero = generateCharacter(heroKind, 10, { id: 'hero', name: '주인공', rng });
+export interface HeroSetup {
+  heroKind: WeaponKind;
+  name: string;
+  gender: SpriteGender;
+  armorKind: ArmorKind; // 천 또는 가죽(§2.1)
+  traitId: string;
+  /** 시작 시 등장한 특성 후보 3개(튜토리얼 종료 후 재확인용). */
+  traitCandidates: string[];
+}
+
+/**
+ * 주인공을 만들어 새 캠페인을 시작한다. 주인공은 반드시 **레벨 1**로 시작하며(전직 없음·숙련 초보·레벨 1 일반 장비),
+ * 선택한 고유 특성 하나를 지닌다(§2.1).
+ */
+export function newCampaign(setup: HeroSetup, rng: () => number = Math.random): Campaign {
+  const heroKind = setup.heroKind;
+  const hero = generateCharacter(heroKind, 1, {
+    id: 'hero', name: setup.name, gender: setup.gender, armorKind: setup.armorKind, traitId: setup.traitId, rng,
+  });
   const rolledRecruits = rollRecruits(0, 1, rng);
   const rolledShop = rollShop(1, rolledRecruits.nextId, rng);
   return {
@@ -25,7 +41,22 @@ export function newCampaign(heroKind: WeaponKind, rng: () => number = Math.rando
     recruits: rolledRecruits.recruits,
     shop: rolledShop.shop,
     nextId: rolledShop.nextId,
+    heroTraitCandidates: setup.traitCandidates,
   };
+}
+
+/** 튜토리얼 종료 후 특성 재확인(§43.13): 주인공 특성을 바꾸고 재확인 상태를 해제한다. */
+export function confirmHeroTrait(campaign: Campaign, traitId: string): Campaign {
+  return {
+    ...campaign,
+    roster: campaign.roster.map((c) => (c.id === 'hero' ? { ...c, traitId } : c)),
+    heroTraitCandidates: undefined,
+  };
+}
+
+/** 특성 재확인을 건너뛰고 현재 특성을 유지한다. */
+export function dismissHeroTraitConfirm(campaign: Campaign): Campaign {
+  return { ...campaign, heroTraitCandidates: undefined };
 }
 
 /** 후보를 골드로 모집해 로스터에 추가한다(골드 부족·인원 초과 시 변화 없음). */

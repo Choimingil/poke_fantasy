@@ -1,5 +1,6 @@
 import type { ActiveStatus, BattleMap, Character, StatusEffectType } from '../types';
 import { maxHp } from './derivedStats';
+import { fireTileDivisor } from './traitEffects';
 
 export interface StatusApplyOptions {
   turnsRemaining: number;
@@ -115,7 +116,8 @@ export function consumeShock(character: Character): boolean {
 export function applyTileBurnDamage(character: Character, map: BattleMap): number {
   const tile = map.tiles[character.position.y][character.position.x];
   if (!tile.status || tile.status.type !== 'burning') return 0;
-  const damage = Math.max(1, Math.round(maxHp(character) / 4));
+  const damage = Math.max(1, Math.round(maxHp(character) / fireTileDivisor(character))); // 불길 내성 특성이면 1/6
+
   character.currentHp = Math.max(0, character.currentHp - damage);
   return damage;
 }

@@ -155,6 +155,7 @@ export interface Character {
   unspentStatPoints: number; // 레벨업마다 3점 지급, 체력/근력/지력/스피드/지구력에 분배
   weaponMastery: Partial<Record<WeaponKind, number>>; // 전직 티어 0-3, absent key == tier 0
   weaponProficiency?: Partial<Record<WeaponKind, number>>; // 무기 숙련 경험치(전직과 별개), absent == 0(초보)
+  traitId?: string; // 고유 특성(§43). 무기 전직 패시브와 별개로 캐릭터당 하나.
 
   baseStats: StatBlock;
   sight: number;

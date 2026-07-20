@@ -55,6 +55,8 @@ export interface Campaign {
   recruits: RecruitCandidate[]; // 이번 라운드 모집 후보(3~5)
   shop: ShopItem[]; // 이번 라운드 상점 상품
   nextId: number; // 고유 id 시퀀스
+  /** 튜토리얼(1라운드) 종료 후 특성 재확인용: 시작 시 등장한 후보 3개(§43.13). 재확인을 마치면 제거. */
+  heroTraitCandidates?: string[];
 }
 
 /** 전투 결과 요약(명성·골드 정산 입력). */

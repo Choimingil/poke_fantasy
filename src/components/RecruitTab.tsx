@@ -4,6 +4,7 @@ import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { masteryTier, weaponPassiveLabel } from '../game/data/promotions';
 import { maxHp } from '../game/engine/derivedStats';
+import { getTrait } from '../game/data/traits';
 import type { WeaponKind } from '../game/types';
 
 const KIND_LABEL: Record<WeaponKind, string> = {
@@ -44,6 +45,9 @@ export function RecruitTab({ campaign, onRecruit }: { campaign: Campaign; onRecr
                   🗡 {weaponInstanceName(weaponInst)} · 🛡 {armor ? armor.name : '없음'}
                   {passive && <span className="recruit-passive"> · 패시브 {passive}{hasPassive ? '' : '(3차)'}</span>}
                 </div>
+                {c.traitId && getTrait(c.traitId) && (
+                  <div className="recruit-trait">🏷 {getTrait(c.traitId)!.name} — {getTrait(c.traitId)!.effect}</div>
+                )}
                 <div className="recruit-foot">
                   <span className="recruit-cost">💰 {cand.cost}</span>
                   <button type="button" disabled={tooExpensive || full} onClick={() => onRecruit(cand.id)}>

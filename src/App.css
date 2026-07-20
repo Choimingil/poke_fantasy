@@ -1114,3 +1114,20 @@ button:disabled {
 .party-skills { color: #9aa3bd; }
 .deploy-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .deploy-list li > span { display: flex; flex-direction: column; }
+
+/* ── 주인공 생성 · 고유 특성 ── */
+.hero-field { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; color: #cdd3e6; font-weight: 600; }
+.hero-field input[type="text"] { padding: 8px 10px; border-radius: 8px; border: 1px solid #333a52; background: #1b2030; color: #e8ecf7; font-size: 15px; }
+.hero-toggle { display: flex; gap: 8px; }
+.hero-toggle button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid #333a52; background: #1b2030; color: #cdd3e6; cursor: pointer; }
+.hero-toggle button.toggle-on { background: #2d6cdf; border-color: #2d6cdf; color: #fff; }
+.class-card-selected { outline: 2px solid #2d6cdf; }
+.trait-candidates { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 12px 0; }
+.trait-card { text-align: left; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; border: 1px solid #333a52; background: #1b2030; color: #e8ecf7; cursor: pointer; }
+.trait-card:disabled { cursor: default; }
+.trait-card-selected { outline: 2px solid #2d6cdf; }
+.trait-card-head { display: flex; align-items: center; gap: 8px; }
+.trait-card-effect { color: #9aa3bd; font-size: 13px; }
+.trait-tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #33405e; color: #cdd8f2; }
+.trait-live { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #235b3a; color: #b6f0c9; }
+.inspect-trait, .recruit-trait { margin-top: 6px; font-size: 12px; color: #b7c0da; }
