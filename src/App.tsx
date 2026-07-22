@@ -16,6 +16,7 @@ import { loadCampaign, saveCampaign, clearCampaign } from './game/campaign/stora
 import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle, confirmHeroTrait, dismissHeroTraitConfirm, type HeroSetup } from './game/campaign/state';
 import { buyShopItem, enhanceEquip, equipStashArmor, equipStashWeapon, sellStashArmor, sellStashWeapon } from './game/campaign/stash';
 import { generateEnemyParty } from './game/campaign/enemyParty';
+import { buildBattleObjective } from './game/campaign/objectives';
 
 type Screen =
   | 'title'
@@ -34,6 +35,7 @@ interface Reward {
   goldGained: number;
   won: boolean;
   bossDefeated: boolean;
+  rating: import('./game/campaign/objectives').BattleRating | null;
 }
 
 function App() {
@@ -89,7 +91,7 @@ function App() {
     const outcome = outcomeFromBattle(battle, campaign.round);
     const settled = settleBattle(campaign, outcome);
     persist(settled.campaign);
-    setReward({ reputationGained: settled.reputationGained, goldGained: settled.goldGained, won: outcome.won, bossDefeated: outcome.bossDefeated });
+    setReward({ reputationGained: settled.reputationGained, goldGained: settled.goldGained, won: outcome.won, bossDefeated: outcome.bossDefeated, rating: outcome.rating });
     setFinishedBattle(battle);
     setScreen('campaign-result');
   };
@@ -154,7 +156,8 @@ function App() {
   }
 
   if (screen === 'campaign-battle') {
-    return <GridBattleScreen key={`camp-${battleSeq}`} teamA={battleTeamA} teamB={battleTeamB} onFinished={finishCampaignBattle} />;
+    const objective = campaign ? buildBattleObjective(campaign.round, battleTeamB) : undefined;
+    return <GridBattleScreen key={`camp-${battleSeq}`} teamA={battleTeamA} teamB={battleTeamB} onFinished={finishCampaignBattle} objective={objective} />;
   }
 
   if (screen === 'campaign-result' && finishedBattle && reward) {

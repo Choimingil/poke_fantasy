@@ -68,6 +68,7 @@ export interface BattleOutcome {
   enemiesDefeated: number;
   allySurvivors: number;
   bossDefeated: boolean;
+  rating: import('./objectives').BattleRating | null; // 전투 평가(§41)
 }
 
 export const CAMPAIGN_VERSION = 1;

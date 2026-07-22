@@ -7,6 +7,7 @@ import { rollRecruits } from './recruit';
 import { rollShop } from './shop';
 import { roundReputationGain } from './reputation';
 import { battleGold } from './gold';
+import { evaluateBattle, ratingReward } from './objectives';
 
 export interface HeroSetup {
   heroKind: WeaponKind;
@@ -82,6 +83,7 @@ export function outcomeFromBattle(battle: GridBattle, round: number): BattleOutc
     enemiesDefeated: enemies.filter((e) => e.currentHp <= 0).length,
     allySurvivors: battle.teamA.filter((a) => a.currentHp > 0).length,
     bossDefeated: enemies.some((e) => e.isBoss && e.currentHp <= 0),
+    rating: evaluateBattle(round, battle).rating,
   };
 }
 
@@ -93,8 +95,10 @@ export interface SettleResult {
 
 /** 전투 결과로 명성·골드를 정산하고 승리 시 라운드를 진행한다(라운드 진행 시 모집 후보 갱신). */
 export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: () => number = Math.random): SettleResult {
-  const reputationGained = roundReputationGain(outcome);
-  const goldGained = battleGold(outcome);
+  // 전투 평가(§41) 등급 보너스를 기본 보상에 더한다.
+  const bonus = ratingReward(outcome.rating);
+  const reputationGained = roundReputationGain(outcome) + bonus.reputation;
+  const goldGained = battleGold(outcome) + bonus.gold;
   const reputation = campaign.reputation + reputationGained;
   // 강화 재료: 승리 시 +1, 보스 처치 시 추가 +1(§32).
   const materialsGained = outcome.won ? 1 + (outcome.bossDefeated ? 1 : 0) : 0;

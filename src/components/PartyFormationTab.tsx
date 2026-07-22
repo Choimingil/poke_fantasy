@@ -5,6 +5,7 @@ import { themeForRound, isBossRound, enemyLevelForRound, enemyCountForRound } fr
 import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getSkill, skillDisplayName } from '../game/data/skills';
+import { objectivesForRound, primaryObjectiveLabel, optionalObjectiveLabel } from '../game/campaign/objectives';
 import { maxHp } from '../game/engine/derivedStats';
 import type { Character, WeaponKind } from '../game/types';
 
@@ -63,6 +64,11 @@ export function PartyFormationTab({
       <p className="barracks-hint">
         다음 전투: <strong>{campaign.round}라운드</strong> · {ENEMY_THEME_LABEL[theme]} · 적 Lv.{enemyLevelForRound(campaign.round)} × {enemyCountForRound(campaign.round)}
         {boss && <span className="boss-warning"> · ⚠ 보스 등장(처치 시 명성 +50·골드 +100)</span>}
+      </p>
+      <p className="barracks-hint objective-hint">
+        🎯 기본 목표: <strong>{primaryObjectiveLabel(objectivesForRound(campaign.round))}</strong>
+        {' · '}선택 목표: {optionalObjectiveLabel(objectivesForRound(campaign.round))}
+        <span className="objective-note"> (완전/압도적 승리 시 추가 보상)</span>
       </p>
 
       <h3>출전 편성 <span className="loadout-count">{deployed.length}/{MAX_DEPLOY} · 위쪽이 왼쪽 배치</span></h3>

@@ -22,27 +22,27 @@ describe('명성', () => {
   });
 
   it('성과 보너스: 적 전멸 +20, 아군 생존 ×5, 보스 처치 +50', () => {
-    expect(battleReputationBonus({ round: 1, won: true, enemiesDefeated: 3, allySurvivors: 2, bossDefeated: false })).toBe(20 + 10);
-    expect(battleReputationBonus({ round: 5, won: true, enemiesDefeated: 4, allySurvivors: 1, bossDefeated: true })).toBe(20 + 5 + 50);
+    expect(battleReputationBonus({ round: 1, won: true, enemiesDefeated: 3, allySurvivors: 2, bossDefeated: false, rating: null })).toBe(20 + 10);
+    expect(battleReputationBonus({ round: 5, won: true, enemiesDefeated: 4, allySurvivors: 1, bossDefeated: true, rating: null })).toBe(20 + 5 + 50);
   });
 
   it('패배 시 라운드 명성은 0이다', () => {
-    expect(roundReputationGain({ round: 3, won: false, enemiesDefeated: 1, allySurvivors: 0, bossDefeated: false })).toBe(0);
+    expect(roundReputationGain({ round: 3, won: false, enemiesDefeated: 1, allySurvivors: 0, bossDefeated: false, rating: null })).toBe(0);
   });
 });
 
 describe('골드', () => {
   it('처치당 +10, 승리 시 라운드×20, 보스 +100', () => {
-    expect(battleGold({ round: 3, won: true, enemiesDefeated: 2, allySurvivors: 1, bossDefeated: false })).toBe(20 + 60);
-    expect(battleGold({ round: 5, won: true, enemiesDefeated: 4, allySurvivors: 1, bossDefeated: true })).toBe(40 + 100 + 100);
-    expect(battleGold({ round: 2, won: false, enemiesDefeated: 1, allySurvivors: 0, bossDefeated: false })).toBe(10);
+    expect(battleGold({ round: 3, won: true, enemiesDefeated: 2, allySurvivors: 1, bossDefeated: false, rating: null })).toBe(20 + 60);
+    expect(battleGold({ round: 5, won: true, enemiesDefeated: 4, allySurvivors: 1, bossDefeated: true, rating: null })).toBe(40 + 100 + 100);
+    expect(battleGold({ round: 2, won: false, enemiesDefeated: 1, allySurvivors: 0, bossDefeated: false, rating: null })).toBe(10);
   });
 });
 
 describe('settleBattle', () => {
   const base = newCampaign(hs('sword'), seq([0.5]));
   it('승리 시 라운드 진행 + 명성·골드 증가', () => {
-    const outcome: BattleOutcome = { round: 1, won: true, enemiesDefeated: 2, allySurvivors: 1, bossDefeated: false };
+    const outcome: BattleOutcome = { round: 1, won: true, enemiesDefeated: 2, allySurvivors: 1, bossDefeated: false, rating: null };
     const { campaign, reputationGained, goldGained } = settleBattle(base, outcome);
     expect(campaign.round).toBe(2);
     expect(reputationGained).toBe(0 + 20 + 5); // base0 + 전멸20 + 생존1×5
@@ -51,7 +51,7 @@ describe('settleBattle', () => {
   });
 
   it('패배 시 라운드 유지', () => {
-    const outcome: BattleOutcome = { round: 1, won: false, enemiesDefeated: 1, allySurvivors: 0, bossDefeated: false };
+    const outcome: BattleOutcome = { round: 1, won: false, enemiesDefeated: 1, allySurvivors: 0, bossDefeated: false, rating: null };
     const { campaign } = settleBattle(base, outcome);
     expect(campaign.round).toBe(1);
   });

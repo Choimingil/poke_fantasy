@@ -42,12 +42,20 @@ const NO_RECAST_WHILE_ACTIVE: Record<string, StatusEffectType> = {
   forest_vision: 'forestVision',
 };
 
+/** 전투 승리 조건(§40 기본 목표). 미지정 시 적 전멸. */
+export interface BattleObjective {
+  primary: 'annihilate' | 'killCommander' | 'surviveTurns';
+  commanderId?: string; // killCommander: 처치해야 하는 적 지휘관 id
+  turnLimit?: number; // surviveTurns: 이 라운드 수를 버티면 승리
+}
+
 export class GridBattle {
   map: BattleMap;
   teamA: Character[];
   teamB: Character[];
   weather: Weather;
   time: TimeOfDay;
+  objective: BattleObjective;
   round = 0;
   roundQueue: Character[] = [];
   bonusQueue: Character[] = [];
@@ -70,13 +78,14 @@ export class GridBattle {
   knownEnemyPositions: Record<Side, Record<string, GridPos>> = { A: {}, B: {} };
   private rng: () => number;
 
-  constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random, weather: Weather = 'clear', time: TimeOfDay = 'day') {
+  constructor(map: BattleMap, teamA: Character[], teamB: Character[], rng: () => number = Math.random, weather: Weather = 'clear', time: TimeOfDay = 'day', objective: BattleObjective = { primary: 'annihilate' }) {
     this.map = map;
     this.teamA = teamA;
     this.teamB = teamB;
     this.rng = rng;
     this.weather = weather;
     this.time = time;
+    this.objective = objective;
     for (const c of teamA) c.side = 'A';
     for (const c of teamB) c.side = 'B';
     this.beginRound();
@@ -97,6 +106,13 @@ export class GridBattle {
   private beginRound(): void {
     this.round += 1;
     this.log.push(`--- ${this.round}라운드 ---`);
+    // 제한 턴 생존 목표: 지정 라운드를 넘기면(아군 생존 시) A팀 승리.
+    if (this.objective.primary === 'surviveTurns' && this.objective.turnLimit !== undefined && this.round > this.objective.turnLimit) {
+      if (this.teamA.some((c) => c.currentHp > 0)) {
+        this.endBattle('A', `${this.objective.turnLimit}라운드를 버텨냈다!`);
+        return;
+      }
+    }
     this.reactionCountThisRound.clear();
     this.recastedThisRound.clear();
     // 방패 무력화(돌진) 라운드 만료 처리
@@ -504,13 +520,25 @@ export class GridBattle {
   private checkBattleEnd(): void {
     if (this.finished) return;
     const aAlive = this.teamA.some((c) => c.currentHp > 0);
+    // 지휘관 처치 목표: 지정된 적 지휘관이 쓰러지면 잔당이 남아 있어도 A팀 승리.
+    if (aAlive && this.objective.primary === 'killCommander' && this.objective.commanderId) {
+      const cmd = this.teamB.find((c) => c.id === this.objective.commanderId);
+      if (cmd && cmd.currentHp <= 0) {
+        this.endBattle('A', '지휘관을 처치했다!');
+        return;
+      }
+    }
     const bAlive = this.teamB.some((c) => c.currentHp > 0);
     if (!aAlive || !bAlive) {
-      this.finished = true;
-      this.winner = aAlive ? 'A' : bAlive ? 'B' : null;
-      this.log.push(this.winner ? `전투 종료: ${this.winner === 'A' ? 'A팀' : 'B팀'} 승리!` : '전투 종료: 무승부');
-      this.roundQueue = [];
-      this.bonusQueue = [];
+      this.endBattle(aAlive ? 'A' : bAlive ? 'B' : null, aAlive || bAlive ? '전투 종료' : '무승부');
     }
+  }
+
+  private endBattle(winner: Side | null, reason: string): void {
+    this.finished = true;
+    this.winner = winner;
+    this.log.push(winner ? `${reason} — ${winner === 'A' ? 'A팀' : 'B팀'} 승리!` : `전투 종료: ${reason}`);
+    this.roundQueue = [];
+    this.bonusQueue = [];
   }
 }

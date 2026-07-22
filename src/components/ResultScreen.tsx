@@ -1,6 +1,7 @@
 import type { Character } from '../game/types';
 import type { KillEvent, Side } from '../game/engine/battle';
 import type { LevelUpResult } from '../game/engine/leveling';
+import { RATING_LABEL, type BattleRating } from '../game/campaign/objectives';
 
 export function ResultScreen({
   winner,
@@ -16,7 +17,7 @@ export function ResultScreen({
   levelUpEvents: LevelUpResult[];
   allUnits: Character[];
   onRestart?: () => void;
-  reward?: { reputationGained: number; goldGained: number; won: boolean; bossDefeated: boolean };
+  reward?: { reputationGained: number; goldGained: number; won: boolean; bossDefeated: boolean; rating?: BattleRating | null };
   onContinue?: () => void;
 }) {
   const nameOf = (id: string) => allUnits.find((u) => u.id === id)?.name ?? id;
@@ -29,6 +30,9 @@ export function ResultScreen({
         <p className="result-winner">{playerWon ? '승리!' : '패배...'}</p>
       ) : (
         <p className="result-winner">{winner ? `${winner === 'A' ? 'A팀' : 'B팀'} 승리!` : '무승부'}</p>
+      )}
+      {reward?.rating && (
+        <p className={`result-rating rating-${reward.rating}`}>⭐ {RATING_LABEL[reward.rating]}</p>
       )}
       {reward && (
         <div className="result-reward">

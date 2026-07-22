@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Character, GridPos } from '../game/types';
-import { GridBattle, type UnitAction } from '../game/engine/battle';
+import { GridBattle, type UnitAction, type BattleObjective } from '../game/engine/battle';
 import { createDefaultMap, TEAM_A_SPAWNS, TEAM_B_SPAWNS } from '../game/data/maps';
 import { prepareForBattle } from '../game/engine/characterFactory';
 import { getSkill, skillDisplayName, skillTypeLabel } from '../game/data/skills';
@@ -27,10 +27,11 @@ interface SwapCandidate {
   instanceId: string;
 }
 
-export function GridBattleScreen({ teamA, teamB, onFinished }: {
+export function GridBattleScreen({ teamA, teamB, onFinished, objective }: {
   teamA: Character[];
   teamB: Character[];
   onFinished: (battle: GridBattle) => void;
+  objective?: BattleObjective;
 }) {
   const battleRef = useRef<GridBattle | null>(null);
   const [, setTick] = useState(0);
@@ -78,10 +79,14 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     const map = createDefaultMap();
     teamA.forEach((c, i) => prepareForBattle(c, TEAM_A_SPAWNS[i % TEAM_A_SPAWNS.length], 'A'));
     teamB.forEach((c, i) => prepareForBattle(c, TEAM_B_SPAWNS[i % TEAM_B_SPAWNS.length], 'B'));
-    battleRef.current = new GridBattle(map, teamA, teamB, Math.random, pickRandomWeather(Math.random), pickRandomTime(Math.random));
+    battleRef.current = new GridBattle(map, teamA, teamB, Math.random, pickRandomWeather(Math.random), pickRandomTime(Math.random), objective);
   }
   const battle = battleRef.current;
   const forceRerender = () => setTick((t) => t + 1);
+
+  const objLabel = battle.objective.primary === 'killCommander' ? '🎯 지휘관 처치'
+    : battle.objective.primary === 'surviveTurns' ? `🎯 ${battle.objective.turnLimit}라운드 생존`
+    : '🎯 적 전멸';
 
   const currentUnit = battle.currentUnit();
   const isPlayerTurn = !battle.finished && currentUnit?.side === 'A';
@@ -206,7 +211,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
     return (
       <div className="app-shell battle-screen">
         <div className="battle-log-panel">
-          <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
+          <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {objLabel}</p>
           <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit?.id ?? null} visibleEnemyIds={visibleEnemyIds} />
         </div>
         <div className={`battle-stage weather-${battle.weather} time-${battle.time}`}>
@@ -329,7 +334,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished }: {
   return (
     <div className="app-shell battle-screen">
       <div className="battle-log-panel">
-        <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]}</p>
+        <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {objLabel}</p>
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
       </div>
       <div className={`battle-stage weather-${battle.weather} time-${battle.time}`}>

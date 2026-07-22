@@ -1144,3 +1144,11 @@ button:disabled {
 .enh-button { font-size: 11px; padding: 3px 7px; background: #4a3a1e; border-radius: 6px; margin-left: 6px; }
 .enh-button:hover { background: #5c4826; }
 .enh-badge { font-size: 11px; padding: 2px 6px; border-radius: 6px; background: #2f6b3a; color: #cdeecf; margin-left: 6px; }
+
+/* ── 전투 목표·평가(§40·§41) ── */
+.objective-hint { color: #b7c0da; }
+.objective-note { color: #8a93ad; font-size: 0.85em; }
+.result-rating { font-size: 1.2rem; font-weight: 800; margin: 4px 0; }
+.result-rating.rating-victory { color: #cdd8f2; }
+.result-rating.rating-complete { color: #ffe6a6; }
+.result-rating.rating-overwhelming { color: #e6c8ff; text-shadow: 0 0 8px rgba(210,140,255,0.5); }
