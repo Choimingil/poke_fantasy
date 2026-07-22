@@ -1163,3 +1163,6 @@ button:disabled {
 .result-casualties { list-style: none; padding: 0; margin: 4px 0; }
 .result-casualties .casualty-fallen { color: #e79a9a; font-weight: 700; }
 .result-casualties .casualty-injured { color: #e0b48a; }
+
+/* 적 AI 유형(§39) */
+.inspect-ai { font-size: 12px; color: #9db4d6; margin: 2px 0 0; }

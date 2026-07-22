@@ -158,6 +158,15 @@ export interface ArmorInstance {
 
 export type SpriteGender = 'male' | 'female';
 
+/**
+ * 적 AI 행동 유형(§39, 4종):
+ * - aggressive: 가장 가까운 적을 추격해 근접·공격(돌격 근접형).
+ * - skirmisher: 최대 사거리를 유지하며 공격, 적이 붙으면 물러난다(원거리 견제형).
+ * - defensive: 위협 반경 밖이면 아군 곁에서 대기, 적이 접근하면 교전(수비 대기형).
+ * - support: 부상한 아군을 우선 치료, 없으면 수비형처럼 후방에 머문다(지원형).
+ */
+export type AiBehavior = 'aggressive' | 'skirmisher' | 'defensive' | 'support';
+
 export interface Character {
   id: string;
   name: string;
@@ -172,6 +181,7 @@ export interface Character {
   weaponProficiency?: Partial<Record<WeaponKind, number>>; // 무기 숙련 경험치(전직과 별개), absent == 0(초보)
   traitId?: string; // 고유 특성(§43). 무기 전직 패시브와 별개로 캐릭터당 하나.
   injured?: boolean; // 부상(§42): 전투 불능 후유증. 전투 시작 HP 감소, 재차 전투 불능 시 전사.
+  aiBehavior?: AiBehavior; // 적 AI 행동 유형(§39). absent == 'aggressive'.
 
   baseStats: StatBlock;
   sight: number;

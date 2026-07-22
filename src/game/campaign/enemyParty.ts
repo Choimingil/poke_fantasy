@@ -1,6 +1,21 @@
-import type { Character, WeaponKind } from '../types';
+import type { AiBehavior, Character, WeaponKind } from '../types';
 import { BOSS_ROUND_INTERVAL, type EnemyTheme } from './types';
 import { generateCharacter, randomName } from './generateCharacter';
+
+/** 무기 종류별 기본 AI 행동 유형(§39). */
+const BEHAVIOR_FOR_KIND: Record<WeaponKind, AiBehavior> = {
+  sword: 'aggressive', spear: 'aggressive', dagger: 'aggressive',
+  blunt: 'defensive', shield: 'defensive',
+  bow: 'skirmisher', crossbow: 'skirmisher', thrown: 'skirmisher', staff: 'skirmisher',
+  tome: 'support',
+};
+
+/** 해당 무기 종류에 맞는 AI 행동을 부여한 캐릭터를 만든다. */
+function makeEnemy(kind: WeaponKind, level: number, opts: Parameters<typeof generateCharacter>[2]): Character {
+  const c = generateCharacter(kind, level, opts);
+  c.aiBehavior = BEHAVIOR_FOR_KIND[kind];
+  return c;
+}
 
 /** 테마별 등장 무기 종류(앞쪽일수록 비중이 큼). */
 const THEME_KINDS: Record<EnemyTheme, WeaponKind[]> = {
@@ -48,17 +63,17 @@ export function generateEnemyParty(round: number, rng: () => number = Math.rando
   const units: Character[] = [];
 
   if (isBossRound(round)) {
-    units.push(generateCharacter(kinds[0], level + 5, { id: `enemy-${round}-boss`, name: `${randomName(rng)} (보스)`, rng, isBoss: true, statMult }));
+    units.push(makeEnemy(kinds[0], level + 5, { id: `enemy-${round}-boss`, name: `${randomName(rng)} (보스)`, rng, isBoss: true, statMult }));
     for (let i = 1; i < count; i++) {
       // 보스 라운드에는 부하 1명이 정예(친위대)로 등장한다.
       const elite = i === 1;
-      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, isElite: elite, statMult }));
+      units.push(makeEnemy(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, isElite: elite, statMult }));
     }
   } else {
     for (let i = 0; i < count; i++) {
       // 4라운드 이후에는 선두 1명이 정예로 등장한다.
       const elite = i === 0 && round >= 4;
-      units.push(generateCharacter(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, isElite: elite, statMult }));
+      units.push(makeEnemy(kinds[i % kinds.length], level, { id: `enemy-${round}-${i}`, rng, isElite: elite, statMult }));
     }
   }
   return { units, theme };

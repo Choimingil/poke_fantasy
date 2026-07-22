@@ -5,6 +5,7 @@ import { baseMoveFromEndurance } from '../game/engine/grid';
 import { mentalResistChance, maxHp } from '../game/engine/derivedStats';
 import { proficiencyStage, PROFICIENCY_STAGE_LABEL } from '../game/data/promotions';
 import { getTrait } from '../game/data/traits';
+import { AI_BEHAVIOR_LABEL } from '../game/engine/ai';
 import { TrainerSprite } from './TrainerSprite';
 import { StatusChips } from './StatusChips';
 
@@ -39,6 +40,9 @@ export function InspectPanel({ unit, onClose }: { unit: Character; onClose: () =
           <p className="inspect-name"><strong>{unit.name}</strong> · Lv.{unit.level}</p>
           <p className="inspect-sub">{weaponName}{shield ? ` + ${shield.name}` : ''}{armor ? ` · ${armor.name}` : ''}</p>
           <p className="inspect-hp">HP {unit.currentHp} / {maxHp(unit)}</p>
+          {unit.side === 'B' && unit.aiBehavior && (
+            <p className="inspect-ai">🤖 {AI_BEHAVIOR_LABEL[unit.aiBehavior]} 유형</p>
+          )}
         </div>
       </div>
       <div className="inspect-stats">
