@@ -171,6 +171,7 @@ export interface Character {
   weaponMastery: Partial<Record<WeaponKind, number>>; // 전직 티어 0-3, absent key == tier 0
   weaponProficiency?: Partial<Record<WeaponKind, number>>; // 무기 숙련 경험치(전직과 별개), absent == 0(초보)
   traitId?: string; // 고유 특성(§43). 무기 전직 패시브와 별개로 캐릭터당 하나.
+  injured?: boolean; // 부상(§42): 전투 불능 후유증. 전투 시작 HP 감소, 재차 전투 불능 시 전사.
 
   baseStats: StatBlock;
   sight: number;

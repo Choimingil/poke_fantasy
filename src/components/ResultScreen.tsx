@@ -10,6 +10,8 @@ export function ResultScreen({
   allUnits,
   onRestart,
   reward,
+  injuredNames = [],
+  fallenNames = [],
   onContinue,
 }: {
   winner: Side | null;
@@ -18,6 +20,8 @@ export function ResultScreen({
   allUnits: Character[];
   onRestart?: () => void;
   reward?: { reputationGained: number; goldGained: number; won: boolean; bossDefeated: boolean; rating?: BattleRating | null };
+  injuredNames?: string[];
+  fallenNames?: string[];
   onContinue?: () => void;
 }) {
   const nameOf = (id: string) => allUnits.find((u) => u.id === id)?.name ?? id;
@@ -52,6 +56,19 @@ export function ResultScreen({
               <li key={i}>{nameOf(k.killerId)}가 {nameOf(k.victimId)}를 처치했다.</li>
             ))}
           </ul>
+        )}
+        {(injuredNames.length > 0 || fallenNames.length > 0) && (
+          <>
+            <h2>사상자</h2>
+            <ul className="result-casualties">
+              {fallenNames.map((n, i) => (
+                <li key={`f${i}`} className="casualty-fallen">☠️ {n}이(가) 전사했다. (묘지로)</li>
+              ))}
+              {injuredNames.map((n, i) => (
+                <li key={`i${i}`} className="casualty-injured">🩹 {n}이(가) 부상당했다. (정비 화면에서 치료)</li>
+              ))}
+            </ul>
+          </>
         )}
         <h2>경험치 / 레벨업</h2>
         {levelUpEvents.length === 0 ? (

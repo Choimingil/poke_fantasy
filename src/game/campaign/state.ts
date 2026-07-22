@@ -8,6 +8,7 @@ import { rollShop } from './shop';
 import { roundReputationGain } from './reputation';
 import { battleGold } from './gold';
 import { evaluateBattle, ratingReward } from './objectives';
+import { applyCasualties, treatmentCost } from './casualties';
 
 export interface HeroSetup {
   heroKind: WeaponKind;
@@ -84,6 +85,20 @@ export function outcomeFromBattle(battle: GridBattle, round: number): BattleOutc
     allySurvivors: battle.teamA.filter((a) => a.currentHp > 0).length,
     bossDefeated: enemies.some((e) => e.isBoss && e.currentHp <= 0),
     rating: evaluateBattle(round, battle).rating,
+    downedAllyIds: battle.teamA.filter((a) => a.currentHp <= 0).map((a) => a.id),
+  };
+}
+
+/** 부상 치료(§42): 골드를 소모해 부상 상태를 해제한다(골드 부족·비부상 시 변화 없음). */
+export function treatInjury(campaign: Campaign, charId: string): Campaign {
+  const c = campaign.roster.find((x) => x.id === charId);
+  if (!c || !c.injured) return campaign;
+  const cost = treatmentCost(c.level);
+  if (campaign.gold < cost) return campaign;
+  return {
+    ...campaign,
+    gold: campaign.gold - cost,
+    roster: campaign.roster.map((x) => (x.id === charId ? { ...x, injured: false } : x)),
   };
 }
 
@@ -91,6 +106,8 @@ export interface SettleResult {
   campaign: Campaign;
   reputationGained: number;
   goldGained: number;
+  newlyInjured: string[]; // 이번 전투로 부상당한 로스터 id(§42)
+  fallenNames: string[]; // 이번 전투로 전사한 동료 이름(§42)
 }
 
 /** 전투 결과로 명성·골드를 정산하고 승리 시 라운드를 진행한다(라운드 진행 시 모집 후보 갱신). */
@@ -102,12 +119,17 @@ export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: ()
   const reputation = campaign.reputation + reputationGained;
   // 강화 재료: 승리 시 +1, 보스 처치 시 추가 +1(§32).
   const materialsGained = outcome.won ? 1 + (outcome.bossDefeated ? 1 : 0) : 0;
+  // 사상자 처리(§42): 전투 불능 → 부상/전사, 생존한 부상자 회복(승패 무관).
+  const casualties = applyCasualties(campaign, outcome.downedAllyIds ?? [], campaign.round);
   const next: Campaign = {
     ...campaign,
     reputation,
     gold: campaign.gold + goldGained,
     materials: (campaign.materials ?? 0) + materialsGained,
     round: outcome.won ? campaign.round + 1 : campaign.round,
+    roster: casualties.roster,
+    deployedIds: casualties.deployedIds,
+    graveyard: casualties.graveyard,
   };
   // 승리로 라운드가 진행되면 새 명성 기준으로 모집 후보·상점 상품을 갱신(지나간 것은 사라진다).
   if (outcome.won) {
@@ -117,5 +139,11 @@ export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: ()
     next.shop = rolledShop.shop;
     next.nextId = rolledShop.nextId;
   }
-  return { campaign: next, reputationGained, goldGained };
+  return {
+    campaign: next,
+    reputationGained,
+    goldGained,
+    newlyInjured: casualties.newlyInjured,
+    fallenNames: casualties.fallen.map((f) => f.name),
+  };
 }

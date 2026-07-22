@@ -59,6 +59,16 @@ export interface Campaign {
   nextId: number; // 고유 id 시퀀스
   /** 튜토리얼(1라운드) 종료 후 특성 재확인용: 시작 시 등장한 후보 3개(§43.13). 재확인을 마치면 제거. */
   heroTraitCandidates?: string[];
+  /** 전사한 동료 기록(§42 묘지). absent == 빈 묘지. */
+  graveyard?: FallenRecord[];
+}
+
+/** 전사한 동료의 묘지 기록(§42). */
+export interface FallenRecord {
+  id: string;
+  name: string;
+  level: number;
+  round: number; // 전사한 라운드
 }
 
 /** 전투 결과 요약(명성·골드 정산 입력). */
@@ -69,6 +79,8 @@ export interface BattleOutcome {
   allySurvivors: number;
   bossDefeated: boolean;
   rating: import('./objectives').BattleRating | null; // 전투 평가(§41)
+  /** 전투 불능(HP 0)으로 쓰러진 출전 로스터 id(§42). absent == 없음. */
+  downedAllyIds?: string[];
 }
 
 export const CAMPAIGN_VERSION = 1;

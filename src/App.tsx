@@ -13,7 +13,7 @@ import type { GridBattle } from './game/engine/battle';
 import type { Character } from './game/types';
 import type { Campaign } from './game/campaign/types';
 import { loadCampaign, saveCampaign, clearCampaign } from './game/campaign/storage';
-import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle, confirmHeroTrait, dismissHeroTraitConfirm, type HeroSetup } from './game/campaign/state';
+import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle, confirmHeroTrait, dismissHeroTraitConfirm, treatInjury, type HeroSetup } from './game/campaign/state';
 import { buyShopItem, enhanceEquip, equipStashArmor, equipStashWeapon, sellStashArmor, sellStashWeapon } from './game/campaign/stash';
 import { generateEnemyParty } from './game/campaign/enemyParty';
 import { buildBattleObjective } from './game/campaign/objectives';
@@ -36,6 +36,8 @@ interface Reward {
   won: boolean;
   bossDefeated: boolean;
   rating: import('./game/campaign/objectives').BattleRating | null;
+  injuredNames: string[]; // 이번 전투로 부상당한 동료 이름(§42)
+  fallenNames: string[]; // 이번 전투로 전사한 동료 이름(§42)
 }
 
 function App() {
@@ -91,7 +93,16 @@ function App() {
     const outcome = outcomeFromBattle(battle, campaign.round);
     const settled = settleBattle(campaign, outcome);
     persist(settled.campaign);
-    setReward({ reputationGained: settled.reputationGained, goldGained: settled.goldGained, won: outcome.won, bossDefeated: outcome.bossDefeated, rating: outcome.rating });
+    const nameOfId = (id: string) => battle.teamA.find((a) => a.id === id)?.name ?? id;
+    setReward({
+      reputationGained: settled.reputationGained,
+      goldGained: settled.goldGained,
+      won: outcome.won,
+      bossDefeated: outcome.bossDefeated,
+      rating: outcome.rating,
+      injuredNames: settled.newlyInjured.map(nameOfId),
+      fallenNames: settled.fallenNames,
+    });
     setFinishedBattle(battle);
     setScreen('campaign-result');
   };
@@ -151,6 +162,7 @@ function App() {
         onSellStashWeapon={(id) => persist(sellStashWeapon(campaign, id))}
         onSellStashArmor={(id) => persist(sellStashArmor(campaign, id))}
         onEnhance={(id) => persist(enhanceEquip(campaign, id))}
+        onTreatInjury={(id) => persist(treatInjury(campaign, id))}
       />
     );
   }
@@ -168,6 +180,8 @@ function App() {
         levelUpEvents={finishedBattle.levelUpEvents}
         allUnits={[...finishedBattle.teamA, ...finishedBattle.teamB]}
         reward={reward}
+        injuredNames={reward.injuredNames}
+        fallenNames={reward.fallenNames}
         onContinue={() => setScreen(
           campaign && campaign.heroTraitCandidates && campaign.round >= 2 ? 'hero-trait-confirm' : 'barracks',
         )}

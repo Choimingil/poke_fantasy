@@ -26,6 +26,7 @@ export function BarracksScreen({
   onSellStashWeapon,
   onSellStashArmor,
   onEnhance,
+  onTreatInjury,
 }: {
   campaign: Campaign;
   onSetDeployed: (ids: string[]) => void;
@@ -38,6 +39,7 @@ export function BarracksScreen({
   onSellStashWeapon: (instanceId: string) => void;
   onSellStashArmor: (instanceId: string) => void;
   onEnhance: (instanceId: string) => void;
+  onTreatInjury: (id: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>('party');
 
@@ -63,7 +65,7 @@ export function BarracksScreen({
 
       <div className="barracks-body">
         {tab === 'party' && (
-          <PartyFormationTab campaign={campaign} onSetDeployed={onSetDeployed} onStartBattle={onStartBattle} />
+          <PartyFormationTab campaign={campaign} onSetDeployed={onSetDeployed} onStartBattle={onStartBattle} onTreatInjury={onTreatInjury} />
         )}
 
         {tab === 'inventory' && (

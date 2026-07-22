@@ -5,9 +5,13 @@ import { equippedOptionTotal } from '../data/equipGrade';
 /** 능력치 정규화 분모: 최대 레벨 100 x 레벨당 3포인트 + 초기값 5 */
 const STAT_NORM = 100 * 3 + 5;
 
-/** 최대 체력 = (20 + 체력 × 3 + 레벨 × 2) × 특성 배수(강인한 체질 +10%) + 장비 옵션 보너스. */
+/** 부상(§42) 중인 캐릭터의 최대 체력 배수(전투 시작 HP 감소). */
+export const INJURED_HP_MULT = 0.7;
+
+/** 최대 체력 = (20 + 체력 × 3 + 레벨 × 2) × 특성 배수(강인한 체질 +10%) + 장비 옵션 보너스. 부상 시 ×0.7(§42). */
 export function maxHp(c: Character): number {
-  return Math.round((20 + effectiveBaseStat(c, 'hp') * 3 + c.level * 2) * maxHpTraitMult(c)) + equippedOptionTotal(c, 'maxHp');
+  const base = Math.round((20 + effectiveBaseStat(c, 'hp') * 3 + c.level * 2) * maxHpTraitMult(c)) + equippedOptionTotal(c, 'maxHp');
+  return c.injured ? Math.max(1, Math.round(base * INJURED_HP_MULT)) : base;
 }
 
 /** 정신력: 상대의 능력치 감소·부가효과를 무시할 확률(지력 + 장비 옵션, 최대 70%). */

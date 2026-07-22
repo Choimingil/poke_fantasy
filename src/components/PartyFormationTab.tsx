@@ -6,6 +6,7 @@ import { getWeapon, weaponInstanceName } from '../game/data/weapons';
 import { getArmor } from '../game/data/armor';
 import { getSkill, skillDisplayName } from '../game/data/skills';
 import { objectivesForRound, primaryObjectiveLabel, optionalObjectiveLabel } from '../game/campaign/objectives';
+import { treatmentCost } from '../game/campaign/casualties';
 import { maxHp } from '../game/engine/derivedStats';
 import type { Character, WeaponKind } from '../game/types';
 
@@ -30,10 +31,12 @@ export function PartyFormationTab({
   campaign,
   onSetDeployed,
   onStartBattle,
+  onTreatInjury,
 }: {
   campaign: Campaign;
   onSetDeployed: (ids: string[]) => void;
   onStartBattle: () => void;
+  onTreatInjury: (id: string) => void;
 }) {
   const theme = themeForRound(campaign.round);
   const boss = isBossRound(campaign.round);
@@ -46,6 +49,21 @@ export function PartyFormationTab({
     onSetDeployed([...campaign.deployedIds, id]);
   };
   const reorder = (index: number, dir: -1 | 1) => onSetDeployed(move(campaign.deployedIds, index, index + dir));
+
+  const graveyard = campaign.graveyard ?? [];
+
+  const injuryControl = (c: Character) => {
+    if (!c.injured) return null;
+    const cost = treatmentCost(c.level);
+    return (
+      <span className="injury-control">
+        <span className="injury-badge">🩹 부상</span>
+        <button type="button" className="treat-button" disabled={campaign.gold < cost} onClick={() => onTreatInjury(c.id)}>
+          치료 💰{cost}
+        </button>
+      </span>
+    );
+  };
 
   const detail = (c: Character) => {
     const wInst = c.inventory.find((w) => w.instanceId === c.equippedWeaponId)!;
@@ -80,7 +98,7 @@ export function PartyFormationTab({
             <li key={c.id} className="deploy-on">
               <div className="formation-row">
                 <span className="formation-slot">{i + 1}번</span>
-                <span className="formation-name"><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level}</span>
+                <span className="formation-name"><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}</span>
                 <span className="formation-controls">
                   <button type="button" disabled={i === 0} onClick={() => reorder(i, -1)}>↑</button>
                   <button type="button" disabled={i === deployed.length - 1} onClick={() => reorder(i, 1)}>↓</button>
@@ -97,7 +115,7 @@ export function PartyFormationTab({
       <ul className="deploy-list">
         {benched.map((c) => (
           <li key={c.id}>
-            <span><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level}
+            <span><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
               <span className="deploy-stats">HP {maxHp(c)} · 근 {c.baseStats.attack} · 지 {c.baseStats.magicAttack} · 속 {c.baseStats.speed}</span>
             </span>
             <button type="button" disabled={campaign.deployedIds.length >= MAX_DEPLOY} onClick={() => add(c.id)}>출전</button>
@@ -105,6 +123,17 @@ export function PartyFormationTab({
         ))}
         {benched.length === 0 && <li><span>대기 인원이 없습니다.</span></li>}
       </ul>
+
+      {graveyard.length > 0 && (
+        <>
+          <h3>묘지 <span className="loadout-count">{graveyard.length}명 전사</span></h3>
+          <ul className="graveyard-list">
+            {graveyard.map((f) => (
+              <li key={f.id}>☠️ <strong>{f.name}</strong> · Lv.{f.level} · {f.round}라운드 전사</li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <button type="button" className="start-battle-button" disabled={deployed.length === 0} onClick={onStartBattle}>
         ⚔️ {campaign.round}라운드 전투 시작 →
