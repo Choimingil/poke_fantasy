@@ -3,7 +3,7 @@ import { getWeapon } from '../data/weapons';
 import { rollShop, shopPrice } from './shop';
 import { newCampaign } from './state';
 const hs = (heroKind: import('../types').WeaponKind) => ({ heroKind, name: '주인공', gender: 'male' as const, armorKind: 'cloth' as const, traitId: 'toughness', traitCandidates: [] as string[] });
-import { buyShopItem, sellStashWeapon, equipStashWeapon, equipStashArmor } from './stash';
+import { buyShopItem, enhanceEquip, sellStashWeapon, equipStashWeapon, equipStashArmor } from './stash';
 
 function seq(values: number[]): () => number {
   let i = 0;
@@ -28,7 +28,7 @@ describe('rollShop', () => {
 describe('구매 → 보관함', () => {
   it('골드가 충분하면 구매해 보관함에 넣고 골드를 차감한다', () => {
     let c = newCampaign(hs('sword'), seq([0.5]));
-    c = { ...c, gold: 100000 };
+    c = { ...c, round: 3, gold: 100000 }; // 상점은 3라운드부터 해금(§44)
     const item = c.shop[0];
     const before = c.stash.weapons.length + c.stash.armor.length;
     const after = buyShopItem(c, item.id);
@@ -38,15 +38,43 @@ describe('구매 → 보관함', () => {
   });
 
   it('골드가 부족하면 구매되지 않는다', () => {
-    const c = { ...newCampaign(hs('sword'), seq([0.5])), gold: 0 };
+    const c = { ...newCampaign(hs('sword'), seq([0.5])), round: 3, gold: 0 };
     const after = buyShopItem(c, c.shop[0].id);
+    expect(after).toBe(c);
+  });
+
+  it('3라운드 이전(상점 미해금)에는 골드가 충분해도 구매되지 않는다(§44)', () => {
+    const c = { ...newCampaign(hs('sword'), seq([0.5])), round: 2, gold: 100000 };
+    const after = buyShopItem(c, c.shop[0].id);
+    expect(after).toBe(c);
+  });
+});
+
+describe('강화 해금(§44)', () => {
+  function withStashWeapon(round: number) {
+    const base = newCampaign(hs('sword'), seq([0.5]));
+    return {
+      ...base, round, gold: 100000, materials: 99,
+      stash: { weapons: [{ instanceId: 'w-e', templateId: 'sword_short', level: 1 }], armor: [] },
+    };
+  }
+
+  it('4라운드부터 강화할 수 있다', () => {
+    const after = enhanceEquip(withStashWeapon(4), 'w-e');
+    expect(after.stash.weapons[0].enhanceLevel).toBe(1);
+    expect(after.gold).toBeLessThan(100000);
+  });
+
+  it('4라운드 이전(강화 미해금)에는 강화되지 않는다', () => {
+    const c = withStashWeapon(3);
+    const after = enhanceEquip(c, 'w-e');
     expect(after).toBe(c);
   });
 });
 
 describe('보관함 판매·장착', () => {
   it('보관함 무기를 판매하면 골드가 오르고 목록에서 사라진다', () => {
-    let c = { ...newCampaign(hs('sword'), seq([0.5])), gold: 100000 };
+    let c = { ...newCampaign(hs('sword'), seq([0.5])), round: 3, gold: 100000 };
     // 무기 상품을 하나 사서 보관함에 넣는다.
     const weaponItem = c.shop.find((s) => s.slot === 'weapon')!;
     c = buyShopItem(c, weaponItem.id);

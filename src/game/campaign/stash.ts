@@ -5,10 +5,12 @@ import { partyHasLegendaryEquipped } from '../data/equipGrade';
 import { MAX_ENHANCE, enhanceCost } from '../data/enhance';
 import { meetsEquipLevel } from '../engine/equipment';
 import { sellValue } from './gold';
+import { isUnlocked } from './unlocks';
 import type { Campaign as C } from './types';
 
-/** 상점 상품을 구매해 보관함(stash)에 넣는다(골드 부족 시 변화 없음). */
+/** 상점 상품을 구매해 보관함(stash)에 넣는다(골드 부족·상점 미해금 시 변화 없음). */
 export function buyShopItem(campaign: C, itemId: string): C {
+  if (!isUnlocked('shop', campaign.round)) return campaign;
   const item = campaign.shop.find((s) => s.id === itemId);
   if (!item || campaign.gold < item.price) return campaign;
   const instanceId = `i${campaign.nextId}`;
@@ -49,6 +51,7 @@ export function sellStashArmor(campaign: C, instanceId: string): C {
 
 /** 장비 1단계 강화(§32): 골드+재료 소모, 실패 없음. 로스터 장착/소지 또는 보관함 장비 대상. */
 export function enhanceEquip(campaign: C, instanceId: string): C {
+  if (!isUnlocked('enhance', campaign.round)) return campaign;
   let inst: WeaponInstance | ArmorInstance | undefined;
   let owner: Character | undefined;
   for (const c of campaign.roster) {

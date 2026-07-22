@@ -2,6 +2,7 @@ import type { Character } from '../game/types';
 import type { KillEvent, Side } from '../game/engine/battle';
 import type { LevelUpResult } from '../game/engine/leveling';
 import { RATING_LABEL, type BattleRating } from '../game/campaign/objectives';
+import { SYSTEM_LABEL, type SystemId } from '../game/campaign/unlocks';
 
 export function ResultScreen({
   winner,
@@ -12,6 +13,7 @@ export function ResultScreen({
   reward,
   injuredNames = [],
   fallenNames = [],
+  unlocked = [],
   onContinue,
 }: {
   winner: Side | null;
@@ -22,6 +24,7 @@ export function ResultScreen({
   reward?: { reputationGained: number; goldGained: number; won: boolean; bossDefeated: boolean; rating?: BattleRating | null };
   injuredNames?: string[];
   fallenNames?: string[];
+  unlocked?: SystemId[];
   onContinue?: () => void;
 }) {
   const nameOf = (id: string) => allUnits.find((u) => u.id === id)?.name ?? id;
@@ -45,6 +48,9 @@ export function ResultScreen({
           <span>💰 골드 +{reward.goldGained}</span>
           {!reward.won && <span className="result-retry-note">패배 시 라운드는 진행되지 않습니다. 정비 후 재도전하세요.</span>}
         </div>
+      )}
+      {unlocked.length > 0 && (
+        <p className="result-unlock">🔓 새 시스템 해금: {unlocked.map((u) => SYSTEM_LABEL[u]).join(', ')}</p>
       )}
       <div className="result-panel">
         <h2>처치 기록</h2>

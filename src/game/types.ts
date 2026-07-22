@@ -121,7 +121,7 @@ export type ProcEffect = 'bleed' | 'stun' | 'pierce' | 'focus' | 'crit';
 
 /** 장비 등급(§31): 일반=옵션 없음, 희귀=추가 옵션 1개, 전설=고유(더 강한) 옵션·파티 내 하나만. */
 export type EquipGrade = 'common' | 'rare' | 'legendary';
-export type EquipOptionKind = 'maxHp' | 'weightReduce' | 'mentalResist';
+export type EquipOptionKind = 'maxHp' | 'weightReduce' | 'mentalResist' | 'evasion';
 export interface EquipOption {
   kind: EquipOptionKind;
   magnitude: number; // maxHp: +체력, weightReduce: 감소 kg(양수), mentalResist: +저항 비율

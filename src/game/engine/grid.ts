@@ -1,6 +1,7 @@
 import type { BattleMap, Character, GridPos, TerrainType } from '../types';
 import { getWeapon } from '../data/weapons';
 import { hasWeaponPassive } from '../data/promotions';
+import { carryCapacityKg, totalEquipmentWeightKg } from './equipment';
 import type { Weather } from './weather';
 
 /** 단검 적응력: 자연지형 이동감소 무시 + 바위 통과(정지 불가). */
@@ -55,7 +56,9 @@ export function effectiveMove(c: Character): number {
   const excess = Math.max(0, raw - MOVE_CAP); // 5를 넘는 초과분(a)
   const cappedBase = Math.min(MOVE_CAP, raw);
   const remainingPenalty = Math.max(0, penalty - excess); // 초과분이 페널티를 우선 흡수
-  return Math.max(0, cappedBase - remainingPenalty);
+  // 경량 보행(§43): 장비 총무게가 적재량 절반 이하면 이동력 +1(최대 5).
+  const lightBonus = c.traitId === 'lightStep' && totalEquipmentWeightKg(c) <= carryCapacityKg(c) / 2 ? 1 : 0;
+  return Math.min(MOVE_CAP, Math.max(0, cappedBase - remainingPenalty) + lightBonus);
 }
 
 /** 물은 진입은 가능하지만 넘어서 계속 이동할 수 없다(경로 종착). 언덕은 통과 가능한 고지대로 취급한다. */

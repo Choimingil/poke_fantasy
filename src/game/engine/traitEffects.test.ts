@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createCharacter } from './characterFactory';
-import { maxHp } from './derivedStats';
+import { maxHp, evasionChance } from './derivedStats';
+import { effectiveMove } from './grid';
 import { effectiveBaseStat, carryCapacityTraitBonus } from './traitEffects';
 import { rollHeroTraitCandidates, getTrait } from '../data/traits';
 
@@ -37,6 +38,22 @@ describe('특성: 짐꾼(porter)', () => {
   it('적재량 보너스 +2', () => {
     expect(carryCapacityTraitBonus(mk('porter'))).toBe(2);
     expect(carryCapacityTraitBonus(mk())).toBe(0);
+  });
+});
+
+describe('특성: 경량 보행(lightStep)', () => {
+  it('장비가 가벼우면 이동력 +1', () => {
+    // 검 1자루뿐이라 적재량 절반 이하 → 조건 충족
+    expect(effectiveMove(mk('lightStep'))).toBeCloseTo(effectiveMove(mk()) + 1, 5);
+  });
+});
+
+describe('장비 옵션: 회피(evasion, §31)', () => {
+  it('장착 무기의 회피 옵션이 회피율에 더해진다', () => {
+    const plain = mk();
+    const withOpt = mk();
+    withOpt.inventory[0].options = [{ kind: 'evasion', magnitude: 0.05, label: '회피 +5%' }];
+    expect(evasionChance(withOpt)).toBeCloseTo(evasionChance(plain) + 0.05, 5);
   });
 });
 

@@ -31,9 +31,10 @@ interface StashProps {
   gold?: number;
   materials?: number;
   onEnhance?: (instanceId: string) => void;
+  enhanceUnlocked?: boolean; // §44 강화 시스템 해금 여부(정비에서 전달)
 }
 
-export function InventoryScreen({ characters, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor, gold, materials, onEnhance }: { characters?: Character[]; onChange: () => void; onBack?: () => void } & StashProps) {
+export function InventoryScreen({ characters, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor, gold, materials, onEnhance, enhanceUnlocked }: { characters?: Character[]; onChange: () => void; onBack?: () => void } & StashProps) {
   const roster = characters ?? ROSTER;
   const [selectedId, setSelectedId] = useState(roster[0].id);
   const c = roster.find((x) => x.id === selectedId) ?? roster[0];
@@ -41,6 +42,8 @@ export function InventoryScreen({ characters, onChange, onBack, stash, onEquipSt
   // §32 장비 강화 버튼(캠페인 정비에서만; onEnhance가 있을 때).
   const enhanceControl = (inst: WeaponInstance | ArmorInstance) => {
     if (!onEnhance) return inst.enhanceLevel ? <span className="enh-badge">+{inst.enhanceLevel}</span> : null;
+    // §44 강화 미해금: 버튼 대신 안내 배지.
+    if (enhanceUnlocked === false) return inst.enhanceLevel ? <span className="enh-badge">+{inst.enhanceLevel}</span> : <span className="enh-badge enh-locked">🔒 강화 4R</span>;
     const lvl = inst.enhanceLevel ?? 0;
     if (lvl >= MAX_ENHANCE) return <span className="enh-badge">+{lvl} 최대</span>;
     const cost = enhanceCost(inst.level, lvl, c.traitId === 'thrifty');

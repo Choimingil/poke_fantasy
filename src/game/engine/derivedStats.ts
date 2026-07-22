@@ -19,7 +19,7 @@ export function mentalResistChance(c: Character): number {
   return Math.min(0.7, (effectiveBaseStat(c, 'magicAttack') / STAT_NORM) * 0.7 + equippedOptionTotal(c, 'mentalResist'));
 }
 
-/** 회피율: 스피드 / 1000 (스피드 1당 0.1%p). 최대 30%로 제한하며 레벨차는 반영하지 않는다. */
+/** 회피율: 스피드 / 1000 (스피드 1당 0.1%p) + 장비 옵션(회피). 최대 30%로 제한하며 레벨차는 반영하지 않는다. */
 export function evasionChance(defender: Character): number {
-  return Math.max(0, Math.min(0.3, effectiveBaseStat(defender, 'speed') / 1000));
+  return Math.max(0, Math.min(0.3, effectiveBaseStat(defender, 'speed') / 1000 + equippedOptionTotal(defender, 'evasion')));
 }

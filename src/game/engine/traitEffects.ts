@@ -8,7 +8,7 @@ export const WIRED_TRAIT_IDS: ReadonlySet<string> = new Set([
   // 방어형
   'toughness', 'shieldMastery', 'fireResist', 'rearguard',
   // 기동·지형형
-  'swimming', 'snowAdapt', 'forester', 'nightSight',
+  'swimming', 'snowAdapt', 'forester', 'nightSight', 'lightStep',
   // 지원형(회복량)
   'medic', 'corpsman', 'tacticalHeal',
   // 지휘형(피해 감소)

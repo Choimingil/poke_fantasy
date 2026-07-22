@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Campaign } from '../game/campaign/types';
+import { isUnlocked, UNLOCK_ROUND } from '../game/campaign/unlocks';
 import { InventoryScreen } from './InventoryScreen';
 import { RecruitTab } from './RecruitTab';
 import { ShopTab } from './ShopTab';
@@ -7,11 +8,11 @@ import { PartyFormationTab } from './PartyFormationTab';
 
 type Tab = 'party' | 'inventory' | 'recruit' | 'shop';
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: Tab; label: string; lock?: 'recruit' | 'shop' }[] = [
   { id: 'party', label: '파티 편성' },
   { id: 'inventory', label: '인벤토리' },
-  { id: 'recruit', label: '동료 모집' },
-  { id: 'shop', label: '상점' },
+  { id: 'recruit', label: '동료 모집', lock: 'recruit' },
+  { id: 'shop', label: '상점', lock: 'shop' },
 ];
 
 export function BarracksScreen({
@@ -56,11 +57,21 @@ export function BarracksScreen({
       </div>
 
       <div className="barracks-tabs">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" className={tab === t.id ? 'tab-active' : ''} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const locked = t.lock ? !isUnlocked(t.lock, campaign.round) : false;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={tab === t.id ? 'tab-active' : ''}
+              disabled={locked}
+              title={locked && t.lock ? `${UNLOCK_ROUND[t.lock]}라운드에 해금` : undefined}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}{locked && t.lock ? ` 🔒${UNLOCK_ROUND[t.lock]}R` : ''}
+            </button>
+          );
+        })}
       </div>
 
       <div className="barracks-body">
@@ -80,6 +91,7 @@ export function BarracksScreen({
             gold={campaign.gold}
             materials={campaign.materials ?? 0}
             onEnhance={onEnhance}
+            enhanceUnlocked={isUnlocked('enhance', campaign.round)}
           />
         )}
 

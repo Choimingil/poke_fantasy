@@ -40,7 +40,7 @@ describe('rollRecruits', () => {
 describe('recruitFromCandidate', () => {
   it('골드가 충분하면 로스터에 추가하고 골드를 차감·후보를 제거한다', () => {
     let c = newCampaign(hs('sword'), seq([0.5]));
-    c = { ...c, gold: 10000 };
+    c = { ...c, round: 2, gold: 10000 }; // 모집은 2라운드부터 해금(§44)
     const cand = c.recruits[0];
     const before = c.roster.length;
     const after = recruitFromCandidate(c, cand.id);
@@ -52,9 +52,15 @@ describe('recruitFromCandidate', () => {
 
   it('골드가 부족하면 모집되지 않는다', () => {
     let c = newCampaign(hs('sword'), seq([0.5]));
-    c = { ...c, gold: 0 };
+    c = { ...c, round: 2, gold: 0 }; // 해금은 됐으나 골드 부족
     const cand = c.recruits[0];
     const after = recruitFromCandidate(c, cand.id);
     expect(after).toBe(c); // 변화 없음
+  });
+
+  it('1라운드(모집 미해금)에는 골드가 충분해도 모집되지 않는다(§44)', () => {
+    const c = { ...newCampaign(hs('sword'), seq([0.5])), round: 1, gold: 100000 };
+    const after = recruitFromCandidate(c, c.recruits[0].id);
+    expect(after).toBe(c);
   });
 });

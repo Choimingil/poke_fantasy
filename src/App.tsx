@@ -38,6 +38,7 @@ interface Reward {
   rating: import('./game/campaign/objectives').BattleRating | null;
   injuredNames: string[]; // 이번 전투로 부상당한 동료 이름(§42)
   fallenNames: string[]; // 이번 전투로 전사한 동료 이름(§42)
+  unlocked: import('./game/campaign/unlocks').SystemId[]; // 이번 라운드 해금 시스템(§44)
 }
 
 function App() {
@@ -102,6 +103,7 @@ function App() {
       rating: outcome.rating,
       injuredNames: settled.newlyInjured.map(nameOfId),
       fallenNames: settled.fallenNames,
+      unlocked: settled.unlocked,
     });
     setFinishedBattle(battle);
     setScreen('campaign-result');
@@ -182,6 +184,7 @@ function App() {
         reward={reward}
         injuredNames={reward.injuredNames}
         fallenNames={reward.fallenNames}
+        unlocked={reward.unlocked}
         onContinue={() => setScreen(
           campaign && campaign.heroTraitCandidates && campaign.round >= 2 ? 'hero-trait-confirm' : 'barracks',
         )}

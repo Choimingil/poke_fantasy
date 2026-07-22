@@ -9,6 +9,7 @@ import { roundReputationGain } from './reputation';
 import { battleGold } from './gold';
 import { evaluateBattle, ratingReward } from './objectives';
 import { applyCasualties, treatmentCost } from './casualties';
+import { isUnlocked, unlockedThisRound } from './unlocks';
 
 export interface HeroSetup {
   heroKind: WeaponKind;
@@ -61,8 +62,9 @@ export function dismissHeroTraitConfirm(campaign: Campaign): Campaign {
   return { ...campaign, heroTraitCandidates: undefined };
 }
 
-/** 후보를 골드로 모집해 로스터에 추가한다(골드 부족·인원 초과 시 변화 없음). */
+/** 후보를 골드로 모집해 로스터에 추가한다(골드 부족·인원 초과·모집 미해금 시 변화 없음). */
 export function recruitFromCandidate(campaign: Campaign, candidateId: string): Campaign {
+  if (!isUnlocked('recruit', campaign.round)) return campaign;
   const cand = campaign.recruits.find((r) => r.id === candidateId);
   if (!cand) return campaign;
   if (campaign.gold < cand.cost) return campaign;
@@ -108,6 +110,7 @@ export interface SettleResult {
   goldGained: number;
   newlyInjured: string[]; // 이번 전투로 부상당한 로스터 id(§42)
   fallenNames: string[]; // 이번 전투로 전사한 동료 이름(§42)
+  unlocked: import('./unlocks').SystemId[]; // 이번 승리로 새로 열린 시스템(§44)
 }
 
 /** 전투 결과로 명성·골드를 정산하고 승리 시 라운드를 진행한다(라운드 진행 시 모집 후보 갱신). */
@@ -145,5 +148,7 @@ export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: ()
     goldGained,
     newlyInjured: casualties.newlyInjured,
     fallenNames: casualties.fallen.map((f) => f.name),
+    // 승리로 라운드가 오르면 이번 라운드에 새로 열리는 시스템을 안내한다(§44).
+    unlocked: outcome.won ? unlockedThisRound(next.round) : [],
   };
 }

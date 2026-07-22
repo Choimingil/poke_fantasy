@@ -9,6 +9,7 @@ function optionLabel(kind: EquipOptionKind, magnitude: number): string {
     case 'maxHp': return `최대 체력 +${magnitude}`;
     case 'weightReduce': return `무게 -${magnitude}kg`;
     case 'mentalResist': return `정신 저항 +${Math.round(magnitude * 100)}%`;
+    case 'evasion': return `회피 +${Math.round(magnitude * 100)}%`;
   }
 }
 
@@ -20,13 +21,14 @@ export function gradePriceMult(grade: EquipGrade): number {
 /** 희귀/전설 장비의 추가 옵션 하나를 무작위 생성한다(전설은 더 강하다). */
 export function rollEquipOption(level: number, rng: () => number, legendary: boolean): EquipOption {
   const scale = legendary ? 2 : 1;
-  const kinds: EquipOptionKind[] = ['maxHp', 'weightReduce', 'mentalResist'];
+  const kinds: EquipOptionKind[] = ['maxHp', 'weightReduce', 'mentalResist', 'evasion'];
   const kind = kinds[Math.floor(rng() * kinds.length)];
   let magnitude: number;
   switch (kind) {
     case 'maxHp': magnitude = Math.max(2, Math.round(level * 0.4)) * scale; break;
     case 'weightReduce': magnitude = 0.5 * scale; break;
     case 'mentalResist': magnitude = 0.05 * scale; break;
+    case 'evasion': magnitude = 0.04 * scale; break;
   }
   return { kind, magnitude, label: optionLabel(kind, magnitude) };
 }

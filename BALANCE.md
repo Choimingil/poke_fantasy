@@ -7,6 +7,15 @@
 
 ---
 
+## 2단계 P2h — 초반 시스템 해금(§44) + 특성·옵션 추가 배선
+
+- **점진 해금**(`campaign/unlocks.ts`): 동료 모집 2R·상점 3R·장비 강화 4R. 파티 편성·인벤토리는 항상 가능. 미해금 탭은 잠금(🔒N R) 비활성, 강화 버튼은 잠금 배지로 대체. 순수 함수(`recruitFromCandidate`·`buyShopItem`·`enhanceEquip`)도 해금 전에는 no-op. 승리로 새 시스템이 열리면 결과 화면에 "🔓 새 시스템 해금" 안내.
+- **특성 추가 배선**: 경량 보행(lightStep) — 장비 총무게가 적재량 절반 이하면 이동력 +1(최대 5, `effectiveMove`). `WIRED_TRAIT_IDS`에 추가.
+- **장비 옵션 추가**(§31): 회피(evasion) 옵션 신설 — 희귀/전설 장비에 등장, `evasionChance`에 가산(`equippedOptionTotal`). 옵션 종류 3 → 4종.
+- `npm run verify`(test 186)+build 통과. 해금·강화·특성·옵션 테스트 추가, 기존 모집/상점 테스트를 해금 라운드에 맞춰 갱신.
+
+---
+
 ## 2단계 P2g — 적 AI 4종(§39)
 
 - **AI 행동 유형 4종**(`engine/ai.ts`, `Character.aiBehavior`): 돌격(aggressive)·견제(skirmisher)·수비(defensive)·지원(support). 기존 단일 추격 AI 위에 유형별 이동 성향을 얹었다.
