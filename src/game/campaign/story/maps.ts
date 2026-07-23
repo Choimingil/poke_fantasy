@@ -155,6 +155,48 @@ const SPECS: Record<string, StoryMapSpec> = {
       return 'plain';
     },
   },
+  // 라운드 13: 수도 외곽 피난 구역. 성벽(바위), 시장(숲), 수로(물)
+  r13_capital: {
+    width: 20, height: 16,
+    terrain: (x, y) => {
+      if (y === 6 && x !== 9 && x !== 10) return 'rock'; // 성벽(문만 개방)
+      if (x >= 4 && x <= 7 && y >= 9 && y <= 11) return 'forest'; // 시장
+      if (x >= 14 && y >= 8 && y <= 12) return 'water'; // 수로
+      if (x >= 12 && x <= 14 && y >= 2 && y <= 3) return 'hill'; // 귀족문 단
+      return 'plain';
+    },
+  },
+  // 라운드 14: 군사 창고와 처형장. 창고(바위 3), 중앙 광장, 남쪽 감옥
+  r14_warehouse: {
+    width: 18, height: 17,
+    terrain: (x, y) => {
+      if (((x >= 2 && x <= 3) || (x >= 8 && x <= 9) || (x >= 14 && x <= 15)) && y >= 2 && y <= 3) return 'rock'; // 창고 3
+      if (x >= 7 && x <= 10 && y >= 8 && y <= 9) return 'hill'; // 처형대 단
+      if (x >= 6 && x <= 11 && y >= 13 && y <= 14) return 'forest'; // 남쪽 감옥 마당
+      return 'plain';
+    },
+  },
+  // 라운드 15: 포로 수용소 내부. 감시탑(바위), 우리(숲), 가족 대피 구역
+  r15_camp: {
+    width: 14, height: 13,
+    terrain: (x, y) => {
+      if ((x === 2 && y === 2) || (x === 11 && y === 2) || (x === 2 && y === 10) || (x === 11 && y === 10)) return 'rock'; // 감시탑
+      if (x >= 5 && x <= 8 && y >= 5 && y <= 7) return 'forest'; // 우리
+      if (x >= 6 && x <= 7 && y >= 10 && y <= 11) return 'hill'; // 가족 대피 구역
+      return 'plain';
+    },
+  },
+  // 라운드 16: 중립 성당으로 이어지는 도시 도로. 세 갈래 길, 중앙 광장
+  r16_city: {
+    width: 20, height: 15,
+    terrain: (x, y) => {
+      if ((x === 6 || x === 13) && y >= 3 && y <= 11) return 'rock'; // 길 분리대
+      if (x >= 8 && x <= 11 && y >= 6 && y <= 8) return 'hill'; // 중앙 광장 단
+      if (x >= 2 && x <= 3 && y >= 5 && y <= 7) return 'forest';
+      if (x >= 16 && x <= 17 && y >= 7 && y <= 9) return 'forest';
+      return 'plain';
+    },
+  },
 };
 
 export interface StoryMap {

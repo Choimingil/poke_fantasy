@@ -60,6 +60,8 @@ export interface StoryRoundDef {
   enemies: StoryEnemySlot[];
   /** 전투 전 배치 시 로스터에 확보하고 자동 출전시킬 동료 id(임시/정식 공용). */
   joinBefore?: string[];
+  /** 이 라운드 출전에서 제외할 동료 id(예: 그 동료가 적으로 등장하는 라운드). */
+  excludeDeploy?: string[];
   /** 승리 후 동료 이벤트(정식 합류 등). */
   eventsAfter?: CompanionEvent[];
   preScene: Cutscene;

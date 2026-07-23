@@ -95,7 +95,8 @@ function App() {
       // 스토리 라운드: 필요한 동료를 확보하고, 출전 명단에 주인공+합류 동료를 포함시킨다.
       const withCompanions = ensureCompanions(campaign, def.joinBefore ?? []);
       const forced = ['hero', ...(def.joinBefore ?? [])];
-      const rest = withCompanions.deployedIds.filter((id) => !forced.includes(id));
+      const excluded = def.excludeDeploy ?? [];
+      const rest = withCompanions.deployedIds.filter((id) => !forced.includes(id) && !excluded.includes(id));
       const deployedIds = [...forced, ...rest].slice(0, def.deployMax);
       const prepared = { ...withCompanions, deployedIds };
       persist(prepared);

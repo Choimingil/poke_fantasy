@@ -18,6 +18,8 @@ const KYLE = { speaker: '카일 로젠하임', portraitJob: 'west_knight', portr
 const MILITIA = { speaker: '민병대장', portraitJob: 'east_ninja', portraitGender: 'male' as const };
 const OFFICER = { speaker: '생존 장교', portraitJob: 'east_general', portraitGender: 'male' as const };
 const DOCTOR = { speaker: '현지 의사', portraitJob: 'west_priest', portraitGender: 'male' as const };
+const EXECUTIONER = { speaker: '벨라시온 처형관', portraitJob: 'west_berserker', portraitGender: 'male' as const };
+const GENERAL = { speaker: '중앙군 장군', portraitJob: 'east_general', portraitGender: 'male' as const };
 
 const STORY_ROUNDS: StoryRoundDef[] = [
   {
@@ -463,6 +465,149 @@ const STORY_ROUNDS: StoryRoundDef[] = [
         { ...KYLE, text: '그 사실을 누가 숨겼지?' },
         { ...DOCTOR, text: '하나가 되려면 명확한 적이 필요하다고 했다. 그때 그 말을 한 사람이 발테르였다.' },
         { narration: true, text: '카일은 충격을 받지만 주인공과 바로 동행하지 않고 벨라시온으로 돌아간다.' },
+      ],
+    },
+  },
+  {
+    round: 13,
+    act: 4,
+    title: '무너진 수도',
+    recLevelMin: 21,
+    recLevelMax: 24,
+    mapId: 'r13_capital',
+    deployMax: 8,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 돌격 지휘관', levelOffset: 1 },
+      { kind: 'sword', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 돌격병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 돌격병' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 돌격병' },
+      { kind: 'blunt', spriteJob: 'west_berserker', gender: 'male', name: '공성병' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '벨라시온 궁수' },
+    ],
+    objectiveText: '돌격 지휘관 격파(피난 방어)',
+    optionalText: ['민간인 전원 구조', '중앙군과 교전 최소화'],
+    preScene: {
+      lines: [
+        { narration: true, text: '벨라시온군이 수도 외곽까지 진격한다. 조정은 귀족 탈출로를 우선 확보하라 명한다.' },
+        { ...YEONBI, text: '동쪽 피난로에 백성이 몰려 있다.' },
+        { ...GENERAL, text: '왕실이 빠져나간 뒤 개방한다.' },
+        { ...HERO, text: '사람을 버리는 명령이라면 따르지 않겠습니다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { narration: true, text: '백성은 주인공을 영웅으로 부른다. 조정은 통제를 위해 그를 공식 지휘관으로 승진시킨다.' },
+        { ...BAEKRIN, text: '반역자를 영웅으로 만들면 반역이 아니게 된다. 국가는 이름을 바꾸는 데 능숙하지.' },
+        { narration: true, text: '주인공의 독립부대가 창설된다(출전 인원 확장).' },
+      ],
+    },
+  },
+  {
+    round: 14,
+    act: 4,
+    title: '증오의 명령',
+    recLevelMin: 23,
+    recLevelMax: 26,
+    mapId: 'r14_warehouse',
+    deployMax: 8,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'blunt', role: 'commander', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 처형관', levelOffset: 1 },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 정예병' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 정예병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 정예병' },
+      { kind: 'thrown', spriteJob: 'west_ranger', gender: 'male', name: '폭파병' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '발테르 직속 기사' },
+    ],
+    joinBefore: ['kyle'],
+    eventsAfter: [{ companionId: 'kyle', type: 'official' }],
+    objectiveText: '처형관 격파(카일 구출)',
+    optionalText: ['벨라시온 징집병 처치 최소화', '카일 부관 생존'],
+    preScene: {
+      lines: [
+        { narration: true, text: '발테르가 군사 창고 파괴를 명한다. 창고엔 피난민이 숨어 있고, 명령을 거부한 카일은 처형대로 압송된다.' },
+        { ...KYLE, text: '연화국의 과거를 심판하려 시작한 전쟁이, 왜 같은 방식으로 끝나야 하지?' },
+        { ...EXECUTIONER, text: '왕국의 적을 돕는 자는 기사도 아니다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...KYLE, text: '나는 너희 나라를 용서한 적 없다.' },
+        { ...HERO, text: '용서를 요구하지도 않았습니다.' },
+        { ...KYLE, text: '그럼 왜 날 구했지?' },
+        { ...HERO, text: '당신이 우리 편이라서가 아니라, 죽여서는 안 되는 사람이었기 때문입니다.' },
+        { narration: true, text: '카일이 정식으로 합류했다(벨라시온식 장비 사용).' },
+      ],
+    },
+  },
+  {
+    round: 15,
+    act: 4,
+    title: '친구의 칼',
+    recLevelMin: 25,
+    recLevelMax: 28,
+    mapId: 'r15_camp',
+    deployMax: 6,
+    primary: 'killCommander',
+    excludeDeploy: ['dohyun'],
+    enemies: [
+      { kind: 'blunt', role: 'commander', spriteJob: 'east_general', gender: 'male', name: '도윤', levelOffset: 1 },
+      { kind: 'spear', spriteJob: 'east_ninja', gender: 'male', name: '도윤의 민병대' },
+      { kind: 'spear', spriteJob: 'east_ninja', gender: 'male', name: '도윤의 민병대' },
+      { kind: 'blunt', spriteJob: 'east_general', gender: 'male', name: '도윤의 민병대' },
+      { kind: 'bow', spriteJob: 'east_archer', gender: 'male', name: '도윤의 민병대' },
+    ],
+    eventsAfter: [{ companionId: 'dohyun', type: 'leave' }],
+    objectiveText: '도윤 제압(포로 보호)',
+    optionalText: ['포로 전원 생존', '도윤 가족 구역 보호'],
+    preScene: {
+      lines: [
+        { narration: true, text: '도윤의 가족 일부가 벨라시온 군의관에게 구조되어 살아 있었다. 도윤은 자신의 증오가 무너지는 것을 두려워한다.' },
+        { ...DOHYUN, text: '먼저 당한 사람이 되갚는 게 왜 잘못이야? 우리가 참으면 죽은 사람들은 무엇이 되는데?' },
+        { ...HERO, text: '죽은 사람을 위해서라고 말하면서, 살아 있는 사람을 네 분노에 쓰고 있잖아.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...DOHYUN, text: '가족이 살아 있으면 내가 용서해야 해? 내가 미워한 시간은 다 틀린 게 되는 거야?' },
+        { ...SEOLHWA, text: '용서하지 않아도 돼. 하지만 미워하기 위해 사실을 바꾸지는 마.' },
+        { narration: true, text: '도윤이 일시 이탈해 기록 담당으로 물러난다(조건 충족 시 최종전 재합류).' },
+      ],
+    },
+  },
+  {
+    round: 16,
+    act: 4,
+    title: '두 개의 깃발',
+    recLevelMin: 27,
+    recLevelMax: 30,
+    mapId: 'r16_city',
+    deployMax: 8,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'east_duelist', gender: 'male', name: '연화국 강경파 지휘관', levelOffset: 1 },
+      { kind: 'sword', role: 'elite', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 강경파 지휘관' },
+      { kind: 'spear', spriteJob: 'east_general', gender: 'male', name: '연화국 강경파' },
+      { kind: 'bow', spriteJob: 'east_archer', gender: 'male', name: '연화국 강경파' },
+      { kind: 'sword', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 강경파' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '벨라시온 강경파' },
+    ],
+    objectiveText: '연화국 강경파 지휘관 격파(문서 호위)',
+    optionalText: ['문서 복사본 3개 확보', '양국 병사 생존 비율 50% 이상'],
+    preScene: {
+      lines: [
+        { narration: true, text: '조정은 발테르를 쓰러뜨리는 조건으로 사면을 제안하며 과거 서부 침공 기록 폐기를 명한다.' },
+        { narration: true, text: '동시에 벨라시온 반전파가 발테르의 과거 평화 협상 거부 문서를 전달하려 한다. 양국 강경파가 이를 막는다.' },
+        { ...YEONBI, text: '숨기면 전쟁은 끝나도 이유는 남는다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...BAEKRIN, text: '이 문서를 공개하면 양국 모두 흔들린다.' },
+        { ...YEONBI, text: '숨기면 전쟁은 끝나도 이유는 남는다.' },
+        { ...HERO, text: '연화국의 깃발도, 벨라시온의 깃발도 따르지 않겠습니다. 이제부터 우리가 지킬 것은 사람과 기록입니다.' },
+        { narration: true, text: '독립 연합부대가 결성된다(양국 이탈군 동시 편성 가능).' },
       ],
     },
   },
