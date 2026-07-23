@@ -70,6 +70,49 @@ const SPECS: Record<string, StoryMapSpec> = {
       return 'plain';
     },
   },
+  // 라운드 5: 청류성 공성전. 성벽(바위) 라인, 시장(숲), 성당 앞 광장
+  r5_castle: {
+    width: 16, height: 14,
+    terrain: (x, y) => {
+      if (y === 5 && x !== 7 && x !== 8) return 'rock'; // 성벽(중앙 성문만 개방)
+      if (x >= 3 && x <= 5 && y >= 8 && y <= 9) return 'forest'; // 시장
+      if (x >= 10 && x <= 12 && y >= 2 && y <= 3) return 'forest'; // 내부 정원
+      if (x >= 6 && x <= 9 && y >= 1 && y <= 2) return 'hill'; // 성당 앞 단
+      return 'plain';
+    },
+  },
+  // 라운드 6: 포로 호송 산길. 좁은 통로(바위 협착), 숲
+  r6_mountain: {
+    width: 15, height: 12,
+    terrain: (x, y) => {
+      if ((x === 4 || x === 10) && y >= 3 && y <= 8 && y % 2 === 0) return 'rock'; // 협착
+      if (x >= 1 && x <= 3 && y >= 5 && y <= 7) return 'forest';
+      if (x >= 11 && x <= 13 && y >= 4 && y <= 6) return 'forest';
+      if (x >= 6 && x <= 8 && y >= 5 && y <= 6) return 'hill';
+      return 'plain';
+    },
+  },
+  // 라운드 7: 대형 석교와 강변. 중앙 다리(양옆 물), 폭파 지점
+  r7_bridge: {
+    width: 18, height: 13,
+    terrain: (x, y) => {
+      if (y >= 5 && y <= 7 && (x < 6 || x > 11)) return 'water'; // 강(다리 밖)
+      if (x >= 8 && x <= 9 && y >= 4 && y <= 8) return 'hill'; // 다리 위 고지
+      if (x >= 2 && x <= 3 && y >= 9 && y <= 10) return 'forest'; // 서쪽 피난 마을
+      return 'plain';
+    },
+  },
+  // 라운드 8: 감시탑 구릉지. 중앙 계곡(물), 좌우 고지, 감시탑(바위)
+  r8_hills: {
+    width: 17, height: 14,
+    terrain: (x, y) => {
+      if (x >= 7 && x <= 9 && y >= 5 && y <= 8) return 'water'; // 중앙 계곡
+      if (x >= 1 && x <= 3 && y >= 4 && y <= 6) return 'hill'; // 좌 고지
+      if (x >= 13 && x <= 15 && y >= 7 && y <= 9) return 'hill'; // 우 고지
+      if ((x === 4 && y === 3) || (x === 12 && y === 10)) return 'rock'; // 감시탑
+      return 'plain';
+    },
+  },
 };
 
 export interface StoryMap {

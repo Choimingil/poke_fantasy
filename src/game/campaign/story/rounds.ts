@@ -12,6 +12,10 @@ const GUARD = { speaker: '마을 경비대장', portraitJob: 'east_general', por
 const PLATOON = { speaker: '연화국 소대장', portraitJob: 'east_ninja', portraitGender: 'male' as const };
 const HERALD = { speaker: '전령', portraitJob: 'east_archer', portraitGender: 'male' as const };
 const CRIER = { speaker: '연화국 선전관', portraitJob: 'east_strategist', portraitGender: 'male' as const };
+const SEOLHWA = { speaker: '설화', portraitJob: 'east_shaman', portraitGender: 'female' as const };
+const BAEKRIN = { speaker: '백린', portraitJob: 'east_strategist', portraitGender: 'male' as const };
+const KYLE = { speaker: '카일 로젠하임', portraitJob: 'west_knight', portraitGender: 'male' as const };
+const MILITIA = { speaker: '민병대장', portraitJob: 'east_ninja', portraitGender: 'male' as const };
 
 const STORY_ROUNDS: StoryRoundDef[] = [
   {
@@ -161,6 +165,152 @@ const STORY_ROUNDS: StoryRoundDef[] = [
         { ...CRIER, text: '백성에게는 복잡한 사실보다 믿을 이야기가 필요하다.' },
         { narration: true, text: '적 병사의 편지: "이번 전투가 끝나면 집으로 돌아가겠다. 동쪽 사람도 우리와 같은 얼굴을 하고 있다는 말을 믿고 싶다."' },
         { narration: true, text: '연비가 정식으로 합류했다.' },
+      ],
+    },
+  },
+  {
+    round: 5,
+    act: 2,
+    title: '무너진 성문',
+    recLevelMin: 7,
+    recLevelMax: 9,
+    mapId: 'r5_castle',
+    deployMax: 5,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '청류성 수비대장', levelOffset: 1 },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '성문 수비병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '성문 수비병' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '성벽 궁수' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '성벽 궁수' },
+    ],
+    joinBefore: ['seolhwa'],
+    objectiveText: '적 지휘관 격파(성문 확보)',
+    optionalText: ['설화 생존', '성당 부상자 보호', '화공 사용 금지'],
+    preScene: {
+      lines: [
+        { narration: true, text: '벨라시온군이 점령한 청류성 탈환 작전. 성 안엔 양국 주민이 함께 남아 있다.' },
+        { ...YEONBI, text: '성문을 열면 본대가 진입한다. 그 전에 민간 구역으로 적을 몰아넣지 마라.' },
+        { ...SEOLHWA, text: '부상자는 성당으로 데려와. 어느 편이든 상관없어.' },
+        { ...DOHYUN, text: '적군까지 치료하겠다고?' },
+        { ...SEOLHWA, text: '죽어가는 동안에는 누구도 군복을 입고 있지 않아.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { narration: true, text: '청류성 탈환 축하식이 열리지만, 성당에는 양쪽 시신이 섞여 있다.' },
+        { ...SEOLHWA, text: '깃발이 바뀌었는데, 여기 누운 사람은 달라진 게 없네.' },
+        { narration: true, text: '설화가 임시로 동행한다.' },
+      ],
+    },
+  },
+  {
+    round: 6,
+    act: 2,
+    title: '포로의 길',
+    recLevelMin: 8,
+    recLevelMax: 10,
+    mapId: 'r6_mountain',
+    deployMax: 5,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'blunt', role: 'commander', spriteJob: 'east_general', gender: 'male', name: '민병대장', levelOffset: 1 },
+      { kind: 'spear', spriteJob: 'east_ninja', gender: 'male', name: '연화국 민병' },
+      { kind: 'spear', spriteJob: 'east_ninja', gender: 'male', name: '연화국 민병' },
+      { kind: 'blunt', spriteJob: 'east_general', gender: 'male', name: '연화국 민병' },
+      { kind: 'bow', spriteJob: 'east_archer', gender: 'male', name: '분노한 주민' },
+    ],
+    joinBefore: ['seolhwa'],
+    eventsAfter: [{ companionId: 'seolhwa', type: 'official' }],
+    objectiveText: '민병대장 제압(포로 호송)',
+    optionalText: ['민병대 전원 생존', '포로 전원 생존'],
+    preScene: {
+      lines: [
+        { narration: true, text: '포로를 후방 수용소로 이송하는 임무. 가족을 잃은 민병대가 행렬을 막는다.' },
+        { ...MILITIA, text: '저들이 우리 가족을 죽였다. 군이 못 한다면 우리가 심판한다.' },
+        { ...DOHYUN, text: '비켜줄 이유가 없어. 저 말이 틀렸어?' },
+        { ...YEONBI, text: '항복한 자를 죽이면 군인이 아니라 살인자가 된다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...DOHYUN, text: '살아 있을 수도 있다는 말로 뭘 바꾸자는 거야? 없다는 걸 확인하지 못했을 뿐이잖아.' },
+        { ...SEOLHWA, text: '확실하지 않은 죽음을 복수의 이유로 삼으면, 그 사람이 살아 돌아와도 네 증오는 끝나지 않아.' },
+        { narration: true, text: '설화가 정식으로 합류했다.' },
+      ],
+    },
+  },
+  {
+    round: 7,
+    act: 2,
+    title: '피로 세운 다리',
+    recLevelMin: 10,
+    recLevelMax: 12,
+    mapId: 'r7_bridge',
+    deployMax: 6,
+    primary: 'surviveTurns',
+    turnLimit: 10,
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '추격대 지휘관', levelOffset: 1 },
+      { kind: 'sword', spriteJob: 'west_berserker', gender: 'male', name: '추격병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '추격병' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '기병' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '추격 궁수' },
+    ],
+    joinBefore: ['baekrin'],
+    objectiveText: '10턴 동안 피난 엄호(생존)',
+    optionalText: ['피난민 전원 구조', '추격대 지휘관 생포'],
+    preScene: {
+      lines: [
+        { narration: true, text: '벨라시온 본대를 막기 위해 백린이 다리 폭파를 제안한다. 다리는 피난민의 마지막 탈출로이기도 하다.' },
+        { ...BAEKRIN, text: '다리를 지금 끊으면 피난민 서른 명이 고립된다. 끊지 않으면 사흘 안에 병사 삼백 명이 죽는다.' },
+        { ...SEOLHWA, text: '서른 명의 이름은 알고 있어?' },
+        { ...BAEKRIN, text: '이름을 알아도 숫자는 변하지 않는다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...BAEKRIN, text: '계산보다 빨랐군. 다음에도 가능하다고 기대하진 마라.' },
+        { narration: true, text: '백린이 부대에 합류해 지원을 시작한다.' },
+      ],
+    },
+  },
+  {
+    round: 8,
+    act: 2,
+    title: '서쪽의 사냥개',
+    recLevelMin: 11,
+    recLevelMax: 14,
+    mapId: 'r8_hills',
+    deployMax: 6,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '카일 로젠하임', levelOffset: 2 },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 기사' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 기사' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '벨라시온 궁수' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '벨라시온 궁수' },
+      { kind: 'tome', spriteJob: 'west_witch', gender: 'female', name: '벨라시온 마법병' },
+    ],
+    joinBefore: ['baekrin'],
+    eventsAfter: [{ companionId: 'baekrin', type: 'official' }],
+    objectiveText: '카일 격파(지휘관 처치)',
+    optionalText: ['카일 외 지휘관 처치 금지', '10턴 이내 승리'],
+    preScene: {
+      lines: [
+        { narration: true, text: '주인공 부대는 벨라시온의 젊은 기사단장 카일 로젠하임과 처음 대면한다.' },
+        { ...KYLE, text: '연화국의 영웅이라 들었다. 서쪽에서 네 나라의 영웅들이 무엇을 했는지 아나?' },
+        { ...HERO, text: '침략한 건 너희다.' },
+        { ...KYLE, text: '오늘의 국경만 보고 말하는군.' },
+        { ...BAEKRIN, text: '대화는 시간을 낭비한다. 지휘관을 쓰러뜨려라.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...KYLE, text: '다음에 만날 때는 네가 무엇을 지키는지 알고 왔으면 좋겠군.' },
+        { ...HERO, text: '우리 나라를 지킨다.' },
+        { ...KYLE, text: '나라가 숨긴 것까지 지킬 셈인가?' },
+        { narration: true, text: '카일이 퇴각한다. 백린이 정식으로 합류했다.' },
       ],
     },
   },
