@@ -18,9 +18,9 @@ function spawnsTop(width: number): GridPos[] {
   const xs = spreadX(width);
   return xs.map((x) => ({ x, y: 0 }));
 }
-/** 가로로 고르게 퍼진 스폰 x좌표(최대 6열). */
+/** 가로로 고르게 퍼진 스폰 x좌표(최대 8열). */
 function spreadX(width: number): number[] {
-  const cols = Math.min(6, width);
+  const cols = Math.min(8, width);
   const step = (width - 1) / (cols - 1 || 1);
   const out: number[] = [];
   for (let i = 0; i < cols; i++) out.push(Math.round(i * step));
@@ -110,6 +110,48 @@ const SPECS: Record<string, StoryMapSpec> = {
       if (x >= 1 && x <= 3 && y >= 4 && y <= 6) return 'hill'; // 좌 고지
       if (x >= 13 && x <= 15 && y >= 7 && y <= 9) return 'hill'; // 우 고지
       if ((x === 4 && y === 3) || (x === 12 && y === 10)) return 'rock'; // 감시탑
+      return 'plain';
+    },
+  },
+  // 라운드 9: 폐허가 된 서부 사원. 무너진 벽(바위), 숲, 석상
+  r9_ruins: {
+    width: 18, height: 15,
+    terrain: (x, y) => {
+      if ((y === 4 || y === 10) && x % 3 === 0) return 'rock'; // 무너진 벽 잔해
+      if (x >= 2 && x <= 4 && y >= 6 && y <= 8) return 'forest';
+      if (x >= 13 && x <= 15 && y >= 6 && y <= 8) return 'forest';
+      if ((x === 8 && y === 7) || (x === 9 && y === 7)) return 'rock'; // 석상
+      return 'plain';
+    },
+  },
+  // 라운드 10: 산중 은거지와 절벽길. 좁은 절벽(바위), 중앙 가옥(숲)
+  r10_hermitage: {
+    width: 16, height: 16,
+    terrain: (x, y) => {
+      if ((x <= 1 || x >= 14) && y >= 4 && y <= 11) return 'rock'; // 절벽
+      if (x >= 6 && x <= 9 && y >= 7 && y <= 9) return 'forest'; // 중앙 가옥 숲
+      if (x >= 6 && x <= 9 && y >= 2 && y <= 3) return 'hill'; // 북쪽 탈출로 고지
+      return 'plain';
+    },
+  },
+  // 라운드 11: 숲과 민가가 섞인 점령 마을. 숲 밀집, 화공 대비 개활
+  r11_village2: {
+    width: 19, height: 15,
+    terrain: (x, y) => {
+      if (x >= 4 && x <= 7 && y >= 4 && y <= 6) return 'forest';
+      if (x >= 11 && x <= 14 && y >= 8 && y <= 10) return 'forest';
+      if (x >= 8 && x <= 10 && y >= 6 && y <= 7) return 'hill';
+      if ((x === 2 && y === 9) || (x === 16 && y === 5)) return 'rock';
+      return 'plain';
+    },
+  },
+  // 라운드 12: 폐광 내부와 지상 치료소. 좁은 갱도(바위), 독 지대(물로 표현), 광차 선로
+  r12_mine: {
+    width: 18, height: 16,
+    terrain: (x, y) => {
+      if ((x === 5 || x === 12) && y >= 3 && y <= 12) return 'rock'; // 갱도 벽
+      if (x >= 7 && x <= 10 && y >= 6 && y <= 9) return 'water'; // 독 지대
+      if (x >= 2 && x <= 3 && y >= 11 && y <= 12) return 'hill'; // 지상 치료소 단
       return 'plain';
     },
   },

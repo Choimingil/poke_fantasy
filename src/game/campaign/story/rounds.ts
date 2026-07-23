@@ -16,6 +16,8 @@ const SEOLHWA = { speaker: '설화', portraitJob: 'east_shaman', portraitGender:
 const BAEKRIN = { speaker: '백린', portraitJob: 'east_strategist', portraitGender: 'male' as const };
 const KYLE = { speaker: '카일 로젠하임', portraitJob: 'west_knight', portraitGender: 'male' as const };
 const MILITIA = { speaker: '민병대장', portraitJob: 'east_ninja', portraitGender: 'male' as const };
+const OFFICER = { speaker: '생존 장교', portraitJob: 'east_general', portraitGender: 'male' as const };
+const DOCTOR = { speaker: '현지 의사', portraitJob: 'west_priest', portraitGender: 'male' as const };
 
 const STORY_ROUNDS: StoryRoundDef[] = [
   {
@@ -311,6 +313,156 @@ const STORY_ROUNDS: StoryRoundDef[] = [
         { ...HERO, text: '우리 나라를 지킨다.' },
         { ...KYLE, text: '나라가 숨긴 것까지 지킬 셈인가?' },
         { narration: true, text: '카일이 퇴각한다. 백린이 정식으로 합류했다.' },
+      ],
+    },
+  },
+  {
+    round: 9,
+    act: 3,
+    title: '폐허의 기록',
+    recLevelMin: 13,
+    recLevelMax: 16,
+    mapId: 'r9_ruins',
+    deployMax: 7,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'dagger', role: 'commander', spriteJob: 'east_ninja', gender: 'male', name: '비밀부대장', levelOffset: 1 },
+      { kind: 'dagger', spriteJob: 'east_ninja', gender: 'male', name: '연화국 비밀부대' },
+      { kind: 'spear', spriteJob: 'east_general', gender: 'male', name: '연화국 비밀부대' },
+      { kind: 'thrown', spriteJob: 'east_strategist', gender: 'male', name: '기록 소각병' },
+      { kind: 'dagger', spriteJob: 'east_ninja', gender: 'male', name: '약탈자' },
+      { kind: 'bow', spriteJob: 'east_archer', gender: 'male', name: '퇴로 차단병' },
+    ],
+    objectiveText: '비밀부대장 격파(기록 확보)',
+    optionalText: ['기록 전부 확보', '현지 주민 전원 생존'],
+    preScene: {
+      lines: [
+        { narration: true, text: '벨라시온의 이동 경로를 쫓다 폐허가 된 서부 사원을 발견한다. 이곳엔 과거 연화국 원정군의 명령서가 있다.' },
+        { ...YEONBI, text: '이곳은 반란군의 거점이었다고 배웠다.' },
+        { narration: true, text: '현지 노인: "우리는 이곳을 마을이라 불렀다."' },
+        { narration: true, text: '적은 벨라시온군이 아니라 연화국 비밀부대다. 그들은 기록을 태우려 한다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { narration: true, text: '명령서: "서부 제7구역을 적대 지역으로 선포한다. 주민과 반란군의 구분은 현장 지휘관의 판단에 맡긴다."' },
+        { ...YEONBI, text: '위조다.' },
+        { ...BAEKRIN, text: '인장과 군문 양식은 진짜다.' },
+        { ...YEONBI, text: '아버지는 사람을 구한 영웅이었다.' },
+        { narration: true, text: '명령서 마지막 장 일부가 뜯겨 있다. 아버지가 전쟁 후 진상 공개를 요청했다는 흔적.' },
+      ],
+    },
+  },
+  {
+    round: 10,
+    act: 3,
+    title: '영웅의 이름',
+    recLevelMin: 15,
+    recLevelMax: 18,
+    mapId: 'r10_hermitage',
+    deployMax: 7,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'east_duelist', gender: 'male', name: '중앙군 추격 지휘관', levelOffset: 1 },
+      { kind: 'spear', spriteJob: 'east_general', gender: 'male', name: '중앙군 추격대' },
+      { kind: 'sword', spriteJob: 'east_duelist', gender: 'male', name: '중앙군 추격대' },
+      { kind: 'blunt', spriteJob: 'east_general', gender: 'male', name: '중앙군 추격대' },
+      { kind: 'bow', spriteJob: 'east_archer', gender: 'male', name: '중앙군 궁수' },
+      { kind: 'dagger', spriteJob: 'east_ninja', gender: 'male', name: '중앙군 기동병' },
+    ],
+    objectiveText: '추격 지휘관 격파(장교 호위)',
+    optionalText: ['중앙군 처치 최소화', '추격 지휘관 생포'],
+    preScene: {
+      lines: [
+        { narration: true, text: '연화국 중앙이 기록 회수를 명한다. 연비는 아버지의 진실을 확인하려 원정군 생존자를 찾아간다.' },
+        { ...OFFICER, text: '그분은 명령을 내렸다. 부하들을 살리려면 마을을 포기해야 했다.' },
+        { ...YEONBI, text: '그럼 학살을 인정한 겁니까?' },
+        { ...OFFICER, text: '전쟁이 끝난 뒤 그분은 모든 기록을 공개하려 했다. 그 다음 날 영웅으로 추서되었지.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...YEONBI, text: '아버지를 무죄로 만들고 싶었다. 하지만 그 한 사람에게 모든 죄를 씌우는 것도 같은 거짓이야.' },
+        { ...HERO, text: '그럼 무엇을 할 겁니까?' },
+        { ...YEONBI, text: '명령한 사람, 따랐던 사람, 숨긴 사람을 전부 기록하겠다. 아버지도 그 안에 넣을 거다.' },
+      ],
+    },
+  },
+  {
+    round: 11,
+    act: 3,
+    title: '같은 불꽃',
+    recLevelMin: 17,
+    recLevelMax: 20,
+    mapId: 'r11_village2',
+    deployMax: 7,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 지휘관', levelOffset: 1 },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 수비병' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 수비병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 수비병' },
+      { kind: 'tome', spriteJob: 'west_priest', gender: 'female', name: '치료 장교' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '퇴각 엄호병' },
+    ],
+    objectiveText: '적 지휘관 격파(화공 없이 공략)',
+    optionalText: ['화공 미사용', '민간인 구출', '적군 치료사 생존'],
+    preScene: {
+      lines: [
+        { narration: true, text: '벨라시온군이 숲속 마을에 방어진을 친다. 백린이 화공을 제안한다. 바람은 적진 방향이다.' },
+        { ...BAEKRIN, text: '불을 놓으면 한 시간 안에 전투가 끝난다.' },
+        { ...SEOLHWA, text: '마을 안에 사람이 있어.' },
+        { ...BAEKRIN, text: '대피하지 않은 자들이다.' },
+        { ...YEONBI, text: '과거 기록에도 같은 문장이 있었다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...SEOLHWA, text: '내가 살린 사람이 누군가를 죽였어.' },
+        { ...BAEKRIN, text: '살리는 일도 결과에서 자유롭지 않다. 다만 선한 일이라 이름 붙인 뒤 책임을 끝내지 마라.' },
+        { ...HERO, text: '당신 계산에는 왜 이 사람들이 없습니까?' },
+        { ...BAEKRIN, text: '전쟁 결과를 바꿀 수 없는 숫자이기 때문이다.' },
+        { ...HERO, text: '결과에서 지운다고 죽지 않은 사람이 되는 건 아닙니다.' },
+      ],
+    },
+  },
+  {
+    round: 12,
+    act: 3,
+    title: '적의 얼굴',
+    recLevelMin: 19,
+    recLevelMax: 22,
+    mapId: 'r12_mine',
+    deployMax: 7,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'blunt', role: 'commander', spriteJob: 'west_berserker', gender: 'male', name: '용병대장', levelOffset: 1 },
+      { kind: 'sword', spriteJob: 'west_berserker', gender: 'male', name: '폭주 용병' },
+      { kind: 'blunt', spriteJob: 'west_berserker', gender: 'male', name: '폭주 용병' },
+      { kind: 'dagger', spriteJob: 'west_ranger', gender: 'male', name: '폭주 용병' },
+      { kind: 'dagger', spriteJob: 'west_ranger', gender: 'female', name: '감염된 야수' },
+      { kind: 'dagger', spriteJob: 'west_ranger', gender: 'female', name: '감염된 야수' },
+    ],
+    joinBefore: ['kyle'],
+    eventsAfter: [{ companionId: 'kyle', type: 'leave' }],
+    objectiveText: '용병대장 격파(감염자 구조)',
+    optionalText: ['양국 부상자 동일 인원 구조', '벨라시온 의사 생존'],
+    preScene: {
+      lines: [
+        { narration: true, text: '전염병이 번진 폐광에서 양국 병사·주민이 고립된다. 주인공과 카일은 각자의 사람을 구하려 일시 협력한다.' },
+        { ...KYLE, text: '전투가 끝날 때까지만 같은 편이다.' },
+        { ...HERO, text: '사람을 구하는 데 편이 필요합니까?' },
+        { ...KYLE, text: '그 말을 네 치료사에게 배웠나?' },
+        { ...SEOLHWA, text: '아니. 이제는 그 말도 의심하고 있어.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...KYLE, text: '내 부모는 연화국군에게 죽었다고 배웠다.' },
+        { ...DOCTOR, text: '아니다. 네 부모는 연화국군이 물러간 뒤, 협력자라는 의심을 받아 우리 손에 죽었다.' },
+        { ...KYLE, text: '그 사실을 누가 숨겼지?' },
+        { ...DOCTOR, text: '하나가 되려면 명확한 적이 필요하다고 했다. 그때 그 말을 한 사람이 발테르였다.' },
+        { narration: true, text: '카일은 충격을 받지만 주인공과 바로 동행하지 않고 벨라시온으로 돌아간다.' },
       ],
     },
   },
