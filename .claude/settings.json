@@ -9,16 +9,28 @@
   },
   "extraKnownMarketplaces": {
     "karpathy-skills": {
-      "source": { "source": "github", "repo": "forrestchang/andrej-karpathy-skills" }
+      "source": {
+        "source": "github",
+        "repo": "forrestchang/andrej-karpathy-skills"
+      }
     },
     "handoff": {
-      "source": { "source": "github", "repo": "thepushkarp/handoff" }
+      "source": {
+        "source": "github",
+        "repo": "thepushkarp/handoff"
+      }
     },
     "ui-ux-pro-max-skill": {
-      "source": { "source": "github", "repo": "nextlevelbuilder/ui-ux-pro-max-skill" }
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill"
+      }
     },
     "caveman": {
-      "source": { "source": "github", "repo": "JuliusBrussee/caveman" }
+      "source": {
+        "source": "github",
+        "repo": "JuliusBrussee/caveman"
+      }
     }
   },
   "enabledPlugins": {
@@ -39,6 +51,51 @@
             "timeout": 180,
             "statusMessage": "코드 검증 중 (typecheck/test/lint/unused)...",
             "asyncRewake": true
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff\" bash \"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff/scripts/precompact-append-handoff.sh\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff\" bash \"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff/scripts/sessionstart-inject-latest-handoff.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff\" bash \"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff/scripts/userpromptsubmit-marker-and-fallback-inject.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CLAUDE_PLUGIN_ROOT=\"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff\" bash \"${CLAUDE_PROJECT_DIR}/.claude/vendor/handoff/scripts/stop-enforce-model-sections.sh\"",
+            "timeout": 15
           }
         ]
       }
