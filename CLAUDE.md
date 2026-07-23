@@ -11,10 +11,15 @@
 
 ## 검증 · 배포 루틴
 
+**자동 진행(사용자 승인 불필요):** 커밋할 변경이 생기면 사용자가 따로 말하지 않아도
+**git push와 Vercel 프로덕션 배포까지 자동으로 이어서 수행**한다. push·배포 전 별도 확인을
+받지 않는다. (단, 커밋할 실질 변경이 없으면 push/배포하지 않는다.)
+
 1. `git checkout package-lock.json` 후 스테이징(불필요한 lock 변경 방지).
 2. `npm run verify`(typecheck·test·lint·knip) + `npm run build` 통과 확인.
-3. 개발 브랜치 `claude/character-image-replacement-ejgklw`에 커밋.
-4. master로 `--ff-only` 병합 후 두 브랜치 모두 push(Vercel 자동 배포).
+3. 개발 브랜치에 커밋.
+4. 지정 브랜치로 push → `npx --yes vercel --prod --yes`로 프로덕션 배포.
+   (Vercel이 push 연동으로 자동 배포되는 구성이면 push만으로 갈음 가능.)
 
 ## 표준 원칙
 
