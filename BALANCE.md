@@ -7,6 +7,17 @@
 
 ---
 
+## 스토리 캠페인 1막 《재가 된 깃발》 + 컷씬·동료·레벨 난이도 (신규)
+
+- **스토리 모드 신설**(`src/game/campaign/story/`): 새 게임이 스크립트 캠페인(`Campaign.mode==='story'`)으로 시작. 전 20라운드 기획 중 **1막(R1~4)** 구현. 각 라운드 = 전투 전 컷씬 → 전투 → 전투 후 컷씬 → 동료 이벤트. R5+는 절차 전투로 폴백.
+- **컷씬 시스템**(`CutsceneScreen.tsx`): 대사창 + 직업 스프라이트 초상(정면), 화자/지문/주인공 주입, 클릭 진행·건너뛰기. `App`에 `story-pre`/`story-post` 흐름 삽입.
+- **스토리 동료**: 도윤(R1 임시→R2 정식)·연비(R3 임시→R4 정식). 합류 시 주인공 레벨로 생성해 로스터 편입(`ensureCompanions`/`applyStoryEvents`, 임시/정식 상태 추적). 설화·백린·카일은 데이터만 선반영(후속 막).
+- **주인공 레벨 기반 난이도**(`story/difficulty.ts`): 적 기준 레벨 = 주인공 레벨을 라운드 권장 밴드로 클램프. 지휘관은 정예 + `killCommander` 대상.
+- **라운드별 맵 주입**: `GridBattleScreen`에 `map`/`spawnsA`/`spawnsB` optional props 추가(미지정 시 기존 기본 맵). 스토리 맵은 라운드별 크기·지형(10×8/14×10/12×10/15×11).
+- **엔진 소폭 확장**: `generateCharacter`에 `spriteJob` 지정 옵션(명명 동료·적 초상), `enemyParty`의 `BEHAVIOR_FOR_KIND` export.
+- **툴링**: `.claude/`(이식 플러그인)를 knip/oxlint 스캔에서 제외(`knip.json`·`.oxlintrc.json`). 시각 검증은 Node 정적서버 + Chromium 헤드리스 스크린샷으로 컷씬·스토리 전투 화면 실렌더 확인.
+- 목표 매핑: 시나리오 주 목표를 엔진 지원 3종으로 매핑, 호위·구출 등 미지원 항목은 선택 목표 문구로 안내(엔진 강제는 후속).
+
 ## 2단계 P2h — 초반 시스템 해금(§44) + 특성·옵션 추가 배선
 
 - **점진 해금**(`campaign/unlocks.ts`): 동료 모집 2R·상점 3R·장비 강화 4R. 파티 편성·인벤토리는 항상 가능. 미해금 탭은 잠금(🔒N R) 비활성, 강화 버튼은 잠금 배지로 대체. 순수 함수(`recruitFromCandidate`·`buyShopItem`·`enhanceEquip`)도 해금 전에는 no-op. 승리로 새 시스템이 열리면 결과 화면에 "🔓 새 시스템 해금" 안내.

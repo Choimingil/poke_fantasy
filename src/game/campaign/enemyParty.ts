@@ -3,7 +3,7 @@ import { BOSS_ROUND_INTERVAL, type EnemyTheme } from './types';
 import { generateCharacter, randomName } from './generateCharacter';
 
 /** 무기 종류별 기본 AI 행동 유형(§39). */
-const BEHAVIOR_FOR_KIND: Record<WeaponKind, AiBehavior> = {
+export const BEHAVIOR_FOR_KIND: Record<WeaponKind, AiBehavior> = {
   sword: 'aggressive', spear: 'aggressive', dagger: 'aggressive',
   blunt: 'defensive', shield: 'defensive',
   bow: 'skirmisher', crossbow: 'skirmisher', thrown: 'skirmisher', staff: 'skirmisher',

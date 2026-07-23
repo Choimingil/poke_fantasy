@@ -27,11 +27,15 @@ interface SwapCandidate {
   instanceId: string;
 }
 
-export function GridBattleScreen({ teamA, teamB, onFinished, objective }: {
+export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: mapProp, spawnsA, spawnsB }: {
   teamA: Character[];
   teamB: Character[];
   onFinished: (battle: GridBattle) => void;
   objective?: BattleObjective;
+  /** 스토리 라운드용 맵/스폰 주입(미지정 시 기본 맵). */
+  map?: import('../game/types').BattleMap;
+  spawnsA?: GridPos[];
+  spawnsB?: GridPos[];
 }) {
   const battleRef = useRef<GridBattle | null>(null);
   const [, setTick] = useState(0);
@@ -76,9 +80,11 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective }: {
   };
 
   if (!battleRef.current) {
-    const map = createDefaultMap();
-    teamA.forEach((c, i) => prepareForBattle(c, TEAM_A_SPAWNS[i % TEAM_A_SPAWNS.length], 'A'));
-    teamB.forEach((c, i) => prepareForBattle(c, TEAM_B_SPAWNS[i % TEAM_B_SPAWNS.length], 'B'));
+    const map = mapProp ?? createDefaultMap();
+    const aSpawns = spawnsA ?? TEAM_A_SPAWNS;
+    const bSpawns = spawnsB ?? TEAM_B_SPAWNS;
+    teamA.forEach((c, i) => prepareForBattle(c, aSpawns[i % aSpawns.length], 'A'));
+    teamB.forEach((c, i) => prepareForBattle(c, bSpawns[i % bSpawns.length], 'B'));
     battleRef.current = new GridBattle(map, teamA, teamB, Math.random, pickRandomWeather(Math.random), pickRandomTime(Math.random), objective);
   }
   const battle = battleRef.current;

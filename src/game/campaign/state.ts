@@ -3,6 +3,8 @@ import type { GridBattle } from '../engine/battle';
 import type { BattleOutcome, Campaign } from './types';
 import { CAMPAIGN_VERSION, MAX_ROSTER } from './types';
 import { generateCharacter } from './generateCharacter';
+import { buildCompanion } from './story/companions';
+import type { CompanionEvent } from './story/types';
 import { rollRecruits } from './recruit';
 import { rollShop } from './shop';
 import { roundReputationGain } from './reputation';
@@ -34,6 +36,7 @@ export function newCampaign(setup: HeroSetup, rng: () => number = Math.random): 
   const rolledShop = rollShop(1, rolledRecruits.nextId, rng);
   return {
     version: CAMPAIGN_VERSION,
+    mode: 'story',
     heroKind,
     round: 1,
     gold: 0,
@@ -45,7 +48,51 @@ export function newCampaign(setup: HeroSetup, rng: () => number = Math.random): 
     shop: rolledShop.shop,
     nextId: rolledShop.nextId,
     heroTraitCandidates: setup.traitCandidates,
+    storyCompanions: {},
   };
+}
+
+/** 주인공 레벨(스토리 동료·적 레벨 산출 기준). 주인공이 없으면 1. */
+export function heroLevel(campaign: Campaign): number {
+  return campaign.roster.find((c) => c.id === 'hero')?.level ?? 1;
+}
+
+/**
+ * 스토리 동료를 로스터에 확보한다(임시 합류). 이미 있으면 유지한다.
+ * 동료는 주인공 레벨에 맞춰 생성되어 난이도 균형을 유지한다.
+ */
+export function ensureCompanions(campaign: Campaign, ids: string[], rng: () => number = Math.random): Campaign {
+  if (ids.length === 0) return campaign;
+  const lvl = heroLevel(campaign);
+  const roster = [...campaign.roster];
+  const companions = { ...(campaign.storyCompanions ?? {}) };
+  for (const id of ids) {
+    if (roster.some((c) => c.id === id)) continue;
+    const c = buildCompanion(id, lvl, rng);
+    if (!c) continue;
+    roster.push(c);
+    if (!companions[id]) companions[id] = 'temp';
+  }
+  return { ...campaign, roster, storyCompanions: companions };
+}
+
+/** 승리 후 동료 이벤트를 적용한다(정식 합류 = 상태 승격, 이탈 = 출전 해제·기록 담당 전환). */
+export function applyStoryEvents(campaign: Campaign, events: CompanionEvent[] | undefined, rng: () => number = Math.random): Campaign {
+  if (!events || events.length === 0) return campaign;
+  let next = campaign;
+  for (const ev of events) {
+    if (ev.type === 'official') {
+      next = ensureCompanions(next, [ev.companionId], rng);
+      next = { ...next, storyCompanions: { ...(next.storyCompanions ?? {}), [ev.companionId]: 'official' } };
+    } else if (ev.type === 'leave') {
+      next = {
+        ...next,
+        deployedIds: next.deployedIds.filter((id) => id !== ev.companionId),
+        storyCompanions: { ...(next.storyCompanions ?? {}), [ev.companionId]: 'temp' },
+      };
+    }
+  }
+  return next;
 }
 
 /** 튜토리얼 종료 후 특성 재확인(§43.13): 주인공 특성을 바꾸고 재확인 상태를 해제한다. */

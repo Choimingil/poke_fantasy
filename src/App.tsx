@@ -8,22 +8,29 @@ import { TeamSetupScreen } from './components/TeamSetupScreen';
 import { InventoryScreen } from './components/InventoryScreen';
 import { GridBattleScreen } from './components/GridBattleScreen';
 import { ResultScreen } from './components/ResultScreen';
+import { CutsceneScreen } from './components/CutsceneScreen';
 import { cloneForBattle } from './game/data/roster';
-import type { GridBattle } from './game/engine/battle';
+import type { GridBattle, BattleObjective } from './game/engine/battle';
 import type { Character } from './game/types';
 import type { Campaign } from './game/campaign/types';
 import { loadCampaign, saveCampaign, clearCampaign } from './game/campaign/storage';
-import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle, confirmHeroTrait, dismissHeroTraitConfirm, treatInjury, type HeroSetup } from './game/campaign/state';
+import { newCampaign, outcomeFromBattle, recruitFromCandidate, settleBattle, confirmHeroTrait, dismissHeroTraitConfirm, treatInjury, ensureCompanions, applyStoryEvents, heroLevel, type HeroSetup } from './game/campaign/state';
 import { buyShopItem, enhanceEquip, equipStashArmor, equipStashWeapon, sellStashArmor, sellStashWeapon } from './game/campaign/stash';
 import { generateEnemyParty } from './game/campaign/enemyParty';
 import { buildBattleObjective } from './game/campaign/objectives';
+import { storyRoundDef } from './game/campaign/story/rounds';
+import { buildStoryEnemyParty } from './game/campaign/story/difficulty';
+import { createStoryMap, type StoryMap } from './game/campaign/story/maps';
+import type { StoryRoundDef } from './game/campaign/story/types';
 
 type Screen =
   | 'title'
   | 'hero-create'
   | 'hero-trait-confirm'
+  | 'story-pre'
   | 'campaign-battle'
   | 'campaign-result'
+  | 'story-post'
   | 'barracks'
   | 'sandbox-setup'
   | 'sandbox-inventory'
@@ -52,6 +59,11 @@ function App() {
   const [battleTeamB, setBattleTeamB] = useState<Character[]>([]);
   const [finishedBattle, setFinishedBattle] = useState<GridBattle | null>(null);
 
+  // 스토리 전투 컨텍스트(현재/직전 전투에 쓰인 라운드 정의·맵·목표)
+  const [storyDef, setStoryDef] = useState<StoryRoundDef | null>(null);
+  const [storyMap, setStoryMap] = useState<StoryMap | null>(null);
+  const [storyObjective, setStoryObjective] = useState<BattleObjective | undefined>(undefined);
+
   // 샌드박스 상태
   const [teamAIds, setTeamAIds] = useState<string[]>([]);
   const [teamBIds, setTeamBIds] = useState<string[]>([]);
@@ -77,12 +89,49 @@ function App() {
 
   const startCampaignBattle = () => {
     if (!campaign) return;
-    // 출전 순서(deployedIds)를 그대로 스폰 슬롯 순서로 사용한다(파티 편성에서 지정한 위치).
+    const def = campaign.mode === 'story' ? storyRoundDef(campaign.round) : undefined;
+
+    if (def) {
+      // 스토리 라운드: 필요한 동료를 확보하고, 출전 명단에 주인공+합류 동료를 포함시킨다.
+      const withCompanions = ensureCompanions(campaign, def.joinBefore ?? []);
+      const forced = ['hero', ...(def.joinBefore ?? [])];
+      const rest = withCompanions.deployedIds.filter((id) => !forced.includes(id));
+      const deployedIds = [...forced, ...rest].slice(0, def.deployMax);
+      const prepared = { ...withCompanions, deployedIds };
+      persist(prepared);
+
+      const deployed = deployedIds
+        .map((id) => prepared.roster.find((c) => c.id === id))
+        .filter((c): c is NonNullable<typeof c> => !!c);
+      if (deployed.length === 0) return;
+
+      const enemy = buildStoryEnemyParty(def, heroLevel(prepared));
+      const smap = createStoryMap(def.mapId);
+      const objective: BattleObjective = def.primary === 'killCommander'
+        ? { primary: 'killCommander', commanderId: enemy.commanderId }
+        : def.primary === 'surviveTurns'
+          ? { primary: 'surviveTurns', turnLimit: def.turnLimit }
+          : { primary: 'annihilate' };
+
+      setStoryDef(def);
+      setStoryMap(smap);
+      setStoryObjective(objective);
+      setBattleTeamA(deployed);
+      setBattleTeamB(enemy.units);
+      setBattleSeq((s) => s + 1);
+      setScreen('story-pre');
+      return;
+    }
+
+    // 절차적 폴백(1막 이후 라운드): 기존 로그라이트 전투.
     const deployed = campaign.deployedIds
       .map((id) => campaign.roster.find((c) => c.id === id))
       .filter((c): c is NonNullable<typeof c> => !!c);
     if (deployed.length === 0) return;
     const { units } = generateEnemyParty(campaign.round);
+    setStoryDef(null);
+    setStoryMap(null);
+    setStoryObjective(undefined);
     setBattleTeamA(deployed);
     setBattleTeamB(units);
     setBattleSeq((s) => s + 1);
@@ -169,9 +218,32 @@ function App() {
     );
   }
 
+  if (screen === 'story-pre' && storyDef && campaign) {
+    const hero = campaign.roster.find((c) => c.id === 'hero');
+    return (
+      <CutsceneScreen
+        cutscene={storyDef.preScene}
+        title={`${storyDef.round}. ${storyDef.title}`}
+        hero={{ name: hero?.name ?? '주인공', spriteJob: hero?.spriteJob ?? 'east_duelist', gender: hero?.gender ?? 'male' }}
+        onDone={() => setScreen('campaign-battle')}
+      />
+    );
+  }
+
   if (screen === 'campaign-battle') {
-    const objective = campaign ? buildBattleObjective(campaign.round, battleTeamB) : undefined;
-    return <GridBattleScreen key={`camp-${battleSeq}`} teamA={battleTeamA} teamB={battleTeamB} onFinished={finishCampaignBattle} objective={objective} />;
+    const objective = storyDef ? storyObjective : campaign ? buildBattleObjective(campaign.round, battleTeamB) : undefined;
+    return (
+      <GridBattleScreen
+        key={`camp-${battleSeq}`}
+        teamA={battleTeamA}
+        teamB={battleTeamB}
+        onFinished={finishCampaignBattle}
+        objective={objective}
+        map={storyMap?.map}
+        spawnsA={storyMap?.spawnsA}
+        spawnsB={storyMap?.spawnsB}
+      />
+    );
   }
 
   if (screen === 'campaign-result' && finishedBattle && reward) {
@@ -186,8 +258,26 @@ function App() {
         fallenNames={reward.fallenNames}
         unlocked={reward.unlocked}
         onContinue={() => setScreen(
-          campaign && campaign.heroTraitCandidates && campaign.round >= 2 ? 'hero-trait-confirm' : 'barracks',
+          storyDef && storyDef.postScene.lines.length > 0
+            ? 'story-post'
+            : campaign && campaign.heroTraitCandidates && campaign.round >= 2 ? 'hero-trait-confirm' : 'barracks',
         )}
+      />
+    );
+  }
+
+  if (screen === 'story-post' && storyDef && campaign) {
+    const hero = campaign.roster.find((c) => c.id === 'hero');
+    return (
+      <CutsceneScreen
+        cutscene={storyDef.postScene}
+        title={`${storyDef.round}. ${storyDef.title}`}
+        hero={{ name: hero?.name ?? '주인공', spriteJob: hero?.spriteJob ?? 'east_duelist', gender: hero?.gender ?? 'male' }}
+        onDone={() => {
+          const after = applyStoryEvents(campaign, storyDef.eventsAfter);
+          persist(after);
+          setScreen(after.heroTraitCandidates && after.round >= 2 ? 'hero-trait-confirm' : 'barracks');
+        }}
       />
     );
   }

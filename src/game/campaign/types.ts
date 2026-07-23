@@ -46,6 +46,10 @@ export interface ShopItem {
 /** 라운드 진행 캠페인 상태(localStorage에 저장). */
 export interface Campaign {
   version: number;
+  /** 진행 방식. 'story'=《재가 된 깃발》 스크립트 캠페인, absent/기타=절차적 루프. */
+  mode?: 'story';
+  /** 스토리 동료 합류 상태(id → 임시/정식). absent == 없음. */
+  storyCompanions?: Record<string, 'temp' | 'official'>;
   heroKind: WeaponKind;
   round: number;
   gold: number;

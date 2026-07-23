@@ -94,6 +94,8 @@ export interface GenerateOptions {
   traitId?: string;
   /** 후반 라운드 난이도 스케일(능력치 배수, 기본 1). */
   statMult?: number;
+  /** 스프라이트 직업 키 지정(스토리 동료·명명 적용). 미지정 시 무기 종류 기본값. */
+  spriteJob?: string;
 }
 
 /** 무기 종류·레벨에 맞춰 능력치·장비·전직·로드아웃을 갖춘 캐릭터를 생성한다. */
@@ -128,7 +130,7 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
   const c = createCharacter({
     id: opts.id,
     name: opts.name ?? randomName(rng),
-    spriteJob: sprite.job,
+    spriteJob: opts.spriteJob ?? sprite.job,
     gender: opts.gender ?? sprite.gender,
     level,
     baseStats: stats,
