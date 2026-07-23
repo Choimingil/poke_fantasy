@@ -10,6 +10,15 @@
   "extraKnownMarketplaces": {
     "karpathy-skills": {
       "source": { "source": "github", "repo": "forrestchang/andrej-karpathy-skills" }
+    },
+    "handoff": {
+      "source": { "source": "github", "repo": "thepushkarp/handoff" }
+    },
+    "ui-ux-pro-max-skill": {
+      "source": { "source": "github", "repo": "nextlevelbuilder/ui-ux-pro-max-skill" }
+    },
+    "caveman": {
+      "source": { "source": "github", "repo": "JuliusBrussee/caveman" }
     }
   },
   "enabledPlugins": {
