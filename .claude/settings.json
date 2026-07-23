@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "FP=$(cat | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty'); if echo \"$FP\" | grep -Eq '/src/.*\\.(ts|tsx)$'; then cd \"/Users/gale/Library/Mobile Documents/com~apple~CloudDocs/poke_fantasy\" || exit 0; OUT=$(npm run verify 2>&1); CODE=$?; if [ $CODE -ne 0 ]; then echo \"$OUT\" | tail -150; exit 2; fi; fi",
+            "command": "FP=$(cat | jq -r '.tool_input.file_path // .tool_input.notebook_path // empty'); if echo \"$FP\" | grep -Eq '/src/.*\\.(ts|tsx)$'; then cd \"${CLAUDE_PROJECT_DIR}\" || exit 0; OUT=$(npm run verify 2>&1); CODE=$?; if [ $CODE -ne 0 ]; then echo \"$OUT\" | tail -150; exit 2; fi; fi",
             "timeout": 180,
             "statusMessage": "코드 검증 중 (typecheck/test/lint/unused)...",
             "asyncRewake": true
