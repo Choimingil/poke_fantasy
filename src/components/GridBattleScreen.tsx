@@ -132,16 +132,17 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
   const initiativeUnits = [...battle.teamA, ...battle.teamB]
     .filter((u) => u.currentHp > 0)
     .sort((a, b) => effectiveSpeed(b) - effectiveSpeed(a));
-  // 마지막으로 화면에 잡았던 아군 위치를 기억한다(숨은 적 차례에 카메라를 여기로 유지).
+  // 마지막으로 카메라가 잡은 아군 위치를 기억한다(적 차례에 여기로 고정).
   if (currentUnit?.side === 'A') lastAllyPosRef.current = currentUnit.position;
-  // 카메라: 현재 유닛이 아군이거나 플레이어에게 보이는 적일 때만 그 위치로 이동.
-  // 숨은(암흑) 적 차례에는 카메라를 옮기지 않고 마지막 아군 위치를 계속 보여준다.
+  const focusAlly = lastAllyPosRef.current ?? alivePlayers[0]?.position ?? null;
+  // 카메라는 **내(아군) 차례에만** 현재 유닛(또는 대기 이동 칸)을 따라간다.
+  // 적 차례(숨은 적이든 보이는 적이든)에는 카메라를 옮기지 않고 마지막 행동 아군을 계속 보여준다.
   const focusPos =
     isPlayerTurn && pendingMoveTile
       ? pendingMoveTile
-      : currentUnit && (currentUnit.side === 'A' || visibleEnemyIds.has(currentUnit.id))
+      : isPlayerTurn && currentUnit
         ? currentUnit.position
-        : lastAllyPosRef.current;
+        : focusAlly;
 
   // 공격 모션은 잠깐 재생 후 해제한다.
   useEffect(() => {
