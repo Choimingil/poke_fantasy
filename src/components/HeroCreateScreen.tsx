@@ -18,7 +18,7 @@ const CLASS_INFO: Partial<Record<WeaponKind, { name: string; desc: string }>> = 
   tome: { name: '마도서', desc: '치료·정화·재행동 지원.' },
 };
 
-/** 레벨1 능력치: 각 5(합 25)에서 +10을 무작위 분배(합 35, 각 스탯 ≥5). 주사위로 재분배. */
+/** 레벨1 능력치: 각 1에서 시작해 남은 30을 무작위 분배(합 35, 각 스탯 1~15). 주사위로 재분배. */
 const STAT_ROWS: { key: keyof StatBlock; label: string }[] = [
   { key: 'hp', label: '체력' },
   { key: 'attack', label: '공격' },
@@ -26,11 +26,19 @@ const STAT_ROWS: { key: keyof StatBlock; label: string }[] = [
   { key: 'speed', label: '스피드' },
   { key: 'endurance', label: '지구력' },
 ];
+const STAT_MIN = 1;
+const STAT_MAX = 15;
+const STAT_TOTAL = 35;
 function rollStats(rng: () => number = Math.random): StatBlock {
-  const s: StatBlock = { hp: 5, attack: 5, magicAttack: 5, speed: 5, endurance: 5 };
-  for (let i = 0; i < 10; i++) {
-    const row = STAT_ROWS[Math.floor(rng() * STAT_ROWS.length)];
+  const s: StatBlock = { hp: STAT_MIN, attack: STAT_MIN, magicAttack: STAT_MIN, speed: STAT_MIN, endurance: STAT_MIN };
+  let remaining = STAT_TOTAL - STAT_MIN * STAT_ROWS.length; // 남은 배분 포인트(30)
+  while (remaining > 0) {
+    // 아직 상한(15)에 닿지 않은 스탯 중 무작위로 골라 1점 배분한다.
+    const open = STAT_ROWS.filter((r) => s[r.key] < STAT_MAX);
+    if (open.length === 0) break;
+    const row = open[Math.floor(rng() * open.length)];
     s[row.key] += 1;
+    remaining -= 1;
   }
   return s;
 }
@@ -129,7 +137,7 @@ export function HeroCreateScreen({ onCreate, onBack }: { onCreate: (setup: HeroS
       </div>
 
       <h3>능력치 (무작위 분배)</h3>
-      <p className="inventory-hint">기본치 합 25 + 10을 무작위 분배합니다(합 35). 🎲로 몇 번이든 다시 굴릴 수 있습니다.</p>
+      <p className="inventory-hint">총합 35를 무작위 분배합니다(각 스탯 1~15). 🎲로 몇 번이든 다시 굴릴 수 있습니다.</p>
       <div className="hero-stats-roll">
         {STAT_ROWS.map((row) => (
           <div key={row.key} className="hero-stat-row">
