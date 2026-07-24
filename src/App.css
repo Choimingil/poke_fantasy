@@ -1170,3 +1170,9 @@ button:disabled {
 /* 시스템 해금(§44) */
 .result-unlock { color: #9ad6a8; font-weight: 700; margin: 6px 0; }
 .enh-badge.enh-locked { background: #4a4a52; color: #b8b8c2; }
+
+/* 주인공 생성: 무작위 능력치 분배 표시 */
+.hero-stats-roll { max-width: 320px; margin: 4px auto 0; }
+.hero-stat-row { display: flex; justify-content: space-between; padding: 6px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.hero-stat-label { color: #b9a7e6; }
+.hero-stat-value { font-weight: 700; }

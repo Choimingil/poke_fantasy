@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ArmorKind, SpriteGender, WeaponKind } from '../game/types';
+import type { ArmorKind, SpriteGender, StatBlock, WeaponKind } from '../game/types';
 import { PLAYABLE_WEAPON_KINDS } from '../game/data/weapons';
 import { rollHeroTraitCandidates, getTrait, TRAIT_CATEGORY_LABEL } from '../game/data/traits';
 import { WIRED_TRAIT_IDS } from '../game/engine/traitEffects';
@@ -17,6 +17,23 @@ const CLASS_INFO: Partial<Record<WeaponKind, { name: string; desc: string }>> = 
   staff: { name: '지팡이', desc: '지력 기반 속성 마법. 원소탄·약화·원소폭풍.' },
   tome: { name: '마도서', desc: '치료·정화·재행동 지원.' },
 };
+
+/** 레벨1 능력치: 각 5(합 25)에서 +10을 무작위 분배(합 35, 각 스탯 ≥5). 주사위로 재분배. */
+const STAT_ROWS: { key: keyof StatBlock; label: string }[] = [
+  { key: 'hp', label: '체력' },
+  { key: 'attack', label: '공격' },
+  { key: 'magicAttack', label: '마법공격' },
+  { key: 'speed', label: '스피드' },
+  { key: 'endurance', label: '지구력' },
+];
+function rollStats(rng: () => number = Math.random): StatBlock {
+  const s: StatBlock = { hp: 5, attack: 5, magicAttack: 5, speed: 5, endurance: 5 };
+  for (let i = 0; i < 10; i++) {
+    const row = STAT_ROWS[Math.floor(rng() * STAT_ROWS.length)];
+    s[row.key] += 1;
+  }
+  return s;
+}
 
 /** 특성 후보 카드(선택 가능). */
 export function TraitCard({ traitId, selected, onClick }: { traitId: string; selected?: boolean; onClick?: () => void }) {
@@ -41,20 +58,18 @@ export function HeroCreateScreen({ onCreate, onBack }: { onCreate: (setup: HeroS
   const [weaponKind, setWeaponKind] = useState<WeaponKind>('sword');
   const [armorKind, setArmorKind] = useState<ArmorKind>('cloth');
   const [candidates, setCandidates] = useState<string[]>([]);
-  const [rerollUsed, setRerollUsed] = useState(false);
+  const [stats, setStats] = useState<StatBlock>(() => rollStats());
 
   const goTrait = () => {
     setCandidates(rollHeroTraitCandidates(weaponKind, Math.random));
-    setRerollUsed(false);
     setStep('trait');
   };
+  // 특성 재추첨: 횟수 제한 없음.
   const reroll = () => {
-    if (rerollUsed) return;
     setCandidates(rollHeroTraitCandidates(weaponKind, Math.random));
-    setRerollUsed(true);
   };
   const pick = (traitId: string) => {
-    onCreate({ heroKind: weaponKind, name: name.trim() || '주인공', gender, armorKind, traitId, traitCandidates: candidates });
+    onCreate({ heroKind: weaponKind, name: name.trim() || '주인공', gender, armorKind, traitId, traitCandidates: candidates, baseStats: stats });
   };
 
   if (step === 'trait') {
@@ -64,13 +79,11 @@ export function HeroCreateScreen({ onCreate, onBack }: { onCreate: (setup: HeroS
           <button type="button" className="link-button" onClick={() => setStep('basics')}>← 뒤로</button>
           <h1>고유 특성 선택</h1>
         </div>
-        <p>후보 세 개 중 하나를 고르세요. 시작 전 <strong>한 번</strong> 전체를 다시 뽑을 수 있습니다.</p>
+        <p>후보 세 개 중 하나를 고르세요. 마음에 들 때까지 <strong>몇 번이든</strong> 다시 뽑을 수 있습니다.</p>
         <div className="trait-candidates">
           {candidates.map((id) => <TraitCard key={id} traitId={id} onClick={() => pick(id)} />)}
         </div>
-        <button type="button" className="link-button" disabled={rerollUsed} onClick={reroll}>
-          {rerollUsed ? '재추첨을 사용했습니다' : '🎲 무료 재추첨 (1회)'}
-        </button>
+        <button type="button" className="link-button" onClick={reroll}>🎲 다시 뽑기</button>
       </div>
     );
   }
@@ -113,6 +126,18 @@ export function HeroCreateScreen({ onCreate, onBack }: { onCreate: (setup: HeroS
             </button>
           );
         })}
+      </div>
+
+      <h3>능력치 (무작위 분배)</h3>
+      <p className="inventory-hint">기본치 합 25 + 10을 무작위 분배합니다(합 35). 🎲로 몇 번이든 다시 굴릴 수 있습니다.</p>
+      <div className="hero-stats-roll">
+        {STAT_ROWS.map((row) => (
+          <div key={row.key} className="hero-stat-row">
+            <span className="hero-stat-label">{row.label}</span>
+            <span className="hero-stat-value">{stats[row.key]}</span>
+          </div>
+        ))}
+        <button type="button" className="link-button" onClick={() => setStats(rollStats())}>🎲 능력치 다시 굴리기</button>
       </div>
 
       <button type="button" className="start-battle-button" onClick={goTrait}>특성 선택으로 →</button>

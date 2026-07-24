@@ -47,6 +47,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
   const [inspectId, setInspectId] = useState<string | null>(null);
   const [motion, setMotion] = useState<{ attackerId: string; targetIds: string[]; key: number } | null>(null);
   const [floatBatch, setFloatBatch] = useState<{ key: number; byUnit: Record<string, { text: string; kind: string }> } | null>(null);
+  // 라운드 시작 시 승리 조건을 가운데 팝업으로 한 번 보여준다(클릭하면 닫힘).
+  const [showObjIntro, setShowObjIntro] = useState(true);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
   const floatKeyRef = useRef(0);
@@ -339,6 +341,22 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
 
   return (
     <div className="app-shell battle-screen">
+      {showObjIntro && (
+        <div
+          className="objective-intro-overlay"
+          onClick={() => setShowObjIntro(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(8,6,14,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, cursor: 'pointer' }}
+        >
+          <div style={{ textAlign: 'center', padding: '32px 40px', background: 'rgba(20,14,32,0.96)', border: '2px solid #6a58a0', borderRadius: 14, boxShadow: '0 12px 40px rgba(0,0,0,0.55)', maxWidth: 520 }}>
+            <div style={{ fontSize: 13, letterSpacing: 3, color: '#b9a7e6', marginBottom: 10 }}>승리 조건</div>
+            <div style={{ fontSize: 30, fontWeight: 800, color: '#ffd98a' }}>{objLabel}</div>
+            {battle.objective.primary === 'surviveTurns' && battle.objective.turnLimit !== undefined && (
+              <div style={{ marginTop: 8, color: '#cbbff0' }}>{battle.objective.turnLimit}라운드 동안 버티세요.</div>
+            )}
+            <div style={{ marginTop: 18, color: '#8a7ab0', fontSize: 13 }}>클릭하여 시작 ▶</div>
+          </div>
+        </div>
+      )}
       <div className="battle-log-panel">
         <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {objLabel}</p>
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />

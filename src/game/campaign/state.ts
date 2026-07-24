@@ -1,4 +1,4 @@
-import type { ArmorKind, SpriteGender, WeaponKind } from '../types';
+import type { ArmorKind, SpriteGender, StatBlock, WeaponKind } from '../types';
 import type { GridBattle } from '../engine/battle';
 import type { BattleOutcome, Campaign } from './types';
 import { CAMPAIGN_VERSION, MAX_ROSTER } from './types';
@@ -21,7 +21,12 @@ export interface HeroSetup {
   traitId: string;
   /** 시작 시 등장한 특성 후보 3개(튜토리얼 종료 후 재확인용). */
   traitCandidates: string[];
+  /** 레벨1 무작위 분배 능력치(생성 화면에서 굴린 값). 미지정 시 무기·레벨 기본 계산. */
+  baseStats?: StatBlock;
 }
+
+/** 1라운드 주인공 기본 기술 로드아웃(강타·주술·보호·도발). 모두 공통 스킬이라 무기 무관 사용 가능. */
+const HERO_STARTER_LOADOUT = ['power_strike', 'incantation', 'protect', 'taunt'];
 
 /**
  * 주인공을 만들어 새 캠페인을 시작한다. 주인공은 반드시 **레벨 1**로 시작하며(전직 없음·숙련 초보·레벨 1 일반 장비),
@@ -30,8 +35,10 @@ export interface HeroSetup {
 export function newCampaign(setup: HeroSetup, rng: () => number = Math.random): Campaign {
   const heroKind = setup.heroKind;
   const hero = generateCharacter(heroKind, 1, {
-    id: 'hero', name: setup.name, gender: setup.gender, armorKind: setup.armorKind, traitId: setup.traitId, rng,
+    id: 'hero', name: setup.name, gender: setup.gender, armorKind: setup.armorKind, traitId: setup.traitId, baseStats: setup.baseStats, rng,
   });
+  // 1라운드부터 강타·주술·보호·도발 4종을 바로 사용할 수 있도록 기본 로드아웃을 지정한다.
+  hero.skillLoadout = [...HERO_STARTER_LOADOUT];
   const rolledRecruits = rollRecruits(0, 1, rng);
   const rolledShop = rollShop(1, rolledRecruits.nextId, rng);
   return {

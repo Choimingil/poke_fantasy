@@ -96,6 +96,8 @@ export interface GenerateOptions {
   statMult?: number;
   /** 스프라이트 직업 키 지정(스토리 동료·명명 적용). 미지정 시 무기 종류 기본값. */
   spriteJob?: string;
+  /** 기본 능력치 직접 지정(주인공 생성 시 무작위 분배값 주입). 미지정 시 무기·레벨로 계산. */
+  baseStats?: StatBlock;
 }
 
 /** 무기 종류·레벨에 맞춰 능력치·장비·전직·로드아웃을 갖춘 캐릭터를 생성한다. */
@@ -106,7 +108,7 @@ export function generateCharacter(kind: WeaponKind, level: number, opts: Generat
   const element = kind === 'staff' ? ELEMENTS[Math.floor(rng() * ELEMENTS.length)] : undefined;
   const procEffect = kind === 'tome' || kind === 'thrown' ? PROCS[Math.floor(rng() * PROCS.length)] : undefined;
   const tier = masteryTierForLevel(level);
-  const stats = generateStats(kind, level);
+  const stats = opts.baseStats ? { ...opts.baseStats } : generateStats(kind, level);
   const mult = opts.statMult ?? 1;
   if (mult !== 1) {
     stats.hp = Math.round(stats.hp * mult);
