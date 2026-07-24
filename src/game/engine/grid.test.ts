@@ -119,10 +119,22 @@ describe('computeReachableTiles - 지형·날씨 진입 비용', () => {
     expect(snow.has(posKey({ x: 3, y: 2 }))).toBe(true); // 1칸(비용2)은 가능
   });
 
-  it('예산이 부족해도 인접한 진입 가능 타일 하나로는 이동할 수 있다(최소 1칸)', () => {
+  it('예산이 부족해도 인접한 진입 가능 타일로는 이동할 수 있다(최소 1칸)', () => {
     const map = makeMap();
     const unit = makeUnit({ position: { x: 2, y: 2 } });
     const reachable = computeReachableTiles(map, unit, [unit], 0); // 예산 0
     expect(reachable.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('예산 부족 시엔 진입 가능한 사방 인접 타일을 모두 후보로 준다(한 방향만 아님)', () => {
+    const map = makeMap();
+    const unit = makeUnit({ position: { x: 2, y: 2 } });
+    // 눈 속 평지는 진입 비용 2 → 예산 1로는 어떤 타일도 도달 불가 → 폴백 발동.
+    const snow = new Set(computeReachableTiles(map, unit, [unit], 1, 'snow').map(posKey));
+    // 사방(위·아래·좌·우) 모두 진입 가능해야 한다 — 앞으로만 이동하는 버그 방지.
+    expect(snow.has(posKey({ x: 2, y: 1 }))).toBe(true);
+    expect(snow.has(posKey({ x: 2, y: 3 }))).toBe(true);
+    expect(snow.has(posKey({ x: 1, y: 2 }))).toBe(true);
+    expect(snow.has(posKey({ x: 3, y: 2 }))).toBe(true);
   });
 });

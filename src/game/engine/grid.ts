@@ -137,17 +137,18 @@ export function computeReachableTiles(map: BattleMap, mover: Character, allUnits
     })
     .filter((p) => tileAt(map, p).terrain !== 'rock'); // 바위에는 정지할 수 없다(적응력도 통과만)
 
-  // 최소 1칸 보장: 예산이 부족해 도달 타일이 없어도 인접한 가장 싼 진입 가능 타일 하나로는 이동 가능.
+  // 최소 1칸 보장: 예산이 부족해 도달 타일이 없어도 인접한 진입 가능 타일로는 이동할 수 있다.
+  // 비용이 가장 싼 한 방향만 주면 항상 같은 방향(예: 눈 속 평지처럼 사방 비용이 같을 때)으로만
+  // 이동하게 되어 "앞으로만" 이동하는 것처럼 보인다. 예산 부족 시엔 진입 가능한 모든 인접 타일을
+  // 후보로 주어 어느 방향으로든 1칸 이동할 수 있게 한다.
   if (reachable.length === 0) {
-    let best: GridPos | null = null;
-    let bestCost = Infinity;
+    const fallback: GridPos[] = [];
     for (const offset of NEIGHBOR_OFFSETS) {
       const next: GridPos = { x: start.x + offset.x, y: start.y + offset.y };
       if (!canEnterTile(map, mover, next, allUnits) || tileAt(map, next).terrain === 'rock') continue;
-      const c = tileEntryCost(map, next, mover, weather);
-      if (c < bestCost) { best = next; bestCost = c; }
+      fallback.push(next);
     }
-    if (best) return [best];
+    return fallback;
   }
   return reachable;
 }
