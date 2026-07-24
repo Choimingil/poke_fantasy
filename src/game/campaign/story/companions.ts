@@ -21,15 +21,20 @@ const COMPANIONS: Record<string, CompanionDef> = {
   kyle: { id: 'kyle', name: '카일', kind: 'sword', spriteJob: 'west_knight', gender: 'male', role: '검과 방패' },
 };
 
+/** 스토리 동료 기본 기술 로드아웃(강타·주술·보호·도발). 주인공과 동일하게 4종을 바로 사용. */
+const COMPANION_LOADOUT = ['power_strike', 'incantation', 'protect', 'taunt'];
+
 /** 동료를 지정 레벨(보통 주인공 레벨)로 생성한다. id는 동료 고정 id를 사용한다. */
 export function buildCompanion(id: string, level: number, rng: () => number = Math.random): Character | undefined {
   const def = COMPANIONS[id];
   if (!def) return undefined;
-  return generateCharacter(def.kind, Math.max(1, level), {
+  const c = generateCharacter(def.kind, Math.max(1, level), {
     id: def.id,
     name: def.name,
     spriteJob: def.spriteJob,
     gender: def.gender,
     rng,
   });
+  c.skillLoadout = [...COMPANION_LOADOUT];
+  return c;
 }

@@ -39,7 +39,7 @@ export function newCampaign(setup: HeroSetup, rng: () => number = Math.random): 
   });
   // 1라운드부터 강타·주술·보호·도발 4종을 바로 사용할 수 있도록 기본 로드아웃을 지정한다.
   hero.skillLoadout = [...HERO_STARTER_LOADOUT];
-  const rolledRecruits = rollRecruits(0, 1, rng);
+  const rolledRecruits = rollRecruits(0, 1, 1, rng); // 명성0·주인공 레벨1
   const rolledShop = rollShop(1, rolledRecruits.nextId, rng);
   return {
     version: CAMPAIGN_VERSION,
@@ -190,7 +190,7 @@ export function settleBattle(campaign: Campaign, outcome: BattleOutcome, rng: ()
   };
   // 승리로 라운드가 진행되면 새 명성 기준으로 모집 후보·상점 상품을 갱신(지나간 것은 사라진다).
   if (outcome.won) {
-    const rolledRecruits = rollRecruits(reputation, campaign.nextId, rng);
+    const rolledRecruits = rollRecruits(reputation, heroLevel(next), campaign.nextId, rng);
     const rolledShop = rollShop(next.round, rolledRecruits.nextId, rng);
     next.recruits = rolledRecruits.recruits;
     next.shop = rolledShop.shop;

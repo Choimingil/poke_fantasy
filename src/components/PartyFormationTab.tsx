@@ -61,7 +61,7 @@ export function PartyFormationTab({
     return (
       <span className="injury-control">
         <span className="injury-badge">🩹 부상</span>
-        <button type="button" className="treat-button" disabled={campaign.gold < cost} onClick={() => onTreatInjury(c.id)}>
+        <button type="button" className="treat-button" disabled={campaign.gold < cost} onClick={(e) => { e.stopPropagation(); onTreatInjury(c.id); }}>
           치료 💰{cost}
         </button>
       </span>
@@ -98,18 +98,16 @@ export function PartyFormationTab({
       ) : (
         <ul className="formation-list">
           {deployed.map((c, i) => (
-            <li key={c.id} className="deploy-on">
+            <li key={c.id} className="deploy-on row-clickable" onClick={() => onOpenInventory?.(c.id)} title="눌러서 인벤토리 열기">
               <div className="formation-row">
                 <span className="formation-slot">{i + 1}번</span>
                 <span className="formation-name">
-                  <button type="button" className="char-open-btn" onClick={() => onOpenInventory?.(c.id)} title="인벤토리 열기">
-                    <strong>{c.name}</strong>
-                  </button> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
+                  <strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
                 </span>
                 <span className="formation-controls">
-                  <button type="button" disabled={i === 0} onClick={() => reorder(i, -1)}>↑</button>
-                  <button type="button" disabled={i === deployed.length - 1} onClick={() => reorder(i, 1)}>↓</button>
-                  <button type="button" className="sell-button" onClick={() => remove(c.id)}>제외</button>
+                  <button type="button" disabled={i === 0} onClick={(e) => { e.stopPropagation(); reorder(i, -1); }}>↑</button>
+                  <button type="button" disabled={i === deployed.length - 1} onClick={(e) => { e.stopPropagation(); reorder(i, 1); }}>↓</button>
+                  <button type="button" className="sell-button" onClick={(e) => { e.stopPropagation(); remove(c.id); }}>제외</button>
                 </span>
               </div>
               {detail(c)}
@@ -121,14 +119,12 @@ export function PartyFormationTab({
       <h3>대기 인원 <span className="loadout-count">{benched.length}명</span></h3>
       <ul className="deploy-list">
         {benched.map((c) => (
-          <li key={c.id}>
+          <li key={c.id} className="row-clickable" onClick={() => onOpenInventory?.(c.id)} title="눌러서 인벤토리 열기">
             <span>
-              <button type="button" className="char-open-btn" onClick={() => onOpenInventory?.(c.id)} title="인벤토리 열기">
-                <strong>{c.name}</strong>
-              </button> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
+              <strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
               <span className="deploy-stats">HP {maxHp(c)} · 근 {c.baseStats.attack} · 지 {c.baseStats.magicAttack} · 속 {c.baseStats.speed}</span>
             </span>
-            <button type="button" disabled={campaign.deployedIds.length >= MAX_DEPLOY} onClick={() => add(c.id)}>출전</button>
+            <button type="button" disabled={campaign.deployedIds.length >= MAX_DEPLOY} onClick={(e) => { e.stopPropagation(); add(c.id); }}>출전</button>
           </li>
         ))}
         {benched.length === 0 && <li><span>대기 인원이 없습니다.</span></li>}

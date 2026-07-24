@@ -17,12 +17,17 @@ function spawnsTop(width: number): GridPos[] {
   const xs = spreadX(width);
   return [...xs.map((x) => ({ x, y: 0 })), ...xs.map((x) => ({ x, y: 1 }))];
 }
-/** 가로로 고르게 퍼진 스폰 x좌표(최대 8열). */
+/**
+ * 스폰 x좌표(최대 8열). 유닛이 갇히지 않도록 **가장자리(x=0·끝열)를 피하고 2칸 간격**으로 중앙 정렬한다.
+ * (가장자리+인접 배치 시 좌우·아래가 맵 밖이라 앞으로만 이동 가능해지는 문제 방지.)
+ */
 function spreadX(width: number): number[] {
-  const cols = Math.min(8, width);
-  const step = (width - 1) / (cols - 1 || 1);
+  const usable = width - 2; // 사용 범위 [1 .. width-2]
+  const cols = Math.max(1, Math.min(8, Math.floor((usable + 1) / 2))); // 2칸 간격
+  const span = (cols - 1) * 2;
+  const start = Math.max(1, 1 + Math.floor((usable - span) / 2));
   const out: number[] = [];
-  for (let i = 0; i < cols; i++) out.push(Math.round(i * step));
+  for (let i = 0; i < cols; i++) out.push(Math.min(width - 2, start + i * 2));
   return out;
 }
 

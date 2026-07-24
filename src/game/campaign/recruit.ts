@@ -10,14 +10,6 @@ export function qualityForReputation(reputation: number): Quality {
   return 'recruit';
 }
 
-/** 품질별 후보 레벨 범위. */
-const QUALITY_LEVEL_RANGE: Record<Quality, [number, number]> = {
-  recruit: [1, 8],
-  veteran: [8, 18],
-  elite: [18, 30],
-  hero: [30, 45],
-};
-
 const QUALITY_COST_MULT: Record<Quality, number> = {
   recruit: 1, veteran: 1.4, elite: 1.9, hero: 2.6,
 };
@@ -27,20 +19,20 @@ export function recruitCost(level: number, quality: Quality): number {
   return Math.round(level * 15 * QUALITY_COST_MULT[quality]);
 }
 
-function randomLevel(quality: Quality, rng: () => number): number {
-  const [lo, hi] = QUALITY_LEVEL_RANGE[quality];
-  return lo + Math.floor(rng() * (hi - lo + 1));
+/** 후보 레벨 = 주인공 레벨 ±1(최소 1). 주인공과 큰 레벨 차이가 나지 않도록 맞춘다. */
+function levelNearHero(heroLevel: number, rng: () => number): number {
+  return Math.max(1, heroLevel + (Math.floor(rng() * 3) - 1));
 }
 
-/** 현재 명성 품질로 3~5명의 모집 후보를 생성한다. */
-export function rollRecruits(reputation: number, startId: number, rng: () => number = Math.random): { recruits: RecruitCandidate[]; nextId: number } {
+/** 명성 품질(비용·표시)로 3~5명의 후보를 생성하되, 레벨은 주인공 레벨 근처로 맞춘다. */
+export function rollRecruits(reputation: number, heroLevel: number, startId: number, rng: () => number = Math.random): { recruits: RecruitCandidate[]; nextId: number } {
   const quality = qualityForReputation(reputation);
   const count = 3 + Math.floor(rng() * 3); // 3~5
   const recruits: RecruitCandidate[] = [];
   let id = startId;
   for (let i = 0; i < count; i++) {
     const kind = PLAYABLE_WEAPON_KINDS[Math.floor(rng() * PLAYABLE_WEAPON_KINDS.length)];
-    const level = randomLevel(quality, rng);
+    const level = levelNearHero(heroLevel, rng);
     const character = generateCharacter(kind, level, { id: `u${id}`, rng });
     recruits.push({ id: `u${id}`, character, quality, cost: recruitCost(level, quality) });
     id += 1;

@@ -22,6 +22,12 @@ import { EquipSwapMenu } from './EquipSwapMenu';
 
 const AI_DELAY_MS = 500;
 
+/** 이동 불가/특수 자연 타일 효과 설명(클릭 시 안내). */
+const TERRAIN_INFO: Record<string, string> = {
+  rock: '🪨 바위 — 진입할 수 없는 장애물입니다. 원거리·마법 공격도 넘어가지 못합니다. (단검 3차 「적응력」만 통과 가능)',
+  water: '🌊 물 — 진입은 가능하지만 넘어서 지나갈 수 없습니다(그 칸에서 이동이 멈춤). 진입 비용 2. (급류·적응력으로 완화)',
+};
+
 interface SwapCandidate {
   kind: 'weapon' | 'armor';
   instanceId: string;
@@ -49,6 +55,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
   const [floatBatch, setFloatBatch] = useState<{ key: number; byUnit: Record<string, { text: string; kind: string }> } | null>(null);
   // 라운드 시작 시 승리 조건을 가운데 팝업으로 한 번 보여준다(클릭하면 닫힘).
   const [showObjIntro, setShowObjIntro] = useState(true);
+  // 이동 불가 자연 타일(바위·물) 클릭 시 효과 설명.
+  const [tileInfo, setTileInfo] = useState<string | null>(null);
   const aiBusyRef = useRef(false);
   const motionKeyRef = useRef(0);
   const floatKeyRef = useRef(0);
@@ -360,6 +368,18 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
           </div>
         </div>
       )}
+      {tileInfo && (
+        <div
+          onClick={() => setTileInfo(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(8,6,14,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50, cursor: 'pointer' }}
+        >
+          <div style={{ maxWidth: 460, margin: '0 20px', padding: '20px 24px', background: 'rgba(20,14,32,0.97)', border: '2px solid #6a58a0', borderRadius: 12, color: '#f2ecff', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 13, letterSpacing: 2, color: '#b9a7e6', marginBottom: 8 }}>지형 정보</div>
+            <div>{tileInfo}</div>
+            <div style={{ textAlign: 'right', marginTop: 12, color: '#8a7ab0', fontSize: 13 }}>클릭하여 닫기</div>
+          </div>
+        </div>
+      )}
       <div className="battle-log-panel">
         <p className="battle-meta">🕑 {TIME_LABEL[battle.time]} · 날씨: {WEATHER_LABEL[battle.weather]} · {objLabel}</p>
         <InitiativeBar units={initiativeUnits} currentUnitId={currentUnit.id} visibleEnemyIds={visibleEnemyIds} />
@@ -420,6 +440,10 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
             if (reachableTiles.has(posKey(pos))) {
               setPendingSwapTo(null);
               setPendingMoveTile(pos);
+            } else {
+              // 이동할 수 없는 자연 타일(바위·물)을 누르면 그 타일 효과를 설명한다.
+              const terr = battle.map.tiles[pos.y]?.[pos.x]?.terrain;
+              if (terr === 'rock' || terr === 'water') setTileInfo(TERRAIN_INFO[terr]);
             }
           }}
         />

@@ -22,7 +22,7 @@ describe('qualityForReputation 경계', () => {
 
 describe('rollRecruits', () => {
   it('3~5명, 고유 id, 명성 등급에 맞는 품질로 생성한다', () => {
-    const { recruits, nextId } = rollRecruits(60, 1, seq([0.5, 0.2, 0.8, 0.1, 0.9, 0.4, 0.3]));
+    const { recruits, nextId } = rollRecruits(60, 1, 1, seq([0.5, 0.2, 0.8, 0.1, 0.9, 0.4, 0.3]));
     expect(recruits.length).toBeGreaterThanOrEqual(3);
     expect(recruits.length).toBeLessThanOrEqual(5);
     const ids = recruits.map((r) => r.id);
