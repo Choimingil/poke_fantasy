@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { BattleMap, Character, GridPos } from '../game/types';
 import type { Side } from '../game/engine/battle';
 import { posKey } from '../game/engine/grid';
@@ -54,17 +54,20 @@ export function BoardGrid({
   onTileClick: (pos: GridPos) => void;
 }) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const centeredOnceRef = useRef(false);
 
   // 카메라: focusPos가 주어지면 해당 칸을 뷰포트 중앙으로 스크롤한다.
-  // (숨은 상대 유닛의 차례에는 focusPos가 null로 들어와 카메라가 움직이지 않는다.)
-  useEffect(() => {
+  // 첫 배치는 paint 전에 **즉시**(behavior 'auto') 잡아 좌상단에서 튀는 현상을 없애고,
+  // 이후 이동은 부드럽게(smooth) 따라간다. useLayoutEffect라 화면에 0,0이 잠깐 보이지 않는다.
+  useLayoutEffect(() => {
     const vp = viewportRef.current;
     if (!vp || !focusPos) return;
     vp.scrollTo({
       left: (focusPos.x + 0.5) * CELL - vp.clientWidth / 2,
       top: (focusPos.y + 0.5) * CELL - vp.clientHeight / 2,
-      behavior: 'smooth',
+      behavior: centeredOnceRef.current ? 'smooth' : 'auto',
     });
+    centeredOnceRef.current = true;
   }, [focusPos]);
 
   const cells = [];
