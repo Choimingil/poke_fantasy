@@ -287,7 +287,11 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
   const weaponInstance = currentUnit.inventory.find((w) => w.instanceId === currentUnit.equippedWeaponId)!;
   const weapon = getWeapon(weaponInstance.templateId);
   const budget = effectiveMove(currentUnit);
-  const reachable = pendingMoveTile || pendingFollowup ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget, battle.weather);
+  // 이동 목적지를 하나 선택(pendingMoveTile)한 뒤에도 이동 가능 칸을 계속 표시한다.
+  // (숨기면 "확인 버튼만 있고 갈 곳이 안 보이는" 상태가 되어, 취소 없이는 목적지를 다시 못 고른다.)
+  // 도달 계산은 언제나 유닛의 실제 위치 기준이며, 다른 칸을 탭하면 목적지가 그 칸으로 바뀐다.
+  // 후속 이동(도약사격·기습) 선택 중에는 별도 UI를 쓰므로 이때만 이동 하이라이트를 끈다.
+  const reachable = pendingFollowup ? [] : computeReachableTiles(battle.map, currentUnit, [...battle.teamA, ...battle.teamB], budget, battle.weather);
   const reachableTiles = new Set(reachable.map(posKey));
 
   const usableSkillIds = getBattleSkillIds(
