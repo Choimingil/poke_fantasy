@@ -22,11 +22,23 @@ import { EquipSwapMenu } from './EquipSwapMenu';
 
 const AI_DELAY_MS = 500;
 
-/** 이동 불가/특수 자연 타일 효과 설명(클릭 시 안내). */
+/** 타일 지형 효과 설명(클릭 시 안내). */
 const TERRAIN_INFO: Record<string, string> = {
-  rock: '🪨 바위 — 진입할 수 없는 장애물입니다. 원거리·마법 공격도 넘어가지 못합니다. (단검 3차 「적응력」만 통과 가능)',
+  plain: '🟩 평지 — 특별한 효과 없음. 진입 비용 1.',
+  forest: '🌲 숲 — 은폐: 숲 안의 유닛은 투시가 없으면 1칸 밖에서는 보이지 않습니다. 진입 비용 1(눈 날씨 +1).',
+  hill: '⛰️ 언덕 — 고지대: 위에 서면 시야 +1. 통과 가능. 진입 비용 1.',
   water: '🌊 물 — 진입은 가능하지만 넘어서 지나갈 수 없습니다(그 칸에서 이동이 멈춤). 진입 비용 2. (급류·적응력으로 완화)',
+  rock: '🪨 바위 — 진입할 수 없는 장애물입니다. 원거리·마법 공격도 넘어가지 못합니다. (단검 3차 「적응력」만 통과 가능)',
 };
+
+/** 클릭한 타일의 지형·상태(화염 등) 설명 문자열. */
+function describeTile(map: import('../game/types').BattleMap, pos: GridPos): string {
+  const tile = map.tiles[pos.y]?.[pos.x];
+  if (!tile) return '';
+  let s = TERRAIN_INFO[tile.terrain] ?? TERRAIN_INFO.plain;
+  if (tile.status?.type === 'burning') s += '\n🔥 화염 타일 — 이 칸에 머무는 유닛은 매 턴 최대체력의 1/4 피해를 입습니다.';
+  return s;
+}
 
 interface SwapCandidate {
   kind: 'weapon' | 'armor';
@@ -252,11 +264,13 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
             floatByUnit={floatBatch?.byUnit ?? null}
             floatKey={floatBatch?.key ?? 0}
             onTileClick={(pos) => {
-              // 캐릭터(아군 또는 보이는 적)를 누르면 상세 팝업 전환, 빈 타일이면 닫힘.
+              // 캐릭터(아군 또는 보이는 적)를 누르면 상세 팝업 전환, 빈 타일이면 지형 정보 표시.
               const at = [...battle.teamA, ...battle.teamB].find(
                 (u) => u.currentHp > 0 && u.position.x === pos.x && u.position.y === pos.y && (u.side === 'A' || visibleEnemyIds.has(u.id)),
               );
-              setInspectId(at ? at.id : null);
+              if (at) { setInspectId(at.id); return; }
+              setInspectId(null);
+              setTileInfo(describeTile(battle.map, pos));
             }}
           />
           {inspectUnit && <InspectPanel unit={inspectUnit} onClose={() => setInspectId(null)} />}
@@ -376,7 +390,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
         >
           <div style={{ maxWidth: 460, margin: '0 20px', padding: '20px 24px', background: 'rgba(20,14,32,0.97)', border: '2px solid #6a58a0', borderRadius: 12, color: '#f2ecff', lineHeight: 1.6 }}>
             <div style={{ fontSize: 13, letterSpacing: 2, color: '#b9a7e6', marginBottom: 8 }}>지형 정보</div>
-            <div>{tileInfo}</div>
+            <div style={{ whiteSpace: 'pre-line' }}>{tileInfo}</div>
             <div style={{ textAlign: 'right', marginTop: 12, color: '#8a7ab0', fontSize: 13 }}>클릭하여 닫기</div>
           </div>
         </div>
@@ -442,9 +456,8 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
               setPendingSwapTo(null);
               setPendingMoveTile(pos);
             } else {
-              // 이동할 수 없는 자연 타일(바위·물)을 누르면 그 타일 효과를 설명한다.
-              const terr = battle.map.tiles[pos.y]?.[pos.x]?.terrain;
-              if (terr === 'rock' || terr === 'water') setTileInfo(TERRAIN_INFO[terr]);
+              // 이동 대상이 아닌 빈 타일을 누르면 그 타일의 지형 효과를 설명한다(모든 지형).
+              setTileInfo(describeTile(battle.map, pos));
             }
           }}
         />
