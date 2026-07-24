@@ -38,8 +38,8 @@ describe('evasionChance', () => {
 });
 
 describe('maxHp', () => {
-  it('최대 체력 = 20 + 체력 × 3 + 레벨 × 2', () => {
+  it('최대 체력 = (체력 + 레벨) × 2', () => {
     const c = makeCharacter(5, 5, 10, 30);
-    expect(maxHp(c)).toBe(20 + 30 * 3 + 10 * 2); // 130
+    expect(maxHp(c)).toBe((30 + 10) * 2); // 80
   });
 });

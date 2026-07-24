@@ -233,6 +233,6 @@ describe('맹독 지속피해', () => {
   it('맹독은 출혈과 별개로 매 턴 최대체력 1/8 피해를 준다', () => {
     const c = createCharacter({ id: 'c', name: 'c', baseStats: { hp: 160, attack: 10, magicAttack: 10, speed: 10, endurance: 10 }, sight: 5, starterWeaponTemplateId: 'sword_short' });
     applyStatus(c, 'poisoned', { turnsRemaining: 2 });
-    expect(applyPoisonDamage(c)).toBe(65); // 최대체력 520(=20+160*3+10*2)의 1/8
+    expect(applyPoisonDamage(c)).toBe(43); // 최대체력 340(=(160+10)*2)의 1/8(반올림)
   });
 });

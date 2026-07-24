@@ -8,9 +8,9 @@ const STAT_NORM = 100 * 3 + 5;
 /** 부상(§42) 중인 캐릭터의 최대 체력 배수(전투 시작 HP 감소). */
 export const INJURED_HP_MULT = 0.7;
 
-/** 최대 체력 = (20 + 체력 × 3 + 레벨 × 2) × 특성 배수(강인한 체질 +10%) + 장비 옵션 보너스. 부상 시 ×0.7(§42). */
+/** 최대 체력 = (체력 + 레벨) × 2 × 특성 배수(강인한 체질 +10%) + 장비 옵션 보너스. 부상 시 ×0.7(§42). */
 export function maxHp(c: Character): number {
-  const base = Math.round((20 + effectiveBaseStat(c, 'hp') * 3 + c.level * 2) * maxHpTraitMult(c)) + equippedOptionTotal(c, 'maxHp');
+  const base = Math.round((effectiveBaseStat(c, 'hp') + c.level) * 2 * maxHpTraitMult(c)) + equippedOptionTotal(c, 'maxHp');
   return c.injured ? Math.max(1, Math.round(base * INJURED_HP_MULT)) : base;
 }
 
