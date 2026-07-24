@@ -43,9 +43,12 @@ export function BarracksScreen({
   onTreatInjury: (id: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>('party');
+  // 편성 목록에서 캐릭터를 눌러 인벤토리로 진입할 때, 그 캐릭터를 선택 상태로 연다.
+  const [invCharId, setInvCharId] = useState<string | null>(null);
   // 인벤토리 조작(기술 로드아웃·장비·능력치)은 로스터를 제자리 변경하므로,
   // 저장과 함께 강제 리렌더해야 체크박스 등 UI에 즉시 반영된다.
   const [, forceTick] = useState(0);
+  const openInventoryFor = (id: string) => { setInvCharId(id); setTab('inventory'); };
 
   return (
     <div className="app-shell barracks-screen">
@@ -79,12 +82,14 @@ export function BarracksScreen({
 
       <div className="barracks-body">
         {tab === 'party' && (
-          <PartyFormationTab campaign={campaign} onSetDeployed={onSetDeployed} onStartBattle={onStartBattle} onTreatInjury={onTreatInjury} />
+          <PartyFormationTab campaign={campaign} onSetDeployed={onSetDeployed} onStartBattle={onStartBattle} onTreatInjury={onTreatInjury} onOpenInventory={openInventoryFor} />
         )}
 
         {tab === 'inventory' && (
           <InventoryScreen
+            key={invCharId ?? 'inv'}
             characters={campaign.roster}
+            selectedCharacterId={invCharId ?? undefined}
             onChange={() => { onSave(); forceTick((t) => t + 1); }}
             stash={campaign.stash}
             onEquipStashWeapon={onEquipStashWeapon}

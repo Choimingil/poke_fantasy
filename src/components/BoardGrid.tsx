@@ -105,7 +105,7 @@ export function BoardGrid({
         }}
       >
         {cells}
-        {teamA.map((c) => c.currentHp > 0 && (
+        {teamA.map((c) => (c.currentHp > 0 || floatByUnit?.[c.id]) && (
           <UnitToken
             key={c.id}
             character={c}
@@ -119,8 +119,9 @@ export function BoardGrid({
             floatKey={floatKey}
           />
         ))}
-        {/* 적 유닛은 플레이어 시야에 들어온 경우에만 표시(안개/숲 은폐) */}
-        {teamB.map((c) => c.currentHp > 0 && visibleEnemyIds.has(c.id) && (
+        {/* 적 유닛은 플레이어 시야에 들어온 경우에만 표시(안개/숲 은폐). 이번 턴 피해 표시가 있으면
+            쓰러진 순간에도 데미지 숫자가 보이도록 잠깐 함께 렌더한다. */}
+        {teamB.map((c) => ((c.currentHp > 0 && visibleEnemyIds.has(c.id)) || floatByUnit?.[c.id]) && (
           <UnitToken
             key={c.id}
             character={c}

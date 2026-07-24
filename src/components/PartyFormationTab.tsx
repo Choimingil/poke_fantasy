@@ -32,11 +32,14 @@ export function PartyFormationTab({
   onSetDeployed,
   onStartBattle,
   onTreatInjury,
+  onOpenInventory,
 }: {
   campaign: Campaign;
   onSetDeployed: (ids: string[]) => void;
   onStartBattle: () => void;
   onTreatInjury: (id: string) => void;
+  /** 편성 목록에서 캐릭터 이름을 누르면 해당 캐릭터 인벤토리로 이동. */
+  onOpenInventory?: (id: string) => void;
 }) {
   const theme = themeForRound(campaign.round);
   const boss = isBossRound(campaign.round);
@@ -98,7 +101,11 @@ export function PartyFormationTab({
             <li key={c.id} className="deploy-on">
               <div className="formation-row">
                 <span className="formation-slot">{i + 1}번</span>
-                <span className="formation-name"><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}</span>
+                <span className="formation-name">
+                  <button type="button" className="char-open-btn" onClick={() => onOpenInventory?.(c.id)} title="인벤토리 열기">
+                    <strong>{c.name}</strong>
+                  </button> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
+                </span>
                 <span className="formation-controls">
                   <button type="button" disabled={i === 0} onClick={() => reorder(i, -1)}>↑</button>
                   <button type="button" disabled={i === deployed.length - 1} onClick={() => reorder(i, 1)}>↓</button>
@@ -115,7 +122,10 @@ export function PartyFormationTab({
       <ul className="deploy-list">
         {benched.map((c) => (
           <li key={c.id}>
-            <span><strong>{c.name}</strong> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
+            <span>
+              <button type="button" className="char-open-btn" onClick={() => onOpenInventory?.(c.id)} title="인벤토리 열기">
+                <strong>{c.name}</strong>
+              </button> · {KIND_LABEL[equippedKind(c)]} · Lv.{c.level} {injuryControl(c)}
               <span className="deploy-stats">HP {maxHp(c)} · 근 {c.baseStats.attack} · 지 {c.baseStats.magicAttack} · 속 {c.baseStats.speed}</span>
             </span>
             <button type="button" disabled={campaign.deployedIds.length >= MAX_DEPLOY} onClick={() => add(c.id)}>출전</button>

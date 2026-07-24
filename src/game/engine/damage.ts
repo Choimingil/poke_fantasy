@@ -70,9 +70,9 @@ export function calculateDamage(ctx: DamageContext): DamageResult {
     passivePowerMult *= ctx.finalPowerMult ?? 1;
   }
 
-  // 기본 공격력 = (주스탯 + 무기 공격력/마력) x 숙련도~100% 랜덤값 x 기술위력
-  // 물리: 근력 + 무기 공격력 / 마법: 지력 + 무기 마력(statSource·weaponPower가 물리/마법을 구분).
-  const baseAttack = (stat + ctx.weaponPower) * masteryRoll * skillPower;
+  // 기본 공격력 = (주스탯/2 + 무기 공격력/마력) x 숙련도~100% 랜덤값 x 기술위력
+  // 물리: 근력/2 + 무기 공격력 / 마법: 지력/2 + 무기 마력(statSource·weaponPower가 물리/마법을 구분).
+  const baseAttack = (stat / 2 + ctx.weaponPower) * masteryRoll * skillPower;
 
   const rawDefense = ctx.defenderDefense ?? 0;
   const defense = ctx.ignoreDefense ? 0 : rawDefense * (1 - (ctx.ignoreDefenseRatio ?? 0));

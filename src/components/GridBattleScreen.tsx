@@ -53,6 +53,7 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
   const motionKeyRef = useRef(0);
   const floatKeyRef = useRef(0);
   const exploredRef = useRef<Set<string>>(new Set()); // 한 번이라도 시야로 밝혔던 타일(탐사 완료)
+  const lastAllyPosRef = useRef<GridPos | null>(null); // 마지막으로 카메라가 잡은 아군 위치(숨은 적 차례 유지용)
 
   const triggerMotion = (attackerId: string, targetIds: string[]) => {
     motionKeyRef.current += 1;
@@ -123,14 +124,16 @@ export function GridBattleScreen({ teamA, teamB, onFinished, objective, map: map
   const initiativeUnits = [...battle.teamA, ...battle.teamB]
     .filter((u) => u.currentHp > 0)
     .sort((a, b) => effectiveSpeed(b) - effectiveSpeed(a));
-  // 카메라: 현재 유닛이 아군이거나 플레이어에게 보이는 적일 때만 그 위치로 이동(숨은 적은 추적 안 함).
-  // 아군이 이동 위치를 지정해 대기 중이면 그 예정 칸을 따라간다.
+  // 마지막으로 화면에 잡았던 아군 위치를 기억한다(숨은 적 차례에 카메라를 여기로 유지).
+  if (currentUnit?.side === 'A') lastAllyPosRef.current = currentUnit.position;
+  // 카메라: 현재 유닛이 아군이거나 플레이어에게 보이는 적일 때만 그 위치로 이동.
+  // 숨은(암흑) 적 차례에는 카메라를 옮기지 않고 마지막 아군 위치를 계속 보여준다.
   const focusPos =
     isPlayerTurn && pendingMoveTile
       ? pendingMoveTile
       : currentUnit && (currentUnit.side === 'A' || visibleEnemyIds.has(currentUnit.id))
         ? currentUnit.position
-        : null;
+        : lastAllyPosRef.current;
 
   // 공격 모션은 잠깐 재생 후 해제한다.
   useEffect(() => {

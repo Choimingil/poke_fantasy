@@ -34,9 +34,11 @@ interface StashProps {
   enhanceUnlocked?: boolean; // §44 강화 시스템 해금 여부(정비에서 전달)
 }
 
-export function InventoryScreen({ characters, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor, gold, materials, onEnhance, enhanceUnlocked }: { characters?: Character[]; onChange: () => void; onBack?: () => void } & StashProps) {
+export function InventoryScreen({ characters, selectedCharacterId, onChange, onBack, stash, onEquipStashWeapon, onEquipStashArmor, onSellStashWeapon, onSellStashArmor, gold, materials, onEnhance, enhanceUnlocked }: { characters?: Character[]; selectedCharacterId?: string; onChange: () => void; onBack?: () => void } & StashProps) {
   const roster = characters ?? ROSTER;
-  const [selectedId, setSelectedId] = useState(roster[0].id);
+  const [selectedId, setSelectedId] = useState(
+    selectedCharacterId && roster.some((r) => r.id === selectedCharacterId) ? selectedCharacterId : roster[0].id,
+  );
   const c = roster.find((x) => x.id === selectedId) ?? roster[0];
 
   // §32 장비 강화 버튼(캠페인 정비에서만; onEnhance가 있을 때).
