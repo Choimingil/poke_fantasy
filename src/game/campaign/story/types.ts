@@ -29,8 +29,8 @@ type StoryPrimary = 'annihilate' | 'killCommander' | 'surviveTurns';
 /** 라운드 적 편성 한 슬롯. */
 interface StoryEnemySlot {
   kind: WeaponKind;
-  /** commander면 지휘관 처치 목표의 대상이 되고 정예 능력치를 갖는다. */
-  role?: 'commander' | 'elite' | 'normal';
+  /** commander/boss면 지휘관 처치 목표의 대상. boss는 보스 능력치(체력 대폭↑). */
+  role?: 'commander' | 'boss' | 'elite' | 'normal';
   spriteJob?: string;
   gender?: SpriteGender;
   name?: string;

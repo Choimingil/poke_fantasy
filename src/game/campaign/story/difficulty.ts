@@ -41,8 +41,9 @@ export function buildStoryEnemyParty(
   let commanderId: string | undefined;
 
   def.enemies.forEach((slot, i) => {
-    const isCmd = slot.role === 'commander';
-    const isElite = slot.role === 'elite' || isCmd;
+    const isBoss = slot.role === 'boss';
+    const isCmd = slot.role === 'commander' || isBoss;
+    const isElite = slot.role === 'elite';
     const id = isCmd ? `enemy-${def.round}-cmd` : `enemy-${def.round}-${i}`;
     const level = Math.max(1, base + (slot.levelOffset ?? 0));
     const c = generateCharacter(slot.kind, level, {
@@ -51,6 +52,7 @@ export function buildStoryEnemyParty(
       gender: slot.gender,
       spriteJob: slot.spriteJob,
       isElite,
+      isBoss,
       statMult,
       rng,
     });

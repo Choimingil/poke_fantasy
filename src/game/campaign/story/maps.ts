@@ -8,15 +8,14 @@ interface StoryMapSpec {
   terrain?: (x: number, y: number) => TerrainType;
 }
 
-/** 아군은 하단, 적은 상단(기존 상하 대결 구도 유지). */
+/** 아군은 하단 2행, 적은 상단 2행(대규모 출전 인원 수용, 최대 16 슬롯). */
 function spawnsBottom(width: number, height: number): GridPos[] {
-  const y = height - 1;
   const xs = spreadX(width);
-  return xs.map((x) => ({ x, y }));
+  return [...xs.map((x) => ({ x, y: height - 1 })), ...xs.map((x) => ({ x, y: height - 2 }))];
 }
 function spawnsTop(width: number): GridPos[] {
   const xs = spreadX(width);
-  return xs.map((x) => ({ x, y: 0 }));
+  return [...xs.map((x) => ({ x, y: 0 })), ...xs.map((x) => ({ x, y: 1 }))];
 }
 /** 가로로 고르게 퍼진 스폰 x좌표(최대 8열). */
 function spreadX(width: number): number[] {
@@ -194,6 +193,47 @@ const SPECS: Record<string, StoryMapSpec> = {
       if (x >= 8 && x <= 11 && y >= 6 && y <= 8) return 'hill'; // 중앙 광장 단
       if (x >= 2 && x <= 3 && y >= 5 && y <= 7) return 'forest';
       if (x >= 16 && x <= 17 && y >= 7 && y <= 9) return 'forest';
+      return 'plain';
+    },
+  },
+  // 라운드 17: 서부 폐성 외곽. 외성 3구역(바위 라인), 포로 수용소, 내성문
+  r17_fortress: {
+    width: 22, height: 18,
+    terrain: (x, y) => {
+      if (y === 7 && x % 4 !== 0) return 'rock'; // 외성벽(구역 사이 통로만 개방)
+      if (x >= 3 && x <= 5 && y >= 11 && y <= 13) return 'forest'; // 수용소
+      if (x >= 16 && x <= 18 && y >= 11 && y <= 13) return 'hill'; // 보급 창고 단
+      if (x >= 10 && x <= 12 && y >= 2 && y <= 3) return 'rock'; // 내성문
+      return 'plain';
+    },
+  },
+  // 라운드 18: 기억의 제단 폐성 중정. 원형 광장과 다섯 갈래 회랑(바위)
+  r18_altar: {
+    width: 21, height: 17,
+    terrain: (x, y) => {
+      if ((x === 4 || x === 10 || x === 16) && y >= 4 && y <= 12) return 'rock'; // 회랑 벽
+      if (x >= 8 && x <= 12 && y >= 7 && y <= 9) return 'hill'; // 중앙 제단 단
+      if ((x === 6 && y === 6) || (x === 14 && y === 10)) return 'forest';
+      return 'plain';
+    },
+  },
+  // 라운드 19: 무너지는 폐성 중심부(최종전). 외곽 화염지대(물로 물길 표현), 중앙 왕좌
+  r19_keep: {
+    width: 24, height: 20,
+    terrain: (x, y) => {
+      if ((x <= 1 || x >= 22) && y >= 3 && y <= 16) return 'water'; // 수로(불 진화 장치)
+      if (x >= 10 && x <= 13 && y >= 8 && y <= 11) return 'hill'; // 중앙 왕좌 단
+      if ((x === 6 && y === 6) || (x === 17 && y === 13) || (x === 6 && y === 13) || (x === 17 && y === 6)) return 'rock';
+      return 'plain';
+    },
+  },
+  // 라운드 20: 재판 도시로 향하는 대로(호송 에필로그). 서쪽 감옥, 중앙 시장(숲), 동쪽 재판청
+  r20_road: {
+    width: 22, height: 16,
+    terrain: (x, y) => {
+      if (x >= 2 && x <= 3 && y >= 6 && y <= 9) return 'rock'; // 서쪽 감옥
+      if (x >= 9 && x <= 12 && y >= 6 && y <= 9) return 'forest'; // 중앙 시장
+      if (x >= 18 && x <= 19 && y >= 6 && y <= 9) return 'hill'; // 동쪽 재판청 단
       return 'plain';
     },
   },

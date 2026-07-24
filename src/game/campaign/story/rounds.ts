@@ -20,6 +20,7 @@ const OFFICER = { speaker: '생존 장교', portraitJob: 'east_general', portrai
 const DOCTOR = { speaker: '현지 의사', portraitJob: 'west_priest', portraitGender: 'male' as const };
 const EXECUTIONER = { speaker: '벨라시온 처형관', portraitJob: 'west_berserker', portraitGender: 'male' as const };
 const GENERAL = { speaker: '중앙군 장군', portraitJob: 'east_general', portraitGender: 'male' as const };
+const VALTER = { speaker: '발테르 드라벤', portraitJob: 'west_knight', portraitGender: 'male' as const };
 
 const STORY_ROUNDS: StoryRoundDef[] = [
   {
@@ -608,6 +609,153 @@ const STORY_ROUNDS: StoryRoundDef[] = [
         { ...YEONBI, text: '숨기면 전쟁은 끝나도 이유는 남는다.' },
         { ...HERO, text: '연화국의 깃발도, 벨라시온의 깃발도 따르지 않겠습니다. 이제부터 우리가 지킬 것은 사람과 기록입니다.' },
         { narration: true, text: '독립 연합부대가 결성된다(양국 이탈군 동시 편성 가능).' },
+      ],
+    },
+  },
+  {
+    round: 17,
+    act: 5,
+    title: '마지막 진군',
+    recLevelMin: 29,
+    recLevelMax: 33,
+    mapId: 'r17_fortress',
+    deployMax: 10,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '외성 구역 지휘관', levelOffset: 1 },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '외성 수비병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '외성 수비병' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '외성 궁수' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '내성 증원' },
+      { kind: 'blunt', spriteJob: 'west_berserker', gender: 'male', name: '연화국 강경파' },
+    ],
+    eventsAfter: [{ companionId: 'dohyun', type: 'official' }],
+    objectiveText: '외성 구역 지휘관 격파(진입로 확보)',
+    optionalText: ['양국 포로 전원 구출', '보급 창고 파괴 금지', '적군 설득 3회'],
+    preScene: {
+      lines: [
+        { narration: true, text: '발테르가 자신의 고향이 파괴됐던 서부 폐성에 최후의 요새를 세운다. 연화국 병사·벨라시온 이탈 기사·치료사가 함께한다.' },
+        { ...KYLE, text: '저 성은 벨라시온에서 성지처럼 여겨진다. 발테르는 우리가 당한 모든 일을 저곳에 묶어 두었다.' },
+        { ...YEONBI, text: '연화국에서는 그곳을 승전지라고 배웠다.' },
+        { ...HERO, text: '같은 폐허를 두고 한쪽은 성지, 한쪽은 승전지라고 불렀군요.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...DOHYUN, text: '싸우러 온 게 아니야. 죽은 사람의 이름을 더 늘리지 않으려고 온 거야.' },
+        { narration: true, text: '도윤이 부대에 재합류한다(기록을 든 채).' },
+      ],
+    },
+  },
+  {
+    round: 18,
+    act: 5,
+    title: '복수의 왕',
+    recLevelMin: 31,
+    recLevelMax: 35,
+    mapId: 'r18_altar',
+    deployMax: 10,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '발테르 친위 지휘관', levelOffset: 1 },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '발테르 친위대' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '발테르 친위대' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '친위 기사' },
+      { kind: 'tome', spriteJob: 'west_priest', gender: 'female', name: '제단 사제' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '기록 수호병' },
+    ],
+    objectiveText: '친위 지휘관 격파(기억의 제단 돌파)',
+    optionalText: ['제단 점령(기록 보존)', '카일 부모의 진짜 기록 확보'],
+    preScene: {
+      lines: [
+        { narration: true, text: '주인공과 발테르가 처음으로 직접 대면한다.' },
+        { ...VALTER, text: '네 나라가 먼저 우리를 불태웠다. 나는 빼앗긴 것을 되찾을 뿐이다.' },
+        { ...HERO, text: '당신이 당한 일이 당신의 죄를 없애주지는 않습니다.' },
+        { ...VALTER, text: '너도 수많은 사람을 죽이고 여기까지 왔다. 무엇이 너와 나를 다르게 만들지?' },
+        { ...HERO, text: '아직 다르다고 말할 수 없습니다. 그래서 당신을 쓰러뜨린 뒤, 나 역시 심판받을 기록을 남길 겁니다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { narration: true, text: '발테르가 평화파 생존자의 기록을 삭제했음이 드러난다. 죽은 자들이 모두 복수를 원했다는 주장은 사실이 아니었다.' },
+        { ...KYLE, text: '당신은 죽은 이들의 목소리를 지킨 게 아닙니다. 그들이 반박할 수 없다는 걸 이용했을 뿐입니다.' },
+        { ...VALTER, text: '복수 없는 피해자는 역사에서 사라진다.' },
+        { ...KYLE, text: '복수만 남긴 피해자도 결국 사람으로 기억되지 않습니다.' },
+      ],
+    },
+  },
+  {
+    round: 19,
+    act: 5,
+    title: '재가 된 깃발',
+    recLevelMin: 33,
+    recLevelMax: 38,
+    mapId: 'r19_keep',
+    deployMax: 12,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'sword', role: 'boss', spriteJob: 'west_knight', gender: 'male', name: '발테르 드라벤 (재의 왕)', levelOffset: 3 },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '발테르 친위병' },
+      { kind: 'spear', spriteJob: 'west_berserker', gender: 'male', name: '발테르 친위병' },
+      { kind: 'sword', spriteJob: 'west_knight', gender: 'male', name: '복수파 병사' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '복수파 궁수' },
+      { kind: 'tome', spriteJob: 'west_witch', gender: 'female', name: '복수파 술사' },
+    ],
+    objectiveText: '발테르 격파(3단계 결전)',
+    optionalText: ['모든 동료 생존', '민간인 구역 3곳 보존', '화공 장치 전부 해제'],
+    preScene: {
+      lines: [
+        { narration: true, text: '발테르가 폐성 중심에서 양국의 깃발을 모두 불태운다.' },
+        { ...VALTER, text: '연화국도 벨라시온도 거짓 위에 세워졌다. 모두 무너뜨리고 다시 시작하면 된다.' },
+        { ...BAEKRIN, text: '무너진 뒤 누가 다시 세우지?' },
+        { ...VALTER, text: '살아남은 자가.' },
+        { ...BAEKRIN, text: '그 말로 시작한 나라가 지금 두 개나 있다.' },
+        { narration: true, text: '발테르는 총사령관 → 복수자 → 재의 왕으로 세 번 모습을 바꾸며 저항한다. 다섯 속성의 광역 공격이 성 전체를 무너뜨리려 한다.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...VALTER, text: '내가 멈추면 누가 죽은 자를 기억하지?' },
+        { ...HERO, text: '기억하겠습니다. 하지만 그 이름으로 다른 사람을 죽이지는 않겠습니다.' },
+        { ...DOHYUN, text: '힘이 없어도 남겨야 해. 힘을 주려고 이름을 바꾸는 순간, 그 사람은 사라지니까.' },
+        { narration: true, text: '발테르의 체력이 0이 되어도 즉시 죽지 않는다. 최종 연출은 생포로 고정된다.' },
+      ],
+    },
+  },
+  {
+    round: 20,
+    act: 5,
+    title: '승리 이후',
+    recLevelMin: 35,
+    recLevelMax: 40,
+    mapId: 'r20_road',
+    deployMax: 12,
+    primary: 'killCommander',
+    enemies: [
+      { kind: 'dagger', role: 'commander', spriteJob: 'east_ninja', gender: 'male', name: '연화국 암살대 지휘관', levelOffset: 1 },
+      { kind: 'dagger', spriteJob: 'east_ninja', gender: 'male', name: '연화국 암살대' },
+      { kind: 'bow', spriteJob: 'east_archer', gender: 'male', name: '연화국 암살대' },
+      { kind: 'sword', role: 'elite', spriteJob: 'west_knight', gender: 'male', name: '벨라시온 구출대 지휘관' },
+      { kind: 'sword', spriteJob: 'west_berserker', gender: 'male', name: '벨라시온 구출대' },
+      { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '벨라시온 구출대' },
+    ],
+    objectiveText: '암살대 지휘관 격파(발테르 호송)',
+    optionalText: ['기록 상자 5개 보존', '발테르 보호(전투불능 방지)', '양국 시민 대표 생존'],
+    preScene: {
+      lines: [
+        { narration: true, text: '발테르를 재판정으로 호송한다. 연화국 강경파와 벨라시온 복수파가 각각 그를 죽이려 한다.' },
+        { ...GENERAL, text: '그자를 공개 처형하면 전쟁은 끝난다.' },
+        { ...KYLE, text: '처형하면 벨라시온에서 순교자가 된다.' },
+        { ...HERO, text: '그래서 재판에 세웁니다. 발테르만이 아니라 연화국의 책임자도 함께.' },
+      ],
+    },
+    postScene: {
+      lines: [
+        { ...VALTER, text: '나를 살려두면 네 나라가 너를 배신자로 부를 것이다.' },
+        { ...HERO, text: '당신을 죽이면 내 나라가 자신의 죄를 숨길 수 있습니다. 그래서 살리는 겁니다.' },
+        { narration: true, text: '연화국은 서부 평정 기록을 공개하고, 벨라시온은 민간인 학살과 내부 숙청을 인정한다. 공동 재판이 시작된다.' },
+        { ...HERO, text: '오늘 우리는 승리를 기록하지 않는다. 누가 누구에게 무엇을 했는지 기록한다. 그리고 그 기록에서 우리 자신의 죄를 지우지 않을 것이다.' },
+        { narration: true, text: '— 《재가 된 깃발》 완결 —' },
       ],
     },
   },
