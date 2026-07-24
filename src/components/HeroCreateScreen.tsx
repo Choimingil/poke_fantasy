@@ -5,16 +5,17 @@ import { rollHeroTraitCandidates, getTrait, TRAIT_CATEGORY_LABEL } from '../game
 import { WIRED_TRAIT_IDS } from '../game/engine/traitEffects';
 import type { HeroSetup } from '../game/campaign/state';
 
+// 무기 기준 선택(직업명이 아니라 무기 종류로 고른다). name = 무기, desc = 특성 요약.
 const CLASS_INFO: Partial<Record<WeaponKind, { name: string; desc: string }>> = {
-  sword: { name: '검사', desc: '근력 기반 근접. 반월참·일섬·섬광참.' },
-  blunt: { name: '둔격병', desc: '높은 체력·근력. 다리타격·밀쳐내기·광역보호.' },
-  spear: { name: '창병', desc: '관통·봉쇄·돌진. 패시브 반격.' },
-  bow: { name: '궁수', desc: '원거리·높은 스피드. 천궁·도약사격·저격.' },
-  crossbow: { name: '석궁병', desc: '방어 관통·고정피해. 철갑·관통·치명사격.' },
-  dagger: { name: '도적', desc: '최고 스피드. 기습·은신·축지.' },
-  thrown: { name: '투척병', desc: '맹독·분신·쇄상. 패시브 협공.' },
-  staff: { name: '마법사', desc: '지력 기반 속성 마법. 원소탄·약화·원소폭풍.' },
-  tome: { name: '주술사', desc: '치료·정화·재행동 지원.' },
+  sword: { name: '검', desc: '근력 기반 근접. 반월참·일섬·섬광참.' },
+  blunt: { name: '둔기', desc: '높은 체력·근력. 다리타격·밀쳐내기·광역보호.' },
+  spear: { name: '창', desc: '관통·봉쇄·돌진. 패시브 반격.' },
+  bow: { name: '활', desc: '원거리·높은 스피드. 천궁·도약사격·저격.' },
+  crossbow: { name: '석궁', desc: '방어 관통·고정피해. 철갑·관통·치명사격.' },
+  dagger: { name: '단검', desc: '최고 스피드. 기습·은신·축지.' },
+  thrown: { name: '투척 무기', desc: '맹독·분신·쇄상. 패시브 협공.' },
+  staff: { name: '지팡이', desc: '지력 기반 속성 마법. 원소탄·약화·원소폭풍.' },
+  tome: { name: '마도서', desc: '치료·정화·재행동 지원.' },
 };
 
 /** 특성 후보 카드(선택 가능). */
@@ -100,7 +101,7 @@ export function HeroCreateScreen({ onCreate, onBack }: { onCreate: (setup: HeroS
         </div>
       </div>
 
-      <h3>무기(직업) 선택</h3>
+      <h3>무기 선택</h3>
       <div className="class-grid">
         {PLAYABLE_WEAPON_KINDS.map((kind) => {
           const info = CLASS_INFO[kind];

@@ -84,16 +84,17 @@ function App() {
   const createHero = (setup: HeroSetup) => {
     const c = newCampaign(setup);
     persist(c);
-    setScreen('barracks');
+    // 1라운드는 정비 화면을 건너뛰고 무기·특성 선택 직후 바로 전투(컷씬)로 진입한다.
+    beginBattle(c);
   };
 
-  const startCampaignBattle = () => {
-    if (!campaign) return;
-    const def = campaign.mode === 'story' ? storyRoundDef(campaign.round) : undefined;
+  /** 주어진 캠페인 상태로 다음 전투를 시작한다(스토리면 컷씬→전투, 아니면 절차 전투). */
+  const beginBattle = (cc: Campaign) => {
+    const def = cc.mode === 'story' ? storyRoundDef(cc.round) : undefined;
 
     if (def) {
       // 스토리 라운드: 필요한 동료를 확보하고, 출전 명단에 주인공+합류 동료를 포함시킨다.
-      const withCompanions = ensureCompanions(campaign, def.joinBefore ?? []);
+      const withCompanions = ensureCompanions(cc, def.joinBefore ?? []);
       const forced = ['hero', ...(def.joinBefore ?? [])];
       const excluded = def.excludeDeploy ?? [];
       const rest = withCompanions.deployedIds.filter((id) => !forced.includes(id) && !excluded.includes(id));
@@ -124,12 +125,12 @@ function App() {
       return;
     }
 
-    // 절차적 폴백(1막 이후 라운드): 기존 로그라이트 전투.
-    const deployed = campaign.deployedIds
-      .map((id) => campaign.roster.find((c) => c.id === id))
+    // 절차적 폴백(스토리 라운드 이후): 기존 로그라이트 전투.
+    const deployed = cc.deployedIds
+      .map((id) => cc.roster.find((c) => c.id === id))
       .filter((c): c is NonNullable<typeof c> => !!c);
     if (deployed.length === 0) return;
-    const { units } = generateEnemyParty(campaign.round);
+    const { units } = generateEnemyParty(cc.round);
     setStoryDef(null);
     setStoryMap(null);
     setStoryObjective(undefined);
@@ -137,6 +138,11 @@ function App() {
     setBattleTeamB(units);
     setBattleSeq((s) => s + 1);
     setScreen('campaign-battle');
+  };
+
+  const startCampaignBattle = () => {
+    if (!campaign) return;
+    beginBattle(campaign);
   };
 
   const finishCampaignBattle = (battle: GridBattle) => {

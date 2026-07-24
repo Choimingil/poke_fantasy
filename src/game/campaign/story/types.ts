@@ -57,6 +57,8 @@ export interface StoryRoundDef {
   primary: StoryPrimary;
   /** surviveTurns 목표의 제한 턴. */
   turnLimit?: number;
+  /** 적 전체 능력치 배수(초반 라운드 약체화용, 기본 1). 예: 0.35 = 매우 약함. */
+  enemyPower?: number;
   enemies: StoryEnemySlot[];
   /** 전투 전 배치 시 로스터에 확보하고 자동 출전시킬 동료 id(임시/정식 공용). */
   joinBefore?: string[];

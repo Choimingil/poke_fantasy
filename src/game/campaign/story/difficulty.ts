@@ -36,7 +36,7 @@ export function buildStoryEnemyParty(
   rng: () => number = Math.random,
 ): StoryEnemyParty {
   const base = storyEnemyBaseLevel(def, heroLevel);
-  const statMult = storyStatMult(def.round);
+  const statMult = storyStatMult(def.round) * (def.enemyPower ?? 1);
   const units: Character[] = [];
   let commanderId: string | undefined;
 

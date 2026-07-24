@@ -43,6 +43,9 @@ export function BarracksScreen({
   onTreatInjury: (id: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>('party');
+  // 인벤토리 조작(기술 로드아웃·장비·능력치)은 로스터를 제자리 변경하므로,
+  // 저장과 함께 강제 리렌더해야 체크박스 등 UI에 즉시 반영된다.
+  const [, forceTick] = useState(0);
 
   return (
     <div className="app-shell barracks-screen">
@@ -82,7 +85,7 @@ export function BarracksScreen({
         {tab === 'inventory' && (
           <InventoryScreen
             characters={campaign.roster}
-            onChange={onSave}
+            onChange={() => { onSave(); forceTick((t) => t + 1); }}
             stash={campaign.stash}
             onEquipStashWeapon={onEquipStashWeapon}
             onEquipStashArmor={onEquipStashArmor}

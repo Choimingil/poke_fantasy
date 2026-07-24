@@ -32,6 +32,7 @@ const STORY_ROUNDS: StoryRoundDef[] = [
     mapId: 'r1_training',
     deployMax: 2,
     primary: 'annihilate',
+    enemyPower: 0.3,
     enemies: [
       { kind: 'blunt', role: 'elite', spriteJob: 'east_general', gender: 'male', name: '훈련 교관' },
       { kind: 'spear', spriteJob: 'east_ninja', gender: 'male', name: '모의 병사' },
@@ -69,6 +70,7 @@ const STORY_ROUNDS: StoryRoundDef[] = [
     deployMax: 2,
     primary: 'surviveTurns',
     turnLimit: 8,
+    enemyPower: 0.55,
     enemies: [
       { kind: 'sword', role: 'commander', spriteJob: 'west_knight', gender: 'male', name: '정찰대장' },
       { kind: 'bow', spriteJob: 'west_archer', gender: 'male', name: '벨라시온 정찰병' },
